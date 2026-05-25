@@ -36,7 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.lite.ui.components.ActionButtonsRow
-import ru.fpvladder.laps.lite.ui.components.ChannelWizard
+import ru.fpvladder.laps.lite.ui.components.ChannelDialog
 import ru.fpvladder.laps.lite.ui.components.NameEditorDialog
 import ru.fpvladder.laps.lite.ui.components.PilotSection
 import ru.fpvladder.laps.lite.ui.screens.MainContent
@@ -76,7 +76,7 @@ fun AppRoot(
     val currentScreen by pilotViewModel.currentScreen.collectAsState()
     val pilot by pilotViewModel.pilot.collectAsState()
 
-    var showChannelWizard by remember { mutableStateOf(false) }
+    var showChannelDialog by remember { mutableStateOf(false) }
     var showNameEditor by remember { mutableStateOf(false) }
     var isMuted by remember { mutableStateOf(false) }
 
@@ -91,7 +91,7 @@ fun AppRoot(
                 PilotSection(
                     pilot = pilot,
                     editable = currentScreen == AppScreen.Main,
-                    onChannelClick = { showChannelWizard = true },
+                    onChannelClick = { showChannelDialog = true },
                     onNameClick = { showNameEditor = true }
                 )
 
@@ -161,16 +161,16 @@ fun AppRoot(
         }
     }
 
-    if (showChannelWizard) {
-        ChannelWizard(
+    if (showChannelDialog) {
+        ChannelDialog(
             currentLetter = pilot.channelLetter,
             currentNumber = pilot.channelNumber,
             currentColor = pilot.channelColor,
             onConfirm = { letter, number, color ->
                 pilotViewModel.updateChannel(letter, number, color)
-                showChannelWizard = false
+                showChannelDialog = false
             },
-            onDismiss = { showChannelWizard = false }
+            onDismiss = { showChannelDialog = false }
         )
     }
 

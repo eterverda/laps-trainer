@@ -34,7 +34,7 @@ import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.lite.model.ChannelColor
 
 @Composable
-fun ChannelWizard(
+fun ChannelDialog(
     currentLetter: String,
     currentNumber: Int,
     currentColor: ChannelColor,
@@ -214,7 +214,7 @@ private fun SelectableItem(
                 text = text,
                 fontSize = 20.sp,
                 fontFamily = FontFamily.Monospace,
-                fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
+                fontWeight = FontWeight.ExtraBold,
                 color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
                 else MaterialTheme.colorScheme.onSurfaceVariant
             )
