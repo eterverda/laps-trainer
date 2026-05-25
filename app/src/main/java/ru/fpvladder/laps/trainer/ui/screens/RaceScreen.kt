@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.lite.ui.screens
+package ru.fpvladder.laps.trainer.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

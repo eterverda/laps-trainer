@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.lite.ui.components
+package ru.fpvladder.laps.trainer.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -31,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import ru.fpvladder.laps.lite.model.ChannelColor
+import ru.fpvladder.laps.trainer.model.ChannelColor
 
 @Composable
 fun ChannelDialog(
@@ -41,10 +41,6 @@ fun ChannelDialog(
     onConfirm: (String, Int, ChannelColor) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var selectedLetter by rememberSaveable { mutableStateOf(currentLetter) }
-    var selectedNumber by rememberSaveable { mutableStateOf(currentNumber) }
-    var selectedColor by rememberSaveable { mutableStateOf(currentColor) }
-
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -54,54 +50,89 @@ fun ChannelDialog(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(8.dp))
+            ChannelEditorContent(
+                currentLetter = currentLetter,
+                currentNumber = currentNumber,
+                currentColor = currentColor,
+                onConfirm = onConfirm,
+                onDismiss = onDismiss
+            )
+        }
+    }
+}
 
-                SectionTitle("Сетка")
-                LetterGrid(
-                    selected = selectedLetter,
-                    onSelect = { selectedLetter = it }
-                )
+@Composable
+fun ChannelEditorContent(
+    currentLetter: String,
+    currentNumber: Int,
+    currentColor: ChannelColor,
+    onConfirm: (String, Int, ChannelColor) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    showActions: Boolean = true,
+    onValuesChange: ((String, Int, ChannelColor) -> Unit)? = null
+) {
+    var selectedLetter by rememberSaveable { mutableStateOf(currentLetter) }
+    var selectedNumber by rememberSaveable { mutableStateOf(currentNumber) }
+    var selectedColor by rememberSaveable { mutableStateOf(currentColor) }
 
-                Spacer(modifier = Modifier.height(12.dp))
+    Column(
+        modifier = modifier
+            .padding(20.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(8.dp))
 
-                SectionTitle("Канал")
-                NumberGrid(
-                    selected = selectedNumber,
-                    onSelect = { selectedNumber = it }
-                )
+        SectionTitle("Сетка")
+        LetterGrid(
+            selected = selectedLetter,
+            onSelect = {
+                selectedLetter = it
+                onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+            }
+        )
 
-                Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-                SectionTitle("Цвет")
-                ColorGrid(
-                    selected = selectedColor,
-                    onSelect = { selectedColor = it }
-                )
+        SectionTitle("Канал")
+        NumberGrid(
+            selected = selectedNumber,
+            onSelect = {
+                selectedNumber = it
+                onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+            }
+        )
 
-                Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    androidx.compose.material3.TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Отмена")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            onConfirm(selectedLetter, selectedNumber, selectedColor)
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("OK")
-                    }
+        SectionTitle("Цвет")
+        ColorGrid(
+            selected = selectedColor,
+            onSelect = {
+                selectedColor = it
+                onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+            }
+        )
+
+        if (showActions) {
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                androidx.compose.material3.TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Отмена")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        onConfirm(selectedLetter, selectedNumber, selectedColor)
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("OK")
                 }
             }
         }
@@ -109,7 +140,7 @@ fun ChannelDialog(
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+fun SectionTitle(text: String) {
     Text(
         text = text,
         fontSize = 14.sp,

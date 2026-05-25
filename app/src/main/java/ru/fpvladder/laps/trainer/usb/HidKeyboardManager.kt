@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.lite.usb
+package ru.fpvladder.laps.trainer.usb
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -30,7 +30,7 @@ class HidKeyboardManager(private val context: Context) {
 
     companion object {
         private const val TAG = "HidKeyboardManager"
-        const val ACTION_USB_PERMISSION = "ru.fpvladder.laps.lite.USB_PERMISSION"
+        const val ACTION_USB_PERMISSION = "ru.fpvladder.laps.trainer.USB_PERMISSION"
     }
 
     private val usbManager: UsbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager

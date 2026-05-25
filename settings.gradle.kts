@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Laps.Lite"
+rootProject.name = "Laps.Trainer"
 include(":app")
  

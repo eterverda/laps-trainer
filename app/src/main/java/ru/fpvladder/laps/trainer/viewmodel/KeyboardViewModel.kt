@@ -1,9 +1,9 @@
-package ru.fpvladder.laps.lite.viewmodel
+package ru.fpvladder.laps.trainer.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.StateFlow
-import ru.fpvladder.laps.lite.usb.HidKeyboardManager
+import ru.fpvladder.laps.trainer.usb.HidKeyboardManager
 
 class KeyboardViewModel(application: Application) : AndroidViewModel(application) {
 

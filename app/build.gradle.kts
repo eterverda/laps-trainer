@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "ru.fpvladder.laps.lite"
+    namespace = "ru.fpvladder.laps.trainer"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "ru.fpvladder.laps.lite"
+        applicationId = "ru.fpvladder.laps.trainer"
         minSdk = 31
         targetSdk = 36
         versionCode = 1

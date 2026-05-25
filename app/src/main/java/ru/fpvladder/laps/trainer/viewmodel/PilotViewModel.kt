@@ -1,13 +1,13 @@
-package ru.fpvladder.laps.lite.viewmodel
+package ru.fpvladder.laps.trainer.viewmodel
 
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import ru.fpvladder.laps.lite.model.ChannelColor
-import ru.fpvladder.laps.lite.model.Pilot
+import ru.fpvladder.laps.trainer.model.ChannelColor
+import ru.fpvladder.laps.trainer.model.Pilot
 
-enum class AppScreen { Main, Race }
+enum class AppScreen { Main, Race, Training }
 
 class PilotViewModel : ViewModel() {
 

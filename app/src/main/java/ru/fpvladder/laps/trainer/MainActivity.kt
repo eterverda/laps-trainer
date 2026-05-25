@@ -1,7 +1,8 @@
-package ru.fpvladder.laps.lite
+package ru.fpvladder.laps.trainer
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -35,31 +36,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.fpvladder.laps.lite.ui.components.ActionButtonsRow
-import ru.fpvladder.laps.lite.ui.components.ChannelDialog
-import ru.fpvladder.laps.lite.ui.components.NameEditorDialog
-import ru.fpvladder.laps.lite.ui.components.PilotSection
-import ru.fpvladder.laps.lite.ui.screens.MainContent
-import ru.fpvladder.laps.lite.ui.screens.RaceContent
-import ru.fpvladder.laps.lite.ui.theme.LapsLiteTheme
-import ru.fpvladder.laps.lite.viewmodel.AppScreen
-import ru.fpvladder.laps.lite.viewmodel.KeyboardViewModel
-import ru.fpvladder.laps.lite.viewmodel.PilotViewModel
+import ru.fpvladder.laps.trainer.ui.components.ActionButtonsRow
+import ru.fpvladder.laps.trainer.ui.components.AppHeader
+import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
+import ru.fpvladder.laps.trainer.ui.components.NameEditorDialog
+import ru.fpvladder.laps.trainer.ui.components.NewTrainingWizard
+import ru.fpvladder.laps.trainer.ui.components.PilotSection
+import ru.fpvladder.laps.trainer.ui.components.TrainingHeader
+import ru.fpvladder.laps.trainer.ui.screens.MainContent
+import ru.fpvladder.laps.trainer.ui.screens.RaceContent
+import ru.fpvladder.laps.trainer.ui.screens.TrainingContent
+import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
+import ru.fpvladder.laps.trainer.viewmodel.AppScreen
+import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
+import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
+import ru.fpvladder.laps.trainer.viewmodel.TrainingViewModel
 
 class MainActivity : ComponentActivity() {
 
     private val keyboardViewModel: KeyboardViewModel by viewModels()
     private val pilotViewModel: PilotViewModel by viewModels()
+    private val trainingViewModel: TrainingViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LapsLiteTheme {
+            LapsTrainerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
                     AppRoot(
                         keyboardViewModel = keyboardViewModel,
-                        pilotViewModel = pilotViewModel
+                        pilotViewModel = pilotViewModel,
+                        trainingViewModel = trainingViewModel
                     )
                 }
             }
@@ -71,14 +79,22 @@ class MainActivity : ComponentActivity() {
 fun AppRoot(
     keyboardViewModel: KeyboardViewModel,
     pilotViewModel: PilotViewModel,
+    trainingViewModel: TrainingViewModel,
     modifier: Modifier = Modifier
 ) {
     val currentScreen by pilotViewModel.currentScreen.collectAsState()
     val pilot by pilotViewModel.pilot.collectAsState()
+    val trainings by trainingViewModel.trainings.collectAsState()
+    val selectedTraining by trainingViewModel.selectedTraining.collectAsState()
 
     var showChannelDialog by remember { mutableStateOf(false) }
     var showNameEditor by remember { mutableStateOf(false) }
+    var showNewTrainingWizard by remember { mutableStateOf(false) }
     var isMuted by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = currentScreen == AppScreen.Training) {
+        pilotViewModel.navigateTo(AppScreen.Main)
+    }
 
     Box(
         modifier = modifier.fillMaxSize()
@@ -88,12 +104,33 @@ fun AppRoot(
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                PilotSection(
-                    pilot = pilot,
-                    editable = currentScreen == AppScreen.Main,
-                    onChannelClick = { showChannelDialog = true },
-                    onNameClick = { showNameEditor = true }
-                )
+                when (currentScreen) {
+                    AppScreen.Main -> AppHeader()
+                    AppScreen.Race -> PilotSection(
+                        pilot = pilot,
+                        editable = false,
+                        onChannelClick = { showChannelDialog = true },
+                        onNameClick = { showNameEditor = true }
+                    )
+                    AppScreen.Training -> {
+                        val training = selectedTraining
+                        if (training != null) {
+                            TrainingHeader(
+                                channelLetter = training.channelLetter ?: pilot.channelLetter,
+                                channelNumber = training.channelNumber ?: pilot.channelNumber,
+                                channelColor = training.channelColor ?: pilot.channelColor,
+                                pilotName = when (training.type) {
+                                    ru.fpvladder.laps.trainer.model.TrainingType.INDIVIDUAL -> training.pilotName ?: pilot.name
+                                    ru.fpvladder.laps.trainer.model.TrainingType.TEAM -> "Командная"
+                                },
+                                onChannelClick = { showChannelDialog = true },
+                                onNameClick = { showNameEditor = true }
+                            )
+                        } else {
+                            AppHeader()
+                        }
+                    }
+                }
 
                 Surface(
                     modifier = Modifier
@@ -106,11 +143,24 @@ fun AppRoot(
                     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                         when (currentScreen) {
                             AppScreen.Main -> MainContent(
+                                trainings = trainings,
+                                onNewTrainingClick = { showNewTrainingWizard = true },
+                                onTrainingClick = { training ->
+                                    trainingViewModel.selectTraining(training)
+                                    pilotViewModel.navigateTo(AppScreen.Training)
+                                },
+                                onDeleteTraining = { training ->
+                                    trainingViewModel.deleteTraining(training)
+                                },
                                 modifier = Modifier.fillMaxSize()
                             )
 
                             AppScreen.Race -> RaceContent(
                                 onNavigateToMain = { pilotViewModel.navigateTo(AppScreen.Main) },
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                            AppScreen.Training -> TrainingContent(
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -182,6 +232,20 @@ fun AppRoot(
                 showNameEditor = false
             },
             onDismiss = { showNameEditor = false }
+        )
+    }
+
+    if (showNewTrainingWizard) {
+        NewTrainingWizard(
+            defaultPilotName = pilot.name,
+            defaultLetter = pilot.channelLetter,
+            defaultNumber = pilot.channelNumber,
+            defaultColor = pilot.channelColor,
+            onCreateTraining = { training ->
+                trainingViewModel.addTraining(training)
+                showNewTrainingWizard = false
+            },
+            onDismiss = { showNewTrainingWizard = false }
         )
     }
 }

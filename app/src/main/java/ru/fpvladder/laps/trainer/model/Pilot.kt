@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.lite.model
+package ru.fpvladder.laps.trainer.model
 
 import androidx.compose.ui.graphics.Color
 

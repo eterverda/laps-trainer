@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.lite.ui.components
+package ru.fpvladder.laps.trainer.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -25,8 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.fpvladder.laps.lite.model.ChannelColor
-import ru.fpvladder.laps.lite.model.Pilot
+import ru.fpvladder.laps.trainer.model.ChannelColor
+import ru.fpvladder.laps.trainer.model.Pilot
 
 @Composable
 fun PilotSection(
