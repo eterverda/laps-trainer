@@ -82,7 +82,7 @@ fun TrainingHeader(
                             append("Laps")
                         }
                         withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
-                            append(".Trainer")
+                            append(".Trainer α")
                         }
                     },
                     fontSize = textSize,

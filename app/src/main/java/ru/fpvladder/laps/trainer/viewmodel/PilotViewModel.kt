@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import ru.fpvladder.laps.trainer.model.ChannelColor
 import ru.fpvladder.laps.trainer.model.Pilot
 
-enum class AppScreen { Race, Training }
+enum class AppScreen { Race, Training, Settings }
 
 class PilotViewModel : ViewModel() {
 

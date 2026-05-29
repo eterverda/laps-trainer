@@ -27,6 +27,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.model.ChannelColor
+import ru.fpvladder.laps.trainer.model.ChannelConfig
+import ru.fpvladder.laps.trainer.model.ChannelGrid
+import ru.fpvladder.laps.trainer.model.ColorCount
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.TrainingType
 
@@ -36,6 +39,8 @@ fun NewTrainingWizard(
     defaultLetter: String,
     defaultNumber: Int,
     defaultColor: ChannelColor,
+    channelGrid: ChannelGrid,
+    colorCount: ColorCount,
     onCreateTraining: (Training) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -53,6 +58,8 @@ fun NewTrainingWizard(
                 defaultLetter = defaultLetter,
                 defaultNumber = defaultNumber,
                 defaultColor = defaultColor,
+                channelGrid = channelGrid,
+                colorCount = colorCount,
                 onCreateTraining = onCreateTraining,
                 onDismiss = onDismiss
             )
@@ -70,6 +77,8 @@ private fun WizardContent(
     defaultLetter: String,
     defaultNumber: Int,
     defaultColor: ChannelColor,
+    channelGrid: ChannelGrid,
+    colorCount: ColorCount,
     onCreateTraining: (Training) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -82,6 +91,8 @@ private fun WizardContent(
 
     val trainingType = TrainingType.valueOf(selectedType)
     val color = ChannelColor.valueOf(channelColor)
+    val channelValid = ChannelConfig.isValidChannel(channelGrid, channelLetter, channelNumber) &&
+            ChannelConfig.isValidColor(colorCount, color)
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -121,6 +132,8 @@ private fun WizardContent(
                     currentLetter = channelLetter,
                     currentNumber = channelNumber,
                     currentColor = color,
+                    channelGrid = channelGrid,
+                    colorCount = colorCount,
                     onConfirm = { _, _, _ -> },
                     onDismiss = { },
                     showActions = false,
@@ -197,7 +210,8 @@ private fun WizardContent(
                             )
                             onCreateTraining(training)
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        enabled = channelValid
                     ) {
                         Text("OK")
                     }

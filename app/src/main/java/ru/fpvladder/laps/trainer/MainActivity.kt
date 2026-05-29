@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,7 +24,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,11 +43,13 @@ import ru.fpvladder.laps.trainer.ui.components.NewTrainingWizard
 import ru.fpvladder.laps.trainer.ui.components.PilotSection
 import ru.fpvladder.laps.trainer.ui.components.TrainingHeader
 import ru.fpvladder.laps.trainer.ui.screens.RaceContent
+import ru.fpvladder.laps.trainer.ui.screens.SettingsScreen
 import ru.fpvladder.laps.trainer.ui.screens.StatsContent
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
 import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
+import ru.fpvladder.laps.trainer.viewmodel.SettingsViewModel
 import ru.fpvladder.laps.trainer.viewmodel.TrainingViewModel
 
 class MainActivity : ComponentActivity() {
@@ -55,19 +57,19 @@ class MainActivity : ComponentActivity() {
     private val keyboardViewModel: KeyboardViewModel by viewModels()
     private val pilotViewModel: PilotViewModel by viewModels()
     private val trainingViewModel: TrainingViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             LapsTrainerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
-                    AppRoot(
-                        keyboardViewModel = keyboardViewModel,
-                        pilotViewModel = pilotViewModel,
-                        trainingViewModel = trainingViewModel
-                    )
-                }
+                AppRoot(
+                    keyboardViewModel = keyboardViewModel,
+                    pilotViewModel = pilotViewModel,
+                    trainingViewModel = trainingViewModel,
+                    settingsViewModel = settingsViewModel
+                )
             }
         }
     }
@@ -78,17 +80,26 @@ fun AppRoot(
     keyboardViewModel: KeyboardViewModel,
     pilotViewModel: PilotViewModel,
     trainingViewModel: TrainingViewModel,
+    settingsViewModel: SettingsViewModel,
     modifier: Modifier = Modifier
 ) {
     val currentScreen by pilotViewModel.currentScreen.collectAsState()
     val pilot by pilotViewModel.pilot.collectAsState()
     val trainings by trainingViewModel.trainings.collectAsState()
     val selectedTraining by trainingViewModel.selectedTraining.collectAsState()
+    val channelGrid by settingsViewModel.channelGrid.collectAsState()
+    val colorCount by settingsViewModel.colorCount.collectAsState()
 
     var showChannelDialog by remember { mutableStateOf(false) }
     var showNameEditor by remember { mutableStateOf(false) }
     var showNewTrainingWizard by remember { mutableStateOf(false) }
     var isMuted by remember { mutableStateOf(false) }
+
+    if (currentScreen == AppScreen.Settings) {
+        BackHandler {
+            pilotViewModel.navigateTo(AppScreen.Training)
+        }
+    }
 
     Box(
         modifier = modifier.fillMaxSize()
@@ -120,69 +131,91 @@ fun AppRoot(
                             onNameClick = { showNameEditor = true }
                         )
                     }
+                    AppScreen.Settings -> {
+                        // SettingsScreen has its own top bar
+                    }
                 }
 
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(vertical = 8.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp
-                ) {
-                    Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                        when (currentScreen) {
-                            AppScreen.Race -> RaceContent(
-                                onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
-                                modifier = Modifier.fillMaxSize()
-                            )
+                when (currentScreen) {
+                    AppScreen.Settings -> SettingsScreen(
+                        channelGrid = channelGrid,
+                        colorCount = colorCount,
+                        onChannelGridChange = { settingsViewModel.setChannelGrid(it) },
+                        onColorCountChange = { settingsViewModel.setColorCount(it) },
+                        onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f)
+                    )
+                    else -> Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                            when (currentScreen) {
+                                AppScreen.Race -> RaceContent(
+                                    onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
+                                    modifier = Modifier.fillMaxSize()
+                                )
 
-                            AppScreen.Training -> StatsContent(
-                                onNewTrainingClick = { showNewTrainingWizard = true },
-                                modifier = Modifier.fillMaxSize()
-                            )
+                                AppScreen.Training -> StatsContent(
+                                    onNewTrainingClick = { showNewTrainingWizard = true },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                else -> {}
+                            }
                         }
                     }
                 }
 
-                Text(
-                    text = "Подключите USB-клавиатуру",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(top = 8.dp, bottom = 4.dp)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { isMuted = !isMuted },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = if (isMuted) "Unmute" else "Mute"
-                        )
-                    }
+                if (currentScreen != AppScreen.Settings) {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.navigationBarsPadding(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        ActionButtonsRow()
-                    }
-                    IconButton(
-                        onClick = { },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Menu"
+                        Text(
+                            text = "Подключите USB-клавиатуру",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                         )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { isMuted = !isMuted },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = if (isMuted) "Unmute" else "Mute"
+                                )
+                            }
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                ActionButtonsRow()
+                            }
+                            IconButton(
+                                onClick = { pilotViewModel.navigateTo(AppScreen.Settings) },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "Menu"
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -194,6 +227,8 @@ fun AppRoot(
             currentLetter = pilot.channelLetter,
             currentNumber = pilot.channelNumber,
             currentColor = pilot.channelColor,
+            channelGrid = channelGrid,
+            colorCount = colorCount,
             onConfirm = { letter, number, color ->
                 pilotViewModel.updateChannel(letter, number, color)
                 showChannelDialog = false
@@ -219,6 +254,8 @@ fun AppRoot(
             defaultLetter = pilot.channelLetter,
             defaultNumber = pilot.channelNumber,
             defaultColor = pilot.channelColor,
+            channelGrid = channelGrid,
+            colorCount = colorCount,
             onCreateTraining = { training ->
                 trainingViewModel.addTraining(training)
                 showNewTrainingWizard = false

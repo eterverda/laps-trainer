@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,12 +33,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.model.ChannelColor
+import ru.fpvladder.laps.trainer.model.ChannelConfig
+import ru.fpvladder.laps.trainer.model.ChannelGrid
+import ru.fpvladder.laps.trainer.model.ColorCount
 
 @Composable
 fun ChannelDialog(
     currentLetter: String,
     currentNumber: Int,
     currentColor: ChannelColor,
+    channelGrid: ChannelGrid,
+    colorCount: ColorCount,
     onConfirm: (String, Int, ChannelColor) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -54,6 +60,8 @@ fun ChannelDialog(
                 currentLetter = currentLetter,
                 currentNumber = currentNumber,
                 currentColor = currentColor,
+                channelGrid = channelGrid,
+                colorCount = colorCount,
                 onConfirm = onConfirm,
                 onDismiss = onDismiss
             )
@@ -66,6 +74,8 @@ fun ChannelEditorContent(
     currentLetter: String,
     currentNumber: Int,
     currentColor: ChannelColor,
+    channelGrid: ChannelGrid,
+    colorCount: ColorCount,
     onConfirm: (String, Int, ChannelColor) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -76,6 +86,18 @@ fun ChannelEditorContent(
     var selectedNumber by rememberSaveable { mutableStateOf(currentNumber) }
     var selectedColor by rememberSaveable { mutableStateOf(currentColor) }
 
+    val isAnalog = channelGrid == ChannelGrid.ANALOG
+    val allChannels = if (!isAnalog) {
+        ChannelConfig.availableLetters(channelGrid).flatMap { letter ->
+            ChannelConfig.availableNumbers(channelGrid, letter).map { number ->
+                letter to number
+            }
+        }
+    } else emptyList()
+
+    val isValid = ChannelConfig.isValidChannel(channelGrid, selectedLetter, selectedNumber) &&
+            ChannelConfig.isValidColor(colorCount, selectedColor)
+
     Column(
         modifier = modifier
             .padding(20.dp)
@@ -84,31 +106,46 @@ fun ChannelEditorContent(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionTitle("Сетка")
-        LetterGrid(
-            selected = selectedLetter,
-            onSelect = {
-                selectedLetter = it
-                onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
-            }
-        )
+        if (isAnalog) {
+            SectionTitle("Сетка")
+            LetterGrid(
+                selected = selectedLetter,
+                onSelect = {
+                    selectedLetter = it
+                    onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+                }
+            )
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        SectionTitle("Канал")
-        NumberGrid(
-            selected = selectedNumber,
-            onSelect = {
-                selectedNumber = it
-                onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
-            }
-        )
+            SectionTitle("Канал")
+            NumberGrid(
+                selected = selectedNumber,
+                onSelect = {
+                    selectedNumber = it
+                    onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+                }
+            )
+        } else {
+            SectionTitle("Канал")
+            ChannelGrid(
+                channels = allChannels,
+                selectedLetter = selectedLetter,
+                selectedNumber = selectedNumber,
+                onSelect = { letter, number ->
+                    selectedLetter = letter
+                    selectedNumber = number
+                    onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+                }
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         SectionTitle("Цвет")
         ColorGrid(
             selected = selectedColor,
+            colorCount = colorCount,
             onSelect = {
                 selectedColor = it
                 onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
@@ -119,7 +156,7 @@ fun ChannelEditorContent(
             Spacer(modifier = Modifier.height(20.dp))
 
             Row(modifier = Modifier.fillMaxWidth()) {
-                androidx.compose.material3.TextButton(
+                TextButton(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -130,7 +167,8 @@ fun ChannelEditorContent(
                     onClick = {
                         onConfirm(selectedLetter, selectedNumber, selectedColor)
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    enabled = isValid
                 ) {
                     Text("OK")
                 }
@@ -208,19 +246,59 @@ private fun NumberGrid(selected: Int, onSelect: (Int) -> Unit) {
 }
 
 @Composable
-private fun ColorGrid(selected: ChannelColor, onSelect: (ChannelColor) -> Unit) {
-    val colors = ChannelColor.entries.take(4)
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        colors.forEach { color ->
-            ColorItem(
-                color = color,
-                selected = color == selected,
-                onClick = { onSelect(color) },
-                modifier = Modifier.weight(1f)
-            )
+private fun ChannelGrid(
+    channels: List<Pair<String, Int>>,
+    selectedLetter: String,
+    selectedNumber: Int,
+    onSelect: (String, Int) -> Unit
+) {
+    val grouped = channels.groupBy { if (it.first == "E") "F" else it.first }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        grouped.values.forEachIndexed { index, group ->
+            if (index > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            group.chunked(4).forEach { row ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    row.forEach { (letter, number) ->
+                        SelectableItem(
+                            text = "$letter$number",
+                            selected = letter == selectedLetter && number == selectedNumber,
+                            onClick = { onSelect(letter, number) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorGrid(
+    selected: ChannelColor,
+    colorCount: ColorCount,
+    onSelect: (ChannelColor) -> Unit
+) {
+    val colors = ChannelConfig.availableColors(colorCount)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        colors.chunked(4).forEach { row ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                row.forEach { color ->
+                    ColorItem(
+                        color = color,
+                        selected = color == selected,
+                        onClick = { onSelect(color) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
     }
 }
