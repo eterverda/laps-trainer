@@ -46,6 +46,7 @@ import ru.fpvladder.laps.trainer.ui.screens.RaceContent
 import ru.fpvladder.laps.trainer.ui.screens.SettingsScreen
 import ru.fpvladder.laps.trainer.ui.screens.StatsContent
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
+import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
 import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
@@ -63,7 +64,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LapsTrainerTheme {
+            val appTheme by settingsViewModel.appTheme.collectAsState()
+            LapsTrainerTheme(appTheme = appTheme) {
                 AppRoot(
                     keyboardViewModel = keyboardViewModel,
                     pilotViewModel = pilotViewModel,
@@ -89,11 +91,13 @@ fun AppRoot(
     val selectedTraining by trainingViewModel.selectedTraining.collectAsState()
     val channelGrid by settingsViewModel.channelGrid.collectAsState()
     val colorCount by settingsViewModel.colorCount.collectAsState()
+    val isMuted by settingsViewModel.isMuted.collectAsState()
+    val isUsbKeyboardEnabled by settingsViewModel.isUsbKeyboardEnabled.collectAsState()
+    val appTheme by settingsViewModel.appTheme.collectAsState()
 
     var showChannelDialog by remember { mutableStateOf(false) }
     var showNameEditor by remember { mutableStateOf(false) }
     var showNewTrainingWizard by remember { mutableStateOf(false) }
-    var isMuted by remember { mutableStateOf(false) }
 
     if (currentScreen == AppScreen.Settings) {
         BackHandler {
@@ -140,8 +144,14 @@ fun AppRoot(
                     AppScreen.Settings -> SettingsScreen(
                         channelGrid = channelGrid,
                         colorCount = colorCount,
+                        isMuted = isMuted,
+                        isUsbKeyboardEnabled = isUsbKeyboardEnabled,
+                        appTheme = appTheme,
                         onChannelGridChange = { settingsViewModel.setChannelGrid(it) },
                         onColorCountChange = { settingsViewModel.setColorCount(it) },
+                        onMutedChange = { settingsViewModel.setMuted(it) },
+                        onUsbKeyboardChange = { settingsViewModel.setUsbKeyboardEnabled(it) },
+                        onAppThemeChange = { settingsViewModel.setAppTheme(it) },
                         onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
                         modifier = Modifier
                             .fillMaxSize()
@@ -178,12 +188,14 @@ fun AppRoot(
                         modifier = Modifier.navigationBarsPadding(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "Подключите USB-клавиатуру",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                        )
+                        if (isUsbKeyboardEnabled) {
+                            Text(
+                                text = "Подключите USB-клавиатуру",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                            )
+                        }
 
                         Row(
                             modifier = Modifier
@@ -192,7 +204,7 @@ fun AppRoot(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
-                                onClick = { isMuted = !isMuted },
+                                onClick = { settingsViewModel.setMuted(!isMuted) },
                                 modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
