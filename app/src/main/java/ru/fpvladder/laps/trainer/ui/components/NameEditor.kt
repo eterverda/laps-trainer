@@ -26,15 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
 @Composable
-fun NameEditorDialog(
+fun IndividualNameDialog(
     currentName: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
@@ -48,85 +46,162 @@ fun NameEditorDialog(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            NameEditorContent(
-                currentName = currentName,
-                onConfirm = onConfirm,
-                onDismiss = onDismiss
-            )
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                var name by remember { mutableStateOf(currentName) }
+                val focusRequester = remember { FocusRequester() }
+
+                Text(
+                    text = "Пилот",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(24) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { onConfirm(name.trim()) }
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Отмена")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { onConfirm(name.trim()) },
+                        modifier = Modifier.weight(1f),
+                        enabled = name.isNotBlank()
+                    ) {
+                        Text("OK")
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
+            }
         }
     }
 }
 
 @Composable
-fun NameEditorContent(
-    currentName: String,
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-    showActions: Boolean = true,
-    onValueChange: ((String) -> Unit)? = null
+fun TeamNameDialog(
+    name1: String,
+    name2: String,
+    onConfirm: (String, String) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    var textFieldValue by remember {
-        mutableStateOf(
-            TextFieldValue(
-                text = currentName,
-                selection = TextRange(0, currentName.length)
-            )
-        )
-    }
-    val focusRequester = remember { FocusRequester() }
-
-    Column(
-        modifier = modifier.padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        SectionTitle("Пилот")
-
-        OutlinedTextField(
-            value = textFieldValue,
-            onValueChange = {
-                textFieldValue = it.copy(text = it.text.take(24))
-                onValueChange?.invoke(textFieldValue.text)
-            },
-            singleLine = true,
-
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Words,
-                autoCorrectEnabled = false,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    onConfirm(textFieldValue.text.trim())
-                }
-            ),
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester)
-        )
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                var n1 by remember { mutableStateOf(name1) }
+                var n2 by remember { mutableStateOf(name2) }
+                val focusRequester = remember { FocusRequester() }
 
-        if (showActions) {
-            Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Первый пилот",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                )
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Отмена")
+                OutlinedTextField(
+                    value = n1,
+                    onValueChange = { n1 = it.take(24) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Next
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Второй пилот",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                )
+
+                OutlinedTextField(
+                    value = n2,
+                    onValueChange = { n2 = it.take(24) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { onConfirm(n1.trim(), n2.trim()) }
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Отмена")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { onConfirm(n1.trim(), n2.trim()) },
+                        modifier = Modifier.weight(1f),
+                        enabled = n1.isNotBlank() && n2.isNotBlank()
+                    ) {
+                        Text("OK")
+                    }
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = { onConfirm(textFieldValue.text.trim()) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("OK")
+
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
                 }
             }
         }
-    }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
     }
 }

@@ -2,6 +2,7 @@ package ru.fpvladder.laps.trainer.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,11 +28,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.ChannelColor
 import ru.fpvladder.laps.trainer.model.ChannelConfig
 import ru.fpvladder.laps.trainer.model.ChannelGrid
@@ -39,12 +42,12 @@ import ru.fpvladder.laps.trainer.model.ColorCount
 
 @Composable
 fun ChannelDialog(
-    currentLetter: String,
-    currentNumber: Int,
-    currentColor: ChannelColor,
+    currentChannel: Channel,
     channelGrid: ChannelGrid,
     colorCount: ColorCount,
-    onConfirm: (String, Int, ChannelColor) -> Unit,
+    showApplyToAll: Boolean = false,
+    onConfirm: (Channel) -> Unit,
+    onConfirmForAll: ((Channel) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -57,34 +60,35 @@ fun ChannelDialog(
                 .padding(16.dp)
         ) {
             ChannelEditorContent(
-                currentLetter = currentLetter,
-                currentNumber = currentNumber,
-                currentColor = currentColor,
+                currentChannel = currentChannel,
                 channelGrid = channelGrid,
                 colorCount = colorCount,
+                showApplyToAll = showApplyToAll,
                 onConfirm = onConfirm,
+                onConfirmForAll = onConfirmForAll,
                 onDismiss = onDismiss
             )
         }
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ChannelEditorContent(
-    currentLetter: String,
-    currentNumber: Int,
-    currentColor: ChannelColor,
+    currentChannel: Channel,
     channelGrid: ChannelGrid,
     colorCount: ColorCount,
-    onConfirm: (String, Int, ChannelColor) -> Unit,
+    onConfirm: (Channel) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     showActions: Boolean = true,
-    onValuesChange: ((String, Int, ChannelColor) -> Unit)? = null
+    showApplyToAll: Boolean = false,
+    onConfirmForAll: ((Channel) -> Unit)? = null,
+    onValuesChange: ((Channel) -> Unit)? = null
 ) {
-    var selectedLetter by rememberSaveable { mutableStateOf(currentLetter) }
-    var selectedNumber by rememberSaveable { mutableStateOf(currentNumber) }
-    var selectedColor by rememberSaveable { mutableStateOf(currentColor) }
+    var selectedLetter by rememberSaveable { mutableStateOf(currentChannel.letter) }
+    var selectedNumber by rememberSaveable { mutableStateOf(currentChannel.number) }
+    var selectedColor by rememberSaveable { mutableStateOf(currentChannel.color) }
 
     val isAnalog = channelGrid == ChannelGrid.ANALOG
     val allChannels = if (!isAnalog) {
@@ -104,15 +108,13 @@ fun ChannelEditorContent(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
-
         if (isAnalog) {
             SectionTitle("Сетка")
             LetterGrid(
                 selected = selectedLetter,
                 onSelect = {
                     selectedLetter = it
-                    onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+                    onValuesChange?.invoke(Channel(selectedLetter, selectedNumber, selectedColor))
                 }
             )
 
@@ -123,7 +125,7 @@ fun ChannelEditorContent(
                 selected = selectedNumber,
                 onSelect = {
                     selectedNumber = it
-                    onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+                    onValuesChange?.invoke(Channel(selectedLetter, selectedNumber, selectedColor))
                 }
             )
         } else {
@@ -135,7 +137,7 @@ fun ChannelEditorContent(
                 onSelect = { letter, number ->
                     selectedLetter = letter
                     selectedNumber = number
-                    onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+                    onValuesChange?.invoke(Channel(selectedLetter, selectedNumber, selectedColor))
                 }
             )
         }
@@ -148,7 +150,7 @@ fun ChannelEditorContent(
             colorCount = colorCount,
             onSelect = {
                 selectedColor = it
-                onValuesChange?.invoke(selectedLetter, selectedNumber, selectedColor)
+                onValuesChange?.invoke(Channel(selectedLetter, selectedNumber, selectedColor))
             }
         )
 
@@ -163,15 +165,46 @@ fun ChannelEditorContent(
                     Text("Отмена")
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        onConfirm(selectedLetter, selectedNumber, selectedColor)
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = isValid
+                val buttonColors = ButtonDefaults.buttonColors()
+                Surface(
+                    shape = ButtonDefaults.shape,
+                    color = if (isValid) buttonColors.containerColor else buttonColors.disabledContainerColor,
+                    contentColor = if (isValid) buttonColors.contentColor else buttonColors.disabledContentColor,
+                    modifier = Modifier
+                        .weight(1f)
+                        .combinedClickable(
+                            onClick = {
+                                if (isValid) {
+                                    onConfirm(Channel(selectedLetter, selectedNumber, selectedColor))
+                                }
+                            },
+                            onLongClick = {
+                                if (isValid) {
+                                    onConfirmForAll?.invoke(Channel(selectedLetter, selectedNumber, selectedColor))
+                                }
+                            }
+                        )
                 ) {
-                    Text("OK")
+                    Box(
+                        modifier = Modifier
+                            .height(40.dp)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("OK")
+                    }
                 }
+            }
+
+            if (showApplyToAll) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Долгое нажатие на кнопку ОК изменит канал для всех",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }

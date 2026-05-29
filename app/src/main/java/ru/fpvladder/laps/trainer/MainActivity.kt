@@ -38,15 +38,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.ui.components.ActionButtonsRow
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
-import ru.fpvladder.laps.trainer.ui.components.NameEditorDialog
-import ru.fpvladder.laps.trainer.ui.components.NewTrainingWizard
+import ru.fpvladder.laps.trainer.ui.components.IndividualNameDialog
+import ru.fpvladder.laps.trainer.ui.components.TeamNameDialog
+import ru.fpvladder.laps.trainer.ui.components.PilotEditorDialog
 import ru.fpvladder.laps.trainer.ui.components.PilotSection
+import ru.fpvladder.laps.trainer.ui.components.RulesEditorDialog
 import ru.fpvladder.laps.trainer.ui.components.TrainingHeader
 import ru.fpvladder.laps.trainer.ui.screens.RaceContent
 import ru.fpvladder.laps.trainer.ui.screens.SettingsScreen
 import ru.fpvladder.laps.trainer.ui.screens.StatsContent
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.model.AppTheme
+import ru.fpvladder.laps.trainer.model.Channel
+
+import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.Training
+
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
 import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
@@ -86,7 +93,6 @@ fun AppRoot(
     modifier: Modifier = Modifier
 ) {
     val currentScreen by pilotViewModel.currentScreen.collectAsState()
-    val pilot by pilotViewModel.pilot.collectAsState()
     val trainings by trainingViewModel.trainings.collectAsState()
     val selectedTraining by trainingViewModel.selectedTraining.collectAsState()
     val channelGrid by settingsViewModel.channelGrid.collectAsState()
@@ -96,8 +102,16 @@ fun AppRoot(
     val appTheme by settingsViewModel.appTheme.collectAsState()
 
     var showChannelDialog by remember { mutableStateOf(false) }
-    var showNameEditor by remember { mutableStateOf(false) }
-    var showNewTrainingWizard by remember { mutableStateOf(false) }
+    var showPilotEditor by remember { mutableStateOf(false) }
+    var showIndividualNameDialog by remember { mutableStateOf(false) }
+    var showTeamNameDialog by remember { mutableStateOf(false) }
+    var nameEditorIsNew by remember { mutableStateOf(false) }
+    var showRulesEditor by remember { mutableStateOf(false) }
+
+    val currentPilot = when (selectedTraining) {
+        is Training.Individual -> (selectedTraining as Training.Individual).pilot
+        is Training.Team -> (selectedTraining as Training.Team).pilot
+    }
 
     if (currentScreen == AppScreen.Settings) {
         BackHandler {
@@ -115,24 +129,32 @@ fun AppRoot(
             Column(modifier = Modifier.fillMaxSize()) {
                 when (currentScreen) {
                     AppScreen.Race -> PilotSection(
-                        pilot = pilot,
+                        pilot = currentPilot,
                         editable = false,
                         onChannelClick = { showChannelDialog = true },
-                        onNameClick = { showNameEditor = true }
+                        onNameClick = { showPilotEditor = true }
                     )
                     AppScreen.Training -> {
-                        val training = selectedTraining
                         TrainingHeader(
-                            channelLetter = training?.channelLetter ?: pilot.channelLetter,
-                            channelNumber = training?.channelNumber ?: pilot.channelNumber,
-                            channelColor = training?.channelColor ?: pilot.channelColor,
-                            pilotName = when {
-                                training == null -> pilot.name
-                                training.type == ru.fpvladder.laps.trainer.model.TrainingType.INDIVIDUAL -> training.pilotName ?: pilot.name
-                                else -> "Командная"
-                            },
+                            trainings = trainings,
+                            selectedTraining = selectedTraining,
                             onChannelClick = { showChannelDialog = true },
-                            onNameClick = { showNameEditor = true }
+                            onNameLongClick = {
+                                nameEditorIsNew = false
+                                when (selectedTraining) {
+                                    is Training.Individual -> showIndividualNameDialog = true
+                                    is Training.Team -> showTeamNameDialog = true
+                                }
+                            },
+                            onAddIndividualClick = {
+                                nameEditorIsNew = true
+                                showIndividualNameDialog = true
+                            },
+                            onAddTeamClick = {
+                                nameEditorIsNew = true
+                                showTeamNameDialog = true
+                            },
+                            onTrainingSelect = { trainingViewModel.selectTraining(it) }
                         )
                     }
                     AppScreen.Settings -> {
@@ -160,22 +182,31 @@ fun AppRoot(
                     else -> Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(vertical = 8.dp),
+                            .padding(bottom = 8.dp),
                         shape = RoundedCornerShape(16.dp),
                         color = MaterialTheme.colorScheme.surface,
                         tonalElevation = 0.dp
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                        Box(modifier = Modifier.fillMaxSize()) {
                             when (currentScreen) {
                                 AppScreen.Race -> RaceContent(
                                     onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
                                     modifier = Modifier.fillMaxSize()
                                 )
 
-                                AppScreen.Training -> StatsContent(
-                                    onNewTrainingClick = { showNewTrainingWizard = true },
-                                    modifier = Modifier.fillMaxSize()
-                                )
+                                AppScreen.Training -> {
+                                    val isTeam = selectedTraining is Training.Team
+                                    StatsContent(
+                                        description = selectedTraining.description,
+                                        onEditRulesClick = { showRulesEditor = true },
+                                        isTeam = isTeam,
+                                        pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
+                                        pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
+                                        pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
+                                        onSwapPilots = { trainingViewModel.swapPilotOrder() },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
 
                                 else -> {}
                             }
@@ -236,43 +267,103 @@ fun AppRoot(
 
     if (showChannelDialog) {
         ChannelDialog(
-            currentLetter = pilot.channelLetter,
-            currentNumber = pilot.channelNumber,
-            currentColor = pilot.channelColor,
+            currentChannel = currentPilot.channel,
             channelGrid = channelGrid,
             colorCount = colorCount,
-            onConfirm = { letter, number, color ->
-                pilotViewModel.updateChannel(letter, number, color)
+            showApplyToAll = trainings.size > 1,
+            onConfirm = { channel ->
+                trainingViewModel.updateCurrentPilotChannel(channel)
+                showChannelDialog = false
+            },
+            onConfirmForAll = { channel ->
+                trainingViewModel.applyChannelToAll(channel)
                 showChannelDialog = false
             },
             onDismiss = { showChannelDialog = false }
         )
     }
 
-    if (showNameEditor) {
-        NameEditorDialog(
-            currentName = pilot.name,
+    if (showIndividualNameDialog) {
+        val currentName = if (nameEditorIsNew) {
+            ""
+        } else {
+            (selectedTraining as? Training.Individual)?.pilot?.name ?: ""
+        }
+        IndividualNameDialog(
+            currentName = currentName,
             onConfirm = { name ->
-                pilotViewModel.updateName(name)
-                showNameEditor = false
+                if (nameEditorIsNew) {
+                    val defaultChannel = when (val last = trainings.lastOrNull()) {
+                        is Training.Individual -> last.pilot.channel
+                        is Training.Team -> last.pilot.channel
+                        null -> Channel()
+                    }
+                    val newPilot = Pilot.Individual(name = name, channel = defaultChannel)
+                    val newTraining = Training.Individual(pilot = newPilot)
+                    trainingViewModel.addTraining(newTraining)
+                    trainingViewModel.selectTraining(newTraining)
+                } else {
+                    trainingViewModel.updateCurrentPilotNames(name, "")
+                }
+                showIndividualNameDialog = false
             },
-            onDismiss = { showNameEditor = false }
+            onDismiss = { showIndividualNameDialog = false }
         )
     }
 
-    if (showNewTrainingWizard) {
-        NewTrainingWizard(
-            defaultPilotName = pilot.name,
-            defaultLetter = pilot.channelLetter,
-            defaultNumber = pilot.channelNumber,
-            defaultColor = pilot.channelColor,
-            channelGrid = channelGrid,
-            colorCount = colorCount,
-            onCreateTraining = { training ->
-                trainingViewModel.addTraining(training)
-                showNewTrainingWizard = false
+    if (showTeamNameDialog) {
+        val currentName1 = if (nameEditorIsNew) {
+            ""
+        } else {
+            (selectedTraining as? Training.Team)?.pilot?.name1 ?: ""
+        }
+        val currentName2 = if (nameEditorIsNew) {
+            ""
+        } else {
+            (selectedTraining as? Training.Team)?.pilot?.name2 ?: ""
+        }
+        TeamNameDialog(
+            name1 = currentName1,
+            name2 = currentName2,
+            onConfirm = { n1, n2 ->
+                if (nameEditorIsNew) {
+                    val defaultChannel = when (val last = trainings.lastOrNull()) {
+                        is Training.Individual -> last.pilot.channel
+                        is Training.Team -> last.pilot.channel
+                        null -> Channel()
+                    }
+                    val newPilot = Pilot.Team(name1 = n1, name2 = n2, channel = defaultChannel)
+                    val newTraining = Training.Team(pilot = newPilot)
+                    trainingViewModel.addTraining(newTraining)
+                    trainingViewModel.selectTraining(newTraining)
+                } else {
+                    trainingViewModel.updateCurrentPilotNames(n1, n2)
+                }
+                showTeamNameDialog = false
             },
-            onDismiss = { showNewTrainingWizard = false }
+            onDismiss = { showTeamNameDialog = false }
+        )
+    }
+
+    if (showPilotEditor) {
+        PilotEditorDialog(
+            currentPilot = currentPilot,
+            onConfirm = { pilot ->
+                trainingViewModel.updatePilot(pilot)
+                showPilotEditor = false
+            },
+            onDismiss = { showPilotEditor = false }
+        )
+    }
+
+    if (showRulesEditor) {
+        RulesEditorDialog(
+            currentRules = selectedTraining.rules,
+            onConfirm = { newRules ->
+                trainingViewModel.updateTrainingRules(selectedTraining, newRules)
+                showRulesEditor = false
+            },
+            onDismiss = { showRulesEditor = false }
         )
     }
 }

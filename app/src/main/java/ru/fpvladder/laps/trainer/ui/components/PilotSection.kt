@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -43,7 +41,8 @@ fun PilotSection(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start
     ) {
-        val channelColor = pilot.channelColor
+        val channel = pilot.channel
+        val channelColor = channel.color
         val hasOutline = channelColor.outlineColor != null
         val textSize = 24.sp
         val channelFont = FontFamily.Monospace
@@ -62,7 +61,7 @@ fun PilotSection(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${pilot.channelLetter}${pilot.channelNumber}",
+                    text = "${channel.letter}${channel.number}",
                     fontSize = textSize,
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = channelFont,
@@ -83,8 +82,12 @@ fun PilotSection(
                 .weight(1f),
             contentAlignment = Alignment.CenterStart
         ) {
+            val displayName = when (pilot) {
+                is Pilot.Individual -> pilot.name
+                is Pilot.Team -> pilot.name.ifBlank { "Команда" }
+            }
             Text(
-                text = pilot.name,
+                text = displayName,
                 fontSize = textSize,
                 fontWeight = FontWeight.Normal,
                 fontFamily = null,
