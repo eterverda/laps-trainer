@@ -37,15 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.ui.components.ActionButtonsRow
-import ru.fpvladder.laps.trainer.ui.components.AppHeader
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.NameEditorDialog
 import ru.fpvladder.laps.trainer.ui.components.NewTrainingWizard
 import ru.fpvladder.laps.trainer.ui.components.PilotSection
 import ru.fpvladder.laps.trainer.ui.components.TrainingHeader
-import ru.fpvladder.laps.trainer.ui.screens.MainContent
 import ru.fpvladder.laps.trainer.ui.screens.RaceContent
-import ru.fpvladder.laps.trainer.ui.screens.TrainingContent
+import ru.fpvladder.laps.trainer.ui.screens.StatsContent
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
@@ -92,10 +90,6 @@ fun AppRoot(
     var showNewTrainingWizard by remember { mutableStateOf(false) }
     var isMuted by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = currentScreen == AppScreen.Training) {
-        pilotViewModel.navigateTo(AppScreen.Main)
-    }
-
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -105,7 +99,6 @@ fun AppRoot(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 when (currentScreen) {
-                    AppScreen.Main -> AppHeader()
                     AppScreen.Race -> PilotSection(
                         pilot = pilot,
                         editable = false,
@@ -114,21 +107,18 @@ fun AppRoot(
                     )
                     AppScreen.Training -> {
                         val training = selectedTraining
-                        if (training != null) {
-                            TrainingHeader(
-                                channelLetter = training.channelLetter ?: pilot.channelLetter,
-                                channelNumber = training.channelNumber ?: pilot.channelNumber,
-                                channelColor = training.channelColor ?: pilot.channelColor,
-                                pilotName = when (training.type) {
-                                    ru.fpvladder.laps.trainer.model.TrainingType.INDIVIDUAL -> training.pilotName ?: pilot.name
-                                    ru.fpvladder.laps.trainer.model.TrainingType.TEAM -> "Командная"
-                                },
-                                onChannelClick = { showChannelDialog = true },
-                                onNameClick = { showNameEditor = true }
-                            )
-                        } else {
-                            AppHeader()
-                        }
+                        TrainingHeader(
+                            channelLetter = training?.channelLetter ?: pilot.channelLetter,
+                            channelNumber = training?.channelNumber ?: pilot.channelNumber,
+                            channelColor = training?.channelColor ?: pilot.channelColor,
+                            pilotName = when {
+                                training == null -> pilot.name
+                                training.type == ru.fpvladder.laps.trainer.model.TrainingType.INDIVIDUAL -> training.pilotName ?: pilot.name
+                                else -> "Командная"
+                            },
+                            onChannelClick = { showChannelDialog = true },
+                            onNameClick = { showNameEditor = true }
+                        )
                     }
                 }
 
@@ -142,25 +132,13 @@ fun AppRoot(
                 ) {
                     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                         when (currentScreen) {
-                            AppScreen.Main -> MainContent(
-                                trainings = trainings,
-                                onNewTrainingClick = { showNewTrainingWizard = true },
-                                onTrainingClick = { training ->
-                                    trainingViewModel.selectTraining(training)
-                                    pilotViewModel.navigateTo(AppScreen.Training)
-                                },
-                                onDeleteTraining = { training ->
-                                    trainingViewModel.deleteTraining(training)
-                                },
-                                modifier = Modifier.fillMaxSize()
-                            )
-
                             AppScreen.Race -> RaceContent(
-                                onNavigateToMain = { pilotViewModel.navigateTo(AppScreen.Main) },
+                                onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
                                 modifier = Modifier.fillMaxSize()
                             )
 
-                            AppScreen.Training -> TrainingContent(
+                            AppScreen.Training -> StatsContent(
+                                onNewTrainingClick = { showNewTrainingWizard = true },
                                 modifier = Modifier.fillMaxSize()
                             )
                         }

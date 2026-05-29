@@ -7,14 +7,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import ru.fpvladder.laps.trainer.model.ChannelColor
 import ru.fpvladder.laps.trainer.model.Pilot
 
-enum class AppScreen { Main, Race, Training }
+enum class AppScreen { Race, Training }
 
 class PilotViewModel : ViewModel() {
 
     private val _pilot = MutableStateFlow(Pilot())
     val pilot: StateFlow<Pilot> = _pilot.asStateFlow()
 
-    private val _currentScreen = MutableStateFlow(AppScreen.Main)
+    private val _currentScreen = MutableStateFlow(AppScreen.Training)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
 
     fun updateName(name: String) {

@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun RaceContent(
-    onNavigateToMain: () -> Unit,
+    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -27,7 +27,7 @@ fun RaceContent(
                 style = MaterialTheme.typography.headlineMedium
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onNavigateToMain) {
+            Button(onClick = onNavigateBack) {
                 Text("Назад")
             }
         }
