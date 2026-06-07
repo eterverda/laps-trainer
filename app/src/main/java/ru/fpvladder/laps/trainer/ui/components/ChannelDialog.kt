@@ -52,9 +52,9 @@ fun ChannelDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp,
+            tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -157,38 +157,37 @@ fun ChannelEditorContent(
         if (showActions) {
             Spacer(modifier = Modifier.height(20.dp))
 
-            Row(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            ) {
                 TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f)
+                    onClick = onDismiss
                 ) {
                     Text("Отмена")
                 }
-                Spacer(modifier = Modifier.width(8.dp))
                 val buttonColors = ButtonDefaults.buttonColors()
                 Surface(
                     shape = ButtonDefaults.shape,
                     color = if (isValid) buttonColors.containerColor else buttonColors.disabledContainerColor,
                     contentColor = if (isValid) buttonColors.contentColor else buttonColors.disabledContentColor,
-                    modifier = Modifier
-                        .weight(1f)
-                        .combinedClickable(
-                            onClick = {
-                                if (isValid) {
-                                    onConfirm(Channel(selectedLetter, selectedNumber, selectedColor))
-                                }
-                            },
-                            onLongClick = {
-                                if (isValid) {
-                                    onConfirmForAll?.invoke(Channel(selectedLetter, selectedNumber, selectedColor))
-                                }
+                    modifier = Modifier.combinedClickable(
+                        onClick = {
+                            if (isValid) {
+                                onConfirm(Channel(selectedLetter, selectedNumber, selectedColor))
                             }
-                        )
+                        },
+                        onLongClick = {
+                            if (isValid) {
+                                onConfirmForAll?.invoke(Channel(selectedLetter, selectedNumber, selectedColor))
+                            }
+                        }
+                    )
                 ) {
                     Box(
                         modifier = Modifier
                             .height(40.dp)
-                            .fillMaxWidth(),
+                            .padding(horizontal = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("OK")
@@ -211,13 +210,15 @@ fun ChannelEditorContent(
 }
 
 @Composable
-fun SectionTitle(text: String) {
+fun SectionTitle(
+    text: String,
+    modifier: Modifier = Modifier
+) {
     Text(
         text = text,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Medium,
+        style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
     )

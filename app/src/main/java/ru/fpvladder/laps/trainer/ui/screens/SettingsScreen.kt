@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -39,10 +40,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.ChannelGrid
 import ru.fpvladder.laps.trainer.model.ColorCount
+import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -213,36 +216,43 @@ private fun <T> SelectionDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = MaterialTheme.shapes.extraLarge,
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(vertical = 20.dp)) {
-                Text(
+                SectionTitle(
                     text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp)
                 )
                 items.forEach { item ->
-                    ListItem(
-                        headlineContent = { Text(itemText(item)) },
-                        leadingContent = {
-                            RadioButton(
-                                selected = item == selected,
-                                onClick = { onSelect(item) }
-                            )
-                        },
-                        modifier = Modifier.clickable { onSelect(item) }
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clickable { onSelect(item) }
+                            .padding(start = 16.dp, end = 24.dp)
+                    ) {
+                        RadioButton(
+                            selected = item == selected,
+                            onClick = { onSelect(item) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = itemText(item),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
                 }
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .padding(top = 8.dp, end = 24.dp)
-                        .align(androidx.compose.ui.Alignment.End)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Text("Отмена")
+                    TextButton(onClick = onDismiss) {
+                        Text("Отмена")
+                    }
                 }
             }
         }

@@ -1,13 +1,12 @@
 package ru.fpvladder.laps.trainer.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -39,9 +38,9 @@ fun IndividualNameDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp,
+            tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -81,17 +80,17 @@ fun IndividualNameDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                ) {
                     TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        onClick = onDismiss
                     ) {
                         Text("Отмена")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { onConfirm(name.trim()) },
-                        modifier = Modifier.weight(1f),
                         enabled = name.isNotBlank()
                     ) {
                         Text("OK")
@@ -115,9 +114,9 @@ fun TeamNameDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp,
+            tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -181,17 +180,17 @@ fun TeamNameDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                ) {
                     TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        onClick = onDismiss
                     ) {
                         Text("Отмена")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { onConfirm(n1.trim(), n2.trim()) },
-                        modifier = Modifier.weight(1f),
                         enabled = n1.isNotBlank() && n2.isNotBlank()
                     ) {
                         Text("OK")

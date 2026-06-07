@@ -56,9 +56,9 @@ fun PilotEditorDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp,
+            tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -145,14 +145,15 @@ fun PilotEditorDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                ) {
                     TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        onClick = onDismiss
                     ) {
                         Text("Отмена")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     val canConfirm = if (isTeam) {
                         name1.isNotBlank() && name2.isNotBlank()
                     } else {
@@ -174,7 +175,6 @@ fun PilotEditorDialog(
                             }
                             onConfirm(pilot)
                         },
-                        modifier = Modifier.weight(1f),
                         enabled = canConfirm
                     ) {
                         Text("OK")

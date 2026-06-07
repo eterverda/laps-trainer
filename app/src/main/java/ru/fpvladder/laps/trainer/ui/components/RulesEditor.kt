@@ -54,9 +54,9 @@ fun RulesEditorDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp,
+            tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -238,14 +238,15 @@ fun RulesEditorContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+        ) {
             TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f)
+                onClick = onDismiss
             ) {
                 Text("Отмена")
             }
-            Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
                     val newRules = when (currentRules) {
@@ -263,7 +264,6 @@ fun RulesEditorContent(
                     }
                     onConfirm(newRules)
                 },
-                modifier = Modifier.weight(1f),
                 enabled = !(bothUnlimited && isTeam)
             ) {
                 Text("OK")
