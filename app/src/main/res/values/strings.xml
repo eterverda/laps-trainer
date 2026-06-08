@@ -1,3 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Laps.Trainer</string>
+
+    <plurals name="laps">
+        <item quantity="one">%d круг</item>
+        <item quantity="few">%d круга</item>
+        <item quantity="many">%d кругов</item>
+    </plurals>
+
+    <plurals name="minutes">
+        <item quantity="one">%d минута</item>
+        <item quantity="few">%d минуты</item>
+        <item quantity="many">%d минут</item>
+    </plurals>
+
+    <string name="flight_unlimited">Летаем без ограничений</string>
+    <string name="flight_time_and_laps">%1$s, %2$s</string>
+    <string name="flight_time_only">%1$s</string>
+    <string name="flight_laps_only">%1$s</string>
+    <string name="flight_time_prefix">Летаем %1$s</string>
+
+    <string name="team_swap_time">%1$s летит %2$s, затем %3$s летит %2$s</string>
+    <string name="team_swap_time_with_laps">%1$s летит %2$s, затем %3$s летит %2$s. Максимум %4$s.</string>
+    <string name="team_swap_laps">%1$s летит %2$s, затем %3$s летит %4$s</string>
+    <string name="team_swap_laps_with_time">%1$s летит %2$s, затем %3$s летит %4$s. Максимум %5$s.</string>
 </resources>

@@ -45,6 +45,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
@@ -64,6 +65,7 @@ import ru.fpvladder.laps.trainer.model.Channel
 
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Training
+import ru.fpvladder.laps.trainer.model.description
 
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
@@ -226,7 +228,7 @@ fun AppRoot(
                                     AppScreen.Training -> {
                                         val isTeam = selectedTraining is Training.Team
                                         StatsContent(
-                                            description = selectedTraining.description,
+                                            description = selectedTraining.description(LocalContext.current),
                                             onEditRulesClick = { showRulesEditor = true },
                                             isTeam = isTeam,
                                             pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",

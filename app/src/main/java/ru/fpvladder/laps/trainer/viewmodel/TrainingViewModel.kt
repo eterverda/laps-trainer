@@ -11,7 +11,6 @@ import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.Training
-import ru.fpvladder.laps.trainer.model.TrainingType
 
 class TrainingViewModel(application: Application) : AndroidViewModel(application) {
 
