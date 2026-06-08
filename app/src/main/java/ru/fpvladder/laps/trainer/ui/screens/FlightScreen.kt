@@ -36,12 +36,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalDensity
@@ -104,18 +109,25 @@ fun FlightContent(
                     Box(modifier = Modifier.onSizeChanged { contentHeight = it.height }) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             LapList(laps = laps, currentLapTime = currentLapTime, timerPrecision = timerPrecision)
+                            if (phase == FlightPhase.MAIN && laps.all { !it.icons.contains(LapIcon.LAP) }) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Hint("Нажмите здесь когда пилот пройдет ворота")
+                                }
+                            }
                             if (phase == FlightPhase.POST) {
                                 Text(
-                                    text = buildAnnotatedString {
-                                        append("Вылет завершен. Общее время ")
-                                        withStyle(style = SpanStyle(fontFamily = FontFamily.Monospace)) {
-                                            append(formatTime(elapsedMs, timerPrecision, timeLimitSeconds))
-                                        }
-                                    },
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(top = 16.dp)
+                                    text = "Вылет завершен",
+                                    fontSize = 21.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 16.dp)
                                 )
+                                Summary(laps = laps, timerPrecision = timerPrecision)
                             }
                         }
                     }
@@ -173,14 +185,128 @@ fun FlightContent(
         }
 
         if (phase == FlightPhase.PRE && startSignal == StartSignal.MANUAL) {
-            Text(
-                text = "Нажмите GO чтобы начать вылет",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Hint("Нажмите GO чтобы начать вылет")
+            }
         }
     }
+}
+
+@Composable
+private fun InsetCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val outlineColor = MaterialTheme.colorScheme.outline
+    Box(
+        modifier = modifier
+            .drawBehind {
+                val strokeWidth = 1.dp.toPx()
+                val cornerRadius = 8.dp.toPx()
+                drawRoundRect(
+                    color = outlineColor,
+                    style = Stroke(
+                        width = strokeWidth,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
+                    ),
+                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                )
+            }
+            .padding(12.dp)
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun Hint(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.primary,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .width(240.dp)
+            .padding(vertical = 48.dp)
+            .alpha(0.5f)
+    )
+}
+
+@Composable
+private fun Summary(
+    laps: List<LapEntry>,
+    timerPrecision: TimerPrecision
+) {
+    val items = remember(laps, timerPrecision) {
+        buildSummary(laps, timerPrecision)
+    }
+
+    if (items.isNotEmpty()) {
+        val maxLabelLen = items.maxOfOrNull { it.first.length } ?: 0
+        val maxTimeLen = items.maxOfOrNull {
+            it.second?.let { t -> formatTimeDynamic(t, timerPrecision).length } ?: 0
+        } ?: 0
+
+        InsetCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.End) {
+                items.forEach { (label, timeMs) ->
+                    val timeStr = timeMs?.let { formatTimeDynamic(it, timerPrecision) } ?: "--:--"
+                    Text(
+                        text = "${label.padStart(maxLabelLen)} ${timeStr.padStart(maxTimeLen)}".trimEnd(),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun buildSummary(laps: List<LapEntry>, timerPrecision: TimerPrecision): List<Pair<String, Long?>> {
+    val validLaps = laps.filter { it.status == LapStatus.SUCCESS && it.lapLabel != "HS" }
+    val n = validLaps.size
+
+    if (n == 0) return listOf("0/" to null)
+
+    val bestTime = validLaps.minOf { roundMs(it.timeMs, timerPrecision) }
+    val totalTime = validLaps.sumOf { roundMs(it.timeMs, timerPrecision) as Long }
+
+    if (n == 1) {
+        return listOf("1/" to bestTime)
+    }
+
+    if (n == 2) {
+        return listOf(
+            "1/" to bestTime,
+            "2/" to totalTime
+        )
+    }
+
+    if (n == 3) {
+        return listOf(
+            "1/" to bestTime,
+            "3/" to totalTime
+        )
+    }
+
+    var minSum3 = Long.MAX_VALUE
+    for (i in 0..validLaps.size - 3) {
+        val sum = roundMs(validLaps[i].timeMs, timerPrecision) +
+                  roundMs(validLaps[i + 1].timeMs, timerPrecision) +
+                  roundMs(validLaps[i + 2].timeMs, timerPrecision)
+        if (sum < minSum3) minSum3 = sum
+    }
+
+    return listOf(
+        "1/" to bestTime,
+        "3/" to minSum3,
+        "$n/" to totalTime
+    )
 }
 
 @Composable
@@ -256,31 +382,4 @@ private fun LapList(
     }
 }
 
-private fun formatTimeDynamic(elapsedMs: Long, timerPrecision: TimerPrecision): String {
-    val totalSeconds = elapsedMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    val ms = elapsedMs % 1000
-
-    return when (timerPrecision.fractionDigits) {
-        0 -> {
-            if (minutes > 0) String.format("%d:%02d", minutes, seconds)
-            else "$seconds"
-        }
-        1 -> {
-            val frac = ms / 100
-            if (minutes > 0) String.format("%d:%02d.%01d", minutes, seconds, frac)
-            else String.format("%d.%01d", seconds, frac)
-        }
-        2 -> {
-            val frac = ms / 10
-            if (minutes > 0) String.format("%d:%02d.%02d", minutes, seconds, frac)
-            else String.format("%d.%02d", seconds, frac)
-        }
-        else -> {
-            if (minutes > 0) String.format("%d:%02d.%03d", minutes, seconds, ms)
-            else String.format("%d.%03d", seconds, ms)
-        }
-    }
-}
 

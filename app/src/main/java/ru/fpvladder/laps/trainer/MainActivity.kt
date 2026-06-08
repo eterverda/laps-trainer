@@ -56,9 +56,13 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -140,7 +144,8 @@ fun FlightTimer(
         if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
             while (true) {
                 val passed = SystemClock.elapsedRealtime() - preStartTime
-                countdownMs = (1500 + if (isMuted) 0 else BUZZER_DURATION_MS - passed).coerceAtLeast(0)
+                countdownMs =
+                    (1500 + if (isMuted) 0 else BUZZER_DURATION_MS - passed).coerceAtLeast(0)
                 if (countdownMs <= 0) break
                 delay(16)
             }
@@ -157,20 +162,45 @@ fun FlightTimer(
     val timeText = if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
         formatCountdown(countdownMs, timerPrecision)
     } else {
-        formatTime(if (phase == FlightPhase.PRE) 0L else elapsedMs, timerPrecision, timeLimitSeconds)
+        formatTime(
+            if (phase == FlightPhase.PRE) 0L else elapsedMs,
+            timerPrecision,
+            timeLimitSeconds
+        )
+    }
+
+    val annotatedText = buildAnnotatedString {
+        withStyle(
+            style = SpanStyle(
+                fontFamily = FontFamily.Monospace,
+                fontSize = 54.sp,
+                fontWeight = FontWeight.Bold
+            )
+        ) {
+            append(timeText)
+        }
+        if (timeLimitSeconds != Int.MAX_VALUE) {
+            val remainingMs = (timeLimitSeconds * 1000L - elapsedMs).coerceAtLeast(0)
+
+            withStyle(
+                style = SpanStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 14.sp
+                )
+            ) {
+                append("\n")
+                append(formatCountdown(remainingMs, timerPrecision))
+            }
+        }
     }
 
     Text(
-        text = timeText,
-        fontFamily = FontFamily.Monospace,
-        fontSize = 60.sp,
-        fontWeight = FontWeight.Bold,
+        text = annotatedText,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
-            .fillMaxWidth()
             .padding(top = 4.dp, bottom = 4.dp)
             .alpha(if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) 1f else alpha),
-        textAlign = TextAlign.Center
+        textAlign = TextAlign.End
     )
 }
 
@@ -199,6 +229,7 @@ fun AppRoot(
     val elapsedMs by flightViewModel.elapsedMs.collectAsState()
     val preStartTime by flightViewModel.preStartTime.collectAsState()
     val isPreBlinking by flightViewModel.isPreBlinking.collectAsState()
+    val flightTimerPrecision by flightViewModel.timerPrecision.collectAsState()
     val scope = rememberCoroutineScope()
     var soundJob by remember { mutableStateOf<Job?>(null) }
 
@@ -208,6 +239,8 @@ fun AppRoot(
     LaunchedEffect(currentScreen) {
         if (currentScreen == AppScreen.Flight) {
             flightViewModel.setHoleshotEnabled(selectedTraining.rules.holeshotEnabled)
+            flightViewModel.setTimeLimit(selectedTraining.rules.timeLimitSeconds)
+            flightViewModel.setTimerPrecision(timerPrecision)
             flightViewModel.prepareRace(startSignal, isMuted)
         } else {
             flightViewModel.reset()
@@ -233,10 +266,12 @@ fun AppRoot(
             currentScreen == AppScreen.Settings -> {
                 pilotViewModel.navigateTo(AppScreen.Training)
             }
+
             currentScreen == AppScreen.Flight && flightPhase == FlightPhase.PRE -> {
                 pilotViewModel.navigateTo(AppScreen.Training)
                 flightViewModel.reset()
             }
+
             currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST -> {
                 pilotViewModel.navigateTo(AppScreen.Training)
                 flightViewModel.reset()
@@ -264,6 +299,7 @@ fun AppRoot(
                         onAddTeamClick = {},
                         onTrainingSelect = {}
                     )
+
                     AppScreen.Training -> {
                         TrainingHeader(
                             trainings = trainings,
@@ -287,6 +323,7 @@ fun AppRoot(
                             onTrainingSelect = { trainingViewModel.selectTraining(it) }
                         )
                     }
+
                     AppScreen.Settings -> {
                         // SettingsScreen has its own top bar
                     }
@@ -297,16 +334,21 @@ fun AppRoot(
                     enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
                     exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
                 ) {
-                    FlightTimer(
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        FlightTimer(
                         phase = flightPhase,
                         startSignal = startSignal,
                         elapsedMs = elapsedMs,
                         preStartTime = preStartTime,
                         isPreBlinking = isPreBlinking,
                         isMuted = isMuted,
-                        timerPrecision = timerPrecision,
+                        timerPrecision = flightTimerPrecision,
                         timeLimitSeconds = selectedTraining.rules.timeLimitSeconds
-                    )
+                        )
+                    }
                 }
 
                 when (currentScreen) {
@@ -332,6 +374,7 @@ fun AppRoot(
                             .fillMaxSize()
                             .weight(1f)
                     )
+
                     else -> Surface(
                         modifier = Modifier
                             .weight(1f)
@@ -348,10 +391,10 @@ fun AppRoot(
                                         initialScale = 0.85f,
                                         animationSpec = tween(300)
                                     ) + fadeIn(animationSpec = tween(300))) togetherWith
-                                    (scaleOut(
-                                        targetScale = 0.85f,
-                                        animationSpec = tween(300)
-                                    ) + fadeOut(animationSpec = tween(300)))
+                                            (scaleOut(
+                                                targetScale = 0.85f,
+                                                animationSpec = tween(300)
+                                            ) + fadeOut(animationSpec = tween(300)))
                                 },
                                 label = "flight_training_transition"
                             ) { screen ->
@@ -374,7 +417,7 @@ fun AppRoot(
                                         onLapClick = {
                                             flightViewModel.addLap()
                                         },
-                                        timerPrecision = timerPrecision,
+                                        timerPrecision = flightTimerPrecision,
                                         modifier = Modifier.fillMaxSize()
                                     )
 
@@ -384,9 +427,12 @@ fun AppRoot(
                                             description = selectedTraining.description(LocalContext.current),
                                             onEditRulesClick = { showRulesEditor = true },
                                             isTeam = isTeam,
-                                            pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
-                                            pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
-                                            pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
+                                            pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1
+                                                ?: "",
+                                            pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2
+                                                ?: "",
+                                            pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped
+                                                ?: false,
                                             onSwapPilots = { trainingViewModel.swapPilotOrder() },
                                             modifier = Modifier.fillMaxSize()
                                         )
@@ -430,13 +476,19 @@ fun AppRoot(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(bottom = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                                horizontalArrangement = Arrangement.spacedBy(
+                                    16.dp,
+                                    Alignment.CenterHorizontally
+                                ),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Button(
                                     onClick = { flightViewModel.addErrorToLastLap() },
                                     shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp)
+                                    contentPadding = PaddingValues(
+                                        horizontal = 24.dp,
+                                        vertical = 6.dp
+                                    )
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.ic_cross),
@@ -449,7 +501,10 @@ fun AppRoot(
                                 Button(
                                     onClick = { flightViewModel.addFixToLastLap() },
                                     shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp)
+                                    contentPadding = PaddingValues(
+                                        horizontal = 24.dp,
+                                        vertical = 6.dp
+                                    )
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.ic_square),
@@ -477,8 +532,10 @@ fun AppRoot(
                                     contentDescription = if (isMuted) "Unmute" else "Mute"
                                 )
                             }
-                            val isManualPreStart = isOnFlight && flightPhase == FlightPhase.PRE && startSignal == StartSignal.MANUAL
-                            val isPreFixedOrRandom = isOnFlight && flightPhase == FlightPhase.PRE && startSignal != StartSignal.MANUAL
+                            val isManualPreStart =
+                                isOnFlight && flightPhase == FlightPhase.PRE && startSignal == StartSignal.MANUAL
+                            val isPreFixedOrRandom =
+                                isOnFlight && flightPhase == FlightPhase.PRE && startSignal != StartSignal.MANUAL
 
                             val buttonText = when {
                                 !isOnFlight -> "Старт"
@@ -505,13 +562,17 @@ fun AppRoot(
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
                                         }
+
                                         flightPhase == FlightPhase.MAIN -> {
                                             flightViewModel.stopRace(isMuted)
                                         }
+
                                         flightPhase == FlightPhase.POST -> {
                                             flightViewModel.reset()
+                                            flightViewModel.setTimeLimit(selectedTraining.rules.timeLimitSeconds)
                                             flightViewModel.prepareRace(startSignal, isMuted)
                                         }
+
                                         else -> {
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
