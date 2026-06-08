@@ -45,6 +45,7 @@ import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.ChannelGrid
 import ru.fpvladder.laps.trainer.model.ColorCount
+import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 
@@ -57,12 +58,14 @@ fun SettingsScreen(
     isUsbKeyboardEnabled: Boolean,
     appTheme: AppTheme,
     timerPrecision: TimerPrecision,
+    startSignal: StartSignal,
     onChannelGridChange: (ChannelGrid) -> Unit,
     onColorCountChange: (ColorCount) -> Unit,
     onMutedChange: (Boolean) -> Unit,
     onUsbKeyboardChange: (Boolean) -> Unit,
     onAppThemeChange: (AppTheme) -> Unit,
     onTimerPrecisionChange: (TimerPrecision) -> Unit,
+    onStartSignalChange: (StartSignal) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,6 +74,7 @@ fun SettingsScreen(
     var showColorDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showPrecisionDialog by remember { mutableStateOf(false) }
+    var showSignalDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -122,6 +126,19 @@ fun SettingsScreen(
             SectionDivider()
 
             ListItem(
+                headlineContent = { Text("Сигнал на старт") },
+                supportingContent = { Text(startSignal.displayName) },
+                modifier = Modifier.clickable { showSignalDialog = true }
+            )
+            ListItem(
+                headlineContent = { Text("Точность ручной засечки") },
+                supportingContent = { Text(timerPrecision.displayName) },
+                modifier = Modifier.clickable { showPrecisionDialog = true }
+            )
+
+            SectionDivider()
+
+            ListItem(
                 headlineContent = { Text("Сетка") },
                 supportingContent = { Text(channelGrid.displayName) },
                 modifier = Modifier.clickable { showGridDialog = true }
@@ -138,14 +155,6 @@ fun SettingsScreen(
                 headlineContent = { Text("Тема") },
                 supportingContent = { Text(appTheme.displayName) },
                 modifier = Modifier.clickable { showThemeDialog = true }
-            )
-
-            SectionDivider()
-
-            ListItem(
-                headlineContent = { Text("Точность") },
-                supportingContent = { Text(timerPrecision.displayName) },
-                modifier = Modifier.clickable { showPrecisionDialog = true }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -196,7 +205,7 @@ fun SettingsScreen(
 
     if (showPrecisionDialog) {
         SelectionDialog(
-            title = "Точность",
+            title = "Точность ручной засечки",
             items = TimerPrecision.entries,
             selected = timerPrecision,
             itemText = { it.displayName },
@@ -205,6 +214,20 @@ fun SettingsScreen(
                 showPrecisionDialog = false
             },
             onDismiss = { showPrecisionDialog = false }
+        )
+    }
+
+    if (showSignalDialog) {
+        SelectionDialog(
+            title = "Сигнал на старт",
+            items = StartSignal.entries,
+            selected = startSignal,
+            itemText = { it.displayName },
+            onSelect = {
+                onStartSignalChange(it)
+                showSignalDialog = false
+            },
+            onDismiss = { showSignalDialog = false }
         )
     }
 }

@@ -11,6 +11,7 @@ import ru.fpvladder.laps.trainer.data.SettingsDataStore
 import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.ChannelGrid
 import ru.fpvladder.laps.trainer.model.ColorCount
+import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -34,6 +35,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     val timerPrecision: StateFlow<TimerPrecision> = dataStore.timerPrecision
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TimerPrecision.DECISECONDS)
+
+    val startSignal: StateFlow<StartSignal> = dataStore.startSignal
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StartSignal.RANDOM)
 
     fun setChannelGrid(grid: ChannelGrid) {
         viewModelScope.launch {
@@ -68,6 +72,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setTimerPrecision(precision: TimerPrecision) {
         viewModelScope.launch {
             dataStore.setTimerPrecision(precision)
+        }
+    }
+
+    fun setStartSignal(signal: StartSignal) {
+        viewModelScope.launch {
+            dataStore.setStartSignal(signal)
         }
     }
 }

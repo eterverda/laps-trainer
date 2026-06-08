@@ -86,6 +86,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appTheme by settingsViewModel.appTheme.collectAsState()
     val timerPrecision by settingsViewModel.timerPrecision.collectAsState()
+    val startSignal by settingsViewModel.startSignal.collectAsState()
             LapsTrainerTheme(appTheme = appTheme) {
                 AppRoot(
                     keyboardViewModel = keyboardViewModel,
@@ -115,6 +116,7 @@ fun AppRoot(
     val isUsbKeyboardEnabled by settingsViewModel.isUsbKeyboardEnabled.collectAsState()
     val appTheme by settingsViewModel.appTheme.collectAsState()
     val timerPrecision by settingsViewModel.timerPrecision.collectAsState()
+    val startSignal by settingsViewModel.startSignal.collectAsState()
 
     var showChannelDialog by remember { mutableStateOf(false) }
     var showPilotEditor by remember { mutableStateOf(false) }
@@ -189,12 +191,14 @@ fun AppRoot(
                         isUsbKeyboardEnabled = isUsbKeyboardEnabled,
                         appTheme = appTheme,
                         timerPrecision = timerPrecision,
+                        startSignal = startSignal,
                         onChannelGridChange = { settingsViewModel.setChannelGrid(it) },
                         onColorCountChange = { settingsViewModel.setColorCount(it) },
                         onMutedChange = { settingsViewModel.setMuted(it) },
                         onUsbKeyboardChange = { settingsViewModel.setUsbKeyboardEnabled(it) },
                         onAppThemeChange = { settingsViewModel.setAppTheme(it) },
                         onTimerPrecisionChange = { settingsViewModel.setTimerPrecision(it) },
+                        onStartSignalChange = { settingsViewModel.setStartSignal(it) },
                         onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
                         modifier = Modifier
                             .fillMaxSize()

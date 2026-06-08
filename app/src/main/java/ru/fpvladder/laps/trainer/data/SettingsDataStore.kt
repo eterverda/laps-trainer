@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.map
 import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.ChannelGrid
 import ru.fpvladder.laps.trainer.model.ColorCount
+import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -25,6 +26,7 @@ class SettingsDataStore(private val context: Context) {
         private val USB_KEYBOARD_KEY = booleanPreferencesKey("usb_keyboard_enabled")
         private val APP_THEME_KEY = stringPreferencesKey("app_theme")
         private val TIMER_PRECISION_KEY = stringPreferencesKey("timer_precision")
+        private val START_SIGNAL_KEY = stringPreferencesKey("start_signal")
     }
 
     val channelGrid: Flow<ChannelGrid> = context.dataStore.data.map { prefs ->
@@ -92,6 +94,18 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setTimerPrecision(precision: TimerPrecision) {
         context.dataStore.edit { prefs ->
             prefs[TIMER_PRECISION_KEY] = precision.name
+        }
+    }
+
+    val startSignal: Flow<StartSignal> = context.dataStore.data.map { prefs ->
+        prefs[START_SIGNAL_KEY]?.let {
+            runCatching { StartSignal.valueOf(it) }.getOrNull()
+        } ?: StartSignal.RANDOM
+    }
+
+    suspend fun setStartSignal(signal: StartSignal) {
+        context.dataStore.edit { prefs ->
+            prefs[START_SIGNAL_KEY] = signal.name
         }
     }
 }
