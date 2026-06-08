@@ -389,11 +389,7 @@ private fun LapList(
                                     contentDescription = null,
                                     modifier = Modifier.size(12.dp)
                                 )
-                                LapIcon.LAP -> Icon(
-                                    painter = painterResource(R.drawable.ic_circle),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(12.dp)
-                                )
+                                else -> {}
                             }
                         }
                     }

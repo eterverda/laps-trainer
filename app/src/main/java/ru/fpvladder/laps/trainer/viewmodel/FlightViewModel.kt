@@ -210,9 +210,9 @@ class FlightViewModel : ViewModel() {
         val current = _laps.value.toMutableList()
         if (current.isEmpty()) return
         val last = current.last()
-        if (last.icons.contains(LapIcon.FIX)) return
+        if (!last.icons.contains(LapIcon.ERROR)) return
         val newIcons = last.icons.toMutableList()
-        newIcons.add(LapIcon.FIX)
+        newIcons.remove(LapIcon.ERROR)
         current[current.size - 1] = last.copy(icons = newIcons)
         _laps.value = current
     }
