@@ -72,6 +72,7 @@ import ru.fpvladder.laps.trainer.model.Training
 fun TrainingHeader(
     trainings: List<Training>,
     selectedTraining: Training,
+    enabled: Boolean = true,
     onChannelClick: () -> Unit = {},
     onNameLongClick: () -> Unit = {},
     onAddIndividualClick: () -> Unit = {},
@@ -128,7 +129,7 @@ fun TrainingHeader(
                 modifier = Modifier
                     .fillMaxHeight()
                     .clickable(
-                        enabled = !expanded,
+                        enabled = !expanded && enabled,
                         onClick = onChannelClick
                     )
             )
@@ -139,7 +140,7 @@ fun TrainingHeader(
                     .weight(1f)
                     .clip(RoundedCornerShape(8.dp))
                     .combinedClickable(
-                        enabled = !expanded,
+                        enabled = !expanded && enabled,
                         onLongClick = onNameLongClick,
                         onClick = {}
                     )
@@ -155,12 +156,13 @@ fun TrainingHeader(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(androidx.compose.foundation.shape.CircleShape)
-                    .clickable { expanded = !expanded },
+                    .clickable(enabled = enabled) { expanded = !expanded },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Свернуть" else "Развернуть"
+                    contentDescription = if (expanded) "Свернуть" else "Развернуть",
+                    tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                 )
             }
         }

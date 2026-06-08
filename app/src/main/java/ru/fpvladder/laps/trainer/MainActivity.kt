@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,17 +35,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.fpvladder.laps.trainer.ui.components.ActionButtonsRow
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
+import ru.fpvladder.laps.trainer.ui.components.HoldButton
 import ru.fpvladder.laps.trainer.ui.components.IndividualNameDialog
 import ru.fpvladder.laps.trainer.ui.components.TeamNameDialog
 import ru.fpvladder.laps.trainer.ui.components.PilotEditorDialog
-import ru.fpvladder.laps.trainer.ui.components.PilotSection
+// import ru.fpvladder.laps.trainer.ui.components.PilotSection
 import ru.fpvladder.laps.trainer.ui.components.RulesEditorDialog
 import ru.fpvladder.laps.trainer.ui.components.TrainingHeader
-import ru.fpvladder.laps.trainer.ui.screens.RaceContent
+import ru.fpvladder.laps.trainer.ui.screens.FlightContent
 import ru.fpvladder.laps.trainer.ui.screens.SettingsScreen
 import ru.fpvladder.laps.trainer.ui.screens.StatsContent
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
@@ -128,11 +139,15 @@ fun AppRoot(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 when (currentScreen) {
-                    AppScreen.Race -> PilotSection(
-                        pilot = currentPilot,
-                        editable = false,
-                        onChannelClick = { showChannelDialog = true },
-                        onNameClick = { showPilotEditor = true }
+                    AppScreen.Flight -> TrainingHeader(
+                        trainings = trainings,
+                        selectedTraining = selectedTraining,
+                        enabled = false,
+                        onChannelClick = {},
+                        onNameLongClick = {},
+                        onAddIndividualClick = {},
+                        onAddTeamClick = {},
+                        onTrainingSelect = {}
                     )
                     AppScreen.Training -> {
                         TrainingHeader(
@@ -188,27 +203,42 @@ fun AppRoot(
                         tonalElevation = 0.dp
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            when (currentScreen) {
-                                AppScreen.Race -> RaceContent(
-                                    onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
-                                    modifier = Modifier.fillMaxSize()
-                                )
-
-                                AppScreen.Training -> {
-                                    val isTeam = selectedTraining is Training.Team
-                                    StatsContent(
-                                        description = selectedTraining.description,
-                                        onEditRulesClick = { showRulesEditor = true },
-                                        isTeam = isTeam,
-                                        pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
-                                        pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
-                                        pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
-                                        onSwapPilots = { trainingViewModel.swapPilotOrder() },
+                            AnimatedContent(
+                                targetState = currentScreen,
+                                transitionSpec = {
+                                    (scaleIn(
+                                        initialScale = 0.85f,
+                                        animationSpec = tween(300)
+                                    ) + fadeIn(animationSpec = tween(300))) togetherWith
+                                    (scaleOut(
+                                        targetScale = 0.85f,
+                                        animationSpec = tween(300)
+                                    ) + fadeOut(animationSpec = tween(300)))
+                                },
+                                label = "flight_training_transition"
+                            ) { screen ->
+                                when (screen) {
+                                    AppScreen.Flight -> FlightContent(
+                                        onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
                                         modifier = Modifier.fillMaxSize()
                                     )
-                                }
 
-                                else -> {}
+                                    AppScreen.Training -> {
+                                        val isTeam = selectedTraining is Training.Team
+                                        StatsContent(
+                                            description = selectedTraining.description,
+                                            onEditRulesClick = { showRulesEditor = true },
+                                            isTeam = isTeam,
+                                            pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
+                                            pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
+                                            pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
+                                            onSwapPilots = { trainingViewModel.swapPilotOrder() },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    else -> {}
+                                }
                             }
                         }
                     }
@@ -219,7 +249,11 @@ fun AppRoot(
                         modifier = Modifier.navigationBarsPadding(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (isUsbKeyboardEnabled) {
+                        AnimatedVisibility(
+                            visible = isUsbKeyboardEnabled && currentScreen != AppScreen.Flight,
+                            enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                            exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
+                        ) {
                             Text(
                                 text = "Подключите USB-клавиатуру",
                                 fontSize = 14.sp,
@@ -243,14 +277,23 @@ fun AppRoot(
                                     contentDescription = if (isMuted) "Unmute" else "Mute"
                                 )
                             }
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                ActionButtonsRow()
-                            }
+                            HoldButton(
+                                onConfirm = {
+                                    if (currentScreen == AppScreen.Flight) {
+                                        pilotViewModel.navigateTo(AppScreen.Training)
+                                    } else {
+                                        pilotViewModel.navigateTo(AppScreen.Flight)
+                                    }
+                                },
+                                text = if (currentScreen == AppScreen.Flight) "Стоп" else "Старт",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 8.dp)
+                                    .height(54.dp)
+                            )
                             IconButton(
                                 onClick = { pilotViewModel.navigateTo(AppScreen.Settings) },
+                                enabled = currentScreen != AppScreen.Flight,
                                 modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
