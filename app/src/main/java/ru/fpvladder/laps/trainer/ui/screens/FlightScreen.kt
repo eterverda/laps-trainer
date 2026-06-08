@@ -16,23 +16,24 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.os.SystemClock
 import kotlinx.coroutines.delay
+import ru.fpvladder.laps.trainer.model.TimerPrecision
 
 private const val MIN_TIMER_UPDATE_INTERVAL = 89L
 
 @Composable
 fun FlightContent(
     onNavigateBack: () -> Unit,
+    timerPrecision: TimerPrecision,
     modifier: Modifier = Modifier
 ) {
     var elapsedMs by remember { mutableLongStateOf(0L) }
 
-    LaunchedEffect(Unit) {
-        val startTime = SystemClock.elapsedRealtime()
+    LaunchedEffect(timerPrecision) {
+        val startTime = System.currentTimeMillis()
         while (true) {
-            elapsedMs = SystemClock.elapsedRealtime() - startTime
-            delay(MIN_TIMER_UPDATE_INTERVAL)
+            elapsedMs = System.currentTimeMillis() - startTime
+            delay(timerPrecision.tickMs.coerceAtLeast(MIN_TIMER_UPDATE_INTERVAL))
         }
     }
 
@@ -41,7 +42,12 @@ fun FlightContent(
     val seconds = totalSeconds % 60
     val ms = elapsedMs % 1000
 
-    val timeText = String.format("%02d:%02d.%03d", minutes, seconds, ms)
+    val timeText = when (timerPrecision.fractionDigits) {
+        0 -> String.format("%02d:%02d", minutes, seconds)
+        1 -> String.format("%02d:%02d.%01d", minutes, seconds, ms / 100)
+        2 -> String.format("%02d:%02d.%02d", minutes, seconds, ms / 10)
+        else -> String.format("%02d:%02d.%03d", minutes, seconds, ms)
+    }
 
     Box(
         modifier = modifier,

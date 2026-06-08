@@ -45,6 +45,7 @@ import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.ChannelGrid
 import ru.fpvladder.laps.trainer.model.ColorCount
+import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,11 +56,13 @@ fun SettingsScreen(
     isMuted: Boolean,
     isUsbKeyboardEnabled: Boolean,
     appTheme: AppTheme,
+    timerPrecision: TimerPrecision,
     onChannelGridChange: (ChannelGrid) -> Unit,
     onColorCountChange: (ColorCount) -> Unit,
     onMutedChange: (Boolean) -> Unit,
     onUsbKeyboardChange: (Boolean) -> Unit,
     onAppThemeChange: (AppTheme) -> Unit,
+    onTimerPrecisionChange: (TimerPrecision) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -67,6 +70,7 @@ fun SettingsScreen(
     var showGridDialog by remember { mutableStateOf(false) }
     var showColorDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showPrecisionDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -136,6 +140,14 @@ fun SettingsScreen(
                 modifier = Modifier.clickable { showThemeDialog = true }
             )
 
+            SectionDivider()
+
+            ListItem(
+                headlineContent = { Text("Точность") },
+                supportingContent = { Text(timerPrecision.displayName) },
+                modifier = Modifier.clickable { showPrecisionDialog = true }
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -179,6 +191,20 @@ fun SettingsScreen(
                 showThemeDialog = false
             },
             onDismiss = { showThemeDialog = false }
+        )
+    }
+
+    if (showPrecisionDialog) {
+        SelectionDialog(
+            title = "Точность",
+            items = TimerPrecision.entries,
+            selected = timerPrecision,
+            itemText = { it.displayName },
+            onSelect = {
+                onTimerPrecisionChange(it)
+                showPrecisionDialog = false
+            },
+            onDismiss = { showPrecisionDialog = false }
         )
     }
 }
