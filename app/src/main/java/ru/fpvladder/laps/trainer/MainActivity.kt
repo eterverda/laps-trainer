@@ -1,17 +1,20 @@
 package ru.fpvladder.laps.trainer
 
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -22,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,14 +35,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -48,8 +56,12 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
@@ -67,8 +79,10 @@ import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.StartSignal
+import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.description
+import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.audio.STAGE_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
@@ -78,6 +92,8 @@ import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 import ru.fpvladder.laps.trainer.viewmodel.FlightViewModel
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
 import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
+import ru.fpvladder.laps.trainer.ui.screens.formatCountdown
+import ru.fpvladder.laps.trainer.ui.screens.formatTime
 import ru.fpvladder.laps.trainer.viewmodel.SettingsViewModel
 import ru.fpvladder.laps.trainer.viewmodel.TrainingViewModel
 
@@ -109,6 +125,56 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun FlightTimer(
+    phase: FlightPhase,
+    startSignal: StartSignal,
+    elapsedMs: Long,
+    preStartTime: Long,
+    isPreBlinking: Boolean,
+    isMuted: Boolean,
+    timerPrecision: TimerPrecision,
+    timeLimitSeconds: Int
+) {
+    var countdownMs by remember { mutableLongStateOf(1500L) }
+    LaunchedEffect(preStartTime, phase, startSignal) {
+        if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
+            while (true) {
+                val passed = SystemClock.elapsedRealtime() - preStartTime
+                countdownMs = (1500 + if (isMuted) 0 else BUZZER_DURATION_MS - passed).coerceAtLeast(0)
+                if (countdownMs <= 0) break
+                delay(16)
+            }
+        }
+    }
+
+    val isBlinking = phase == FlightPhase.PRE && isPreBlinking
+    val alpha by animateFloatAsState(
+        targetValue = if (isBlinking) 0f else 1f,
+        animationSpec = tween(200),
+        label = "timer_blink"
+    )
+
+    val timeText = if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
+        formatCountdown(countdownMs, timerPrecision)
+    } else {
+        formatTime(if (phase == FlightPhase.PRE) 0L else elapsedMs, timerPrecision, timeLimitSeconds)
+    }
+
+    Text(
+        text = timeText,
+        fontFamily = FontFamily.Monospace,
+        fontSize = 60.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 4.dp)
+            .alpha(if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) 1f else alpha),
+        textAlign = TextAlign.Center
+    )
+}
+
+@Composable
 fun AppRoot(
     keyboardViewModel: KeyboardViewModel,
     pilotViewModel: PilotViewModel,
@@ -127,6 +193,7 @@ fun AppRoot(
     val appTheme by settingsViewModel.appTheme.collectAsState()
     val timerPrecision by settingsViewModel.timerPrecision.collectAsState()
     val startSignal by settingsViewModel.startSignal.collectAsState()
+    val useErrorFixButtons by settingsViewModel.useErrorFixButtons.collectAsState()
     val flightPhase by flightViewModel.phase.collectAsState()
     val isStopping by flightViewModel.isStopping.collectAsState()
     val elapsedMs by flightViewModel.elapsedMs.collectAsState()
@@ -225,12 +292,30 @@ fun AppRoot(
                     }
                 }
 
+                AnimatedVisibility(
+                    visible = currentScreen == AppScreen.Flight && flightPhase != FlightPhase.POST,
+                    enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                    exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
+                ) {
+                    FlightTimer(
+                        phase = flightPhase,
+                        startSignal = startSignal,
+                        elapsedMs = elapsedMs,
+                        preStartTime = preStartTime,
+                        isPreBlinking = isPreBlinking,
+                        isMuted = isMuted,
+                        timerPrecision = timerPrecision,
+                        timeLimitSeconds = selectedTraining.rules.timeLimitSeconds
+                    )
+                }
+
                 when (currentScreen) {
                     AppScreen.Settings -> SettingsScreen(
                         channelGrid = channelGrid,
                         colorCount = colorCount,
                         isMuted = isMuted,
                         isUsbKeyboardEnabled = isUsbKeyboardEnabled,
+                        useErrorFixButtons = useErrorFixButtons,
                         appTheme = appTheme,
                         timerPrecision = timerPrecision,
                         startSignal = startSignal,
@@ -238,6 +323,7 @@ fun AppRoot(
                         onColorCountChange = { settingsViewModel.setColorCount(it) },
                         onMutedChange = { settingsViewModel.setMuted(it) },
                         onUsbKeyboardChange = { settingsViewModel.setUsbKeyboardEnabled(it) },
+                        onUseErrorFixButtonsChange = { settingsViewModel.setUseErrorFixButtons(it) },
                         onAppThemeChange = { settingsViewModel.setAppTheme(it) },
                         onTimerPrecisionChange = { settingsViewModel.setTimerPrecision(it) },
                         onStartSignalChange = { settingsViewModel.setStartSignal(it) },
@@ -273,13 +359,10 @@ fun AppRoot(
                                     AppScreen.Flight -> FlightContent(
                                         phase = flightPhase,
                                         startSignal = startSignal,
-                                        elapsedMs = elapsedMs,
-                                        preStartTime = preStartTime,
-                                        isPreBlinking = isPreBlinking,
-                                        isMuted = isMuted,
-                                        timerPrecision = timerPrecision,
                                         laps = laps,
                                         currentLapTime = currentLapTime,
+                                        elapsedMs = elapsedMs,
+                                        timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
                                         onSave = {
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
@@ -291,12 +374,7 @@ fun AppRoot(
                                         onLapClick = {
                                             flightViewModel.addLap()
                                         },
-                                        onError = {
-                                            flightViewModel.addErrorToLastLap()
-                                        },
-                                        onFix = {
-                                            flightViewModel.addFixToLastLap()
-                                        },
+                                        timerPrecision = timerPrecision,
                                         modifier = Modifier.fillMaxSize()
                                     )
 
@@ -341,6 +419,49 @@ fun AppRoot(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        val isOnFlight = currentScreen == AppScreen.Flight
+
+                        AnimatedVisibility(
+                            visible = isOnFlight && flightPhase == FlightPhase.MAIN && useErrorFixButtons,
+                            enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+                            exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Button(
+                                    onClick = { flightViewModel.addErrorToLastLap() },
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_cross),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("ОШИБКА", fontSize = 14.sp)
+                                }
+                                Button(
+                                    onClick = { flightViewModel.addFixToLastLap() },
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_square),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("ИСПРАВИЛ", fontSize = 14.sp)
+                                }
+                            }
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -356,7 +477,6 @@ fun AppRoot(
                                     contentDescription = if (isMuted) "Unmute" else "Mute"
                                 )
                             }
-                            val isOnFlight = currentScreen == AppScreen.Flight
                             val isManualPreStart = isOnFlight && flightPhase == FlightPhase.PRE && startSignal == StartSignal.MANUAL
                             val isPreFixedOrRandom = isOnFlight && flightPhase == FlightPhase.PRE && startSignal != StartSignal.MANUAL
 

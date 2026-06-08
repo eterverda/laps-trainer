@@ -1,8 +1,5 @@
 package ru.fpvladder.laps.trainer.ui.screens
 
-import android.os.SystemClock
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,9 +37,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -56,45 +60,16 @@ import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 fun FlightContent(
     phase: FlightPhase,
     startSignal: StartSignal,
-    elapsedMs: Long,
-    preStartTime: Long,
-    isPreBlinking: Boolean,
-    isMuted: Boolean,
-    timerPrecision: TimerPrecision,
     laps: List<LapEntry> = emptyList(),
     currentLapTime: Long = 0L,
+    elapsedMs: Long = 0L,
+    timeLimitSeconds: Int = 0,
     onSave: () -> Unit = {},
     onDiscard: () -> Unit = {},
     onLapClick: () -> Unit = {},
-    onError: () -> Unit = {},
-    onFix: () -> Unit = {},
+    timerPrecision: TimerPrecision,
     modifier: Modifier = Modifier
 ) {
-    var countdownMs by remember { mutableLongStateOf(1500L) }
-    LaunchedEffect(preStartTime, phase, startSignal) {
-        if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
-            while (true) {
-                val passed = SystemClock.elapsedRealtime() - preStartTime
-                countdownMs = (1500 + if (isMuted) 0 else BUZZER_DURATION_MS - passed).coerceAtLeast(0)
-                if (countdownMs <= 0) break
-                delay(16)
-            }
-        }
-    }
-
-    val isBlinking = phase == FlightPhase.PRE && isPreBlinking
-    val alpha by animateFloatAsState(
-        targetValue = if (isBlinking) 0f else 1f,
-        animationSpec = tween(200),
-        label = "timer_blink"
-    )
-
-    val timeText = if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
-        formatCountdown(countdownMs, timerPrecision)
-    } else {
-        formatTime(if (phase == FlightPhase.PRE) 0L else elapsedMs, timerPrecision)
-    }
-
     val mainClickModifier = if (phase == FlightPhase.MAIN) {
         Modifier.pointerInput(Unit) {
             detectTapGestures(onTap = { onLapClick() })
@@ -105,124 +80,105 @@ fun FlightContent(
         modifier = modifier.then(mainClickModifier).fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = timeText,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 60.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier
-                .padding(top = 16.dp)
-                .alpha(if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) 1f else alpha)
-        )
-
         if (phase == FlightPhase.MAIN || phase == FlightPhase.POST) {
             val scrollState = rememberScrollState()
-            LaunchedEffect(laps.size) {
+            LaunchedEffect(laps.size, phase) {
                 delay(50)
                 scrollState.animateScrollTo(scrollState.maxValue)
             }
+            var boxHeight by remember { mutableIntStateOf(0) }
+            var contentHeight by remember { mutableIntStateOf(0) }
+            var buttonsHeight by remember { mutableIntStateOf(0) }
+            val density = LocalDensity.current
+            val gapPx = with(density) { 16.dp.roundToPx() }
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .onSizeChanged { boxHeight = it.height }
                     .verticalScroll(scrollState)
                     .padding(all = 16.dp),
                 contentAlignment = Alignment.TopStart
             ) {
-                LapList(laps = laps, currentLapTime = currentLapTime, timerPrecision = timerPrecision)
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Box(modifier = Modifier.onSizeChanged { contentHeight = it.height }) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            LapList(laps = laps, currentLapTime = currentLapTime, timerPrecision = timerPrecision)
+                            if (phase == FlightPhase.POST) {
+                                Text(
+                                    text = buildAnnotatedString {
+                                        append("Вылет завершен. Общее время ")
+                                        withStyle(style = SpanStyle(fontFamily = FontFamily.Monospace)) {
+                                            append(formatTime(elapsedMs, timerPrecision, timeLimitSeconds))
+                                        }
+                                    },
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(top = 16.dp)
+                                )
+                            }
+                        }
+                    }
+                    if (phase == FlightPhase.POST) {
+                        val spacerHeight = with(density) {
+                            val paddingPx = 16.dp.roundToPx()
+                            val remaining = boxHeight - contentHeight - buttonsHeight - gapPx - paddingPx
+                            if (remaining > 0 && contentHeight > 0 && buttonsHeight > 0) remaining.toDp() else 16.dp
+                        }
+                        Spacer(modifier = Modifier.height(spacerHeight))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onSizeChanged { buttonsHeight = it.height },
+                            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                        ) {
+                            Button(
+                                onClick = onDiscard,
+                                shape = RoundedCornerShape(50),
+                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Удалить",
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Button(
+                                onClick = onSave,
+                                shape = RoundedCornerShape(50),
+                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Save,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Сохранить",
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
             }
         } else {
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        when {
-            phase == FlightPhase.PRE && startSignal == StartSignal.MANUAL -> {
-                Text(
-                    text = "Нажмите GO чтобы начать вылет",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
-            }
-            phase == FlightPhase.MAIN -> {
-                Row(
-                    modifier = Modifier.padding(bottom = 32.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Button(
-                        onClick = onError,
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_cross),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "ОШИБКА",
-                            fontSize = 14.sp
-                        )
-                    }
-                    Button(
-                        onClick = onFix,
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_square),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "ИСПРАВИЛ",
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            }
-            phase == FlightPhase.POST -> {
-                Row(
-                    modifier = Modifier.padding(bottom = 32.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Button(
-                        onClick = onDiscard,
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "УДАЛИТЬ",
-                            fontSize = 14.sp
-                        )
-                    }
-                    Button(
-                        onClick = onSave,
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "СОХРАНИТЬ",
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            }
+        if (phase == FlightPhase.PRE && startSignal == StartSignal.MANUAL) {
+            Text(
+                text = "Нажмите GO чтобы начать вылет",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
         }
     }
 }
@@ -328,34 +284,3 @@ private fun formatTimeDynamic(elapsedMs: Long, timerPrecision: TimerPrecision): 
     }
 }
 
-private fun formatTime(elapsedMs: Long, timerPrecision: TimerPrecision): String {
-    val totalSeconds = elapsedMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    val ms = elapsedMs % 1000
-
-    return when (timerPrecision.fractionDigits) {
-        0 -> String.format("%02d:%02d", minutes, seconds)
-        1 -> String.format("%02d:%02d.%01d", minutes, seconds, ms / 100)
-        2 -> String.format("%02d:%02d.%02d", minutes, seconds, ms / 10)
-        else -> String.format("%02d:%02d.%03d", minutes, seconds, ms)
-    }
-}
-
-private fun formatCountdown(remainingMs: Long, timerPrecision: TimerPrecision): String {
-    val countdown = when (timerPrecision.fractionDigits) {
-        0 -> "-${remainingMs / 1000}"
-        1 -> String.format("-%.1f", remainingMs / 1000.0)
-        2 -> String.format("-%.2f", remainingMs / 1000.0)
-        else -> String.format("-%.3f", remainingMs / 1000.0)
-    }
-
-    val targetWidth = when (timerPrecision.fractionDigits) {
-        0 -> 5
-        1 -> 7
-        2 -> 8
-        else -> 9
-    }
-
-    return countdown.padStart(targetWidth, ' ')
-}

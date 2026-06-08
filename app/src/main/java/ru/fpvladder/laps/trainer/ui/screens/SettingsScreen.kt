@@ -56,6 +56,7 @@ fun SettingsScreen(
     colorCount: ColorCount,
     isMuted: Boolean,
     isUsbKeyboardEnabled: Boolean,
+    useErrorFixButtons: Boolean,
     appTheme: AppTheme,
     timerPrecision: TimerPrecision,
     startSignal: StartSignal,
@@ -63,6 +64,7 @@ fun SettingsScreen(
     onColorCountChange: (ColorCount) -> Unit,
     onMutedChange: (Boolean) -> Unit,
     onUsbKeyboardChange: (Boolean) -> Unit,
+    onUseErrorFixButtonsChange: (Boolean) -> Unit,
     onAppThemeChange: (AppTheme) -> Unit,
     onTimerPrecisionChange: (TimerPrecision) -> Unit,
     onStartSignalChange: (StartSignal) -> Unit,
@@ -119,6 +121,18 @@ fun SettingsScreen(
                     Switch(
                         checked = isMuted,
                         onCheckedChange = onMutedChange
+                    )
+                }
+            )
+
+            SectionDivider()
+
+            ListItem(
+                headlineContent = { Text("Кнопки Ошибка/Исправил") },
+                trailingContent = {
+                    Switch(
+                        checked = useErrorFixButtons,
+                        onCheckedChange = onUseErrorFixButtonsChange
                     )
                 }
             )

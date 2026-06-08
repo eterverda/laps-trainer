@@ -95,6 +95,21 @@ class FlightViewModel : ViewModel() {
             if (!isMuted) SoundManager.playBuzzer()
             if (!isMuted) delay(BUZZER_DURATION_MS)
             timerJob?.cancel()
+
+            val current = _laps.value.toMutableList()
+            if (current.isNotEmpty()) {
+                val lastIndex = current.size - 1
+                val last = current[lastIndex]
+                if (!last.icons.contains(LapIcon.LAP)) {
+                    current[lastIndex] = last.copy(
+                        timeMs = _elapsedMs.value - lastLapElapsedMs,
+                        status = LapStatus.FAIL,
+                        lapLabel = ""
+                    )
+                }
+            }
+            _laps.value = current
+
             _phase.value = FlightPhase.POST
             _isStopping.value = false
         }

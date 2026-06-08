@@ -27,6 +27,7 @@ class SettingsDataStore(private val context: Context) {
         private val APP_THEME_KEY = stringPreferencesKey("app_theme")
         private val TIMER_PRECISION_KEY = stringPreferencesKey("timer_precision")
         private val START_SIGNAL_KEY = stringPreferencesKey("start_signal")
+        private val USE_ERROR_FIX_BUTTONS_KEY = booleanPreferencesKey("use_error_fix_buttons")
     }
 
     val channelGrid: Flow<ChannelGrid> = context.dataStore.data.map { prefs ->
@@ -106,6 +107,16 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setStartSignal(signal: StartSignal) {
         context.dataStore.edit { prefs ->
             prefs[START_SIGNAL_KEY] = signal.name
+        }
+    }
+
+    val useErrorFixButtons: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[USE_ERROR_FIX_BUTTONS_KEY] ?: false
+    }
+
+    suspend fun setUseErrorFixButtons(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[USE_ERROR_FIX_BUTTONS_KEY] = enabled
         }
     }
 }
