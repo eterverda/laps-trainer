@@ -28,10 +28,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +49,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
@@ -62,12 +65,17 @@ import ru.fpvladder.laps.trainer.ui.screens.StatsContent
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.Channel
-
 import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.description
+import ru.fpvladder.laps.trainer.audio.SoundManager
+import ru.fpvladder.laps.trainer.audio.STAGE_DURATION_MS
+import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
 
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
+import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
+import ru.fpvladder.laps.trainer.viewmodel.FlightViewModel
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
 import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
 import ru.fpvladder.laps.trainer.viewmodel.SettingsViewModel
@@ -79,20 +87,21 @@ class MainActivity : ComponentActivity() {
     private val pilotViewModel: PilotViewModel by viewModels()
     private val trainingViewModel: TrainingViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
+    private val flightViewModel: FlightViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        SoundManager.init(this)
         setContent {
             val appTheme by settingsViewModel.appTheme.collectAsState()
-    val timerPrecision by settingsViewModel.timerPrecision.collectAsState()
-    val startSignal by settingsViewModel.startSignal.collectAsState()
             LapsTrainerTheme(appTheme = appTheme) {
                 AppRoot(
                     keyboardViewModel = keyboardViewModel,
                     pilotViewModel = pilotViewModel,
                     trainingViewModel = trainingViewModel,
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    flightViewModel = flightViewModel
                 )
             }
         }
@@ -105,6 +114,7 @@ fun AppRoot(
     pilotViewModel: PilotViewModel,
     trainingViewModel: TrainingViewModel,
     settingsViewModel: SettingsViewModel,
+    flightViewModel: FlightViewModel,
     modifier: Modifier = Modifier
 ) {
     val currentScreen by pilotViewModel.currentScreen.collectAsState()
@@ -117,6 +127,21 @@ fun AppRoot(
     val appTheme by settingsViewModel.appTheme.collectAsState()
     val timerPrecision by settingsViewModel.timerPrecision.collectAsState()
     val startSignal by settingsViewModel.startSignal.collectAsState()
+    val flightPhase by flightViewModel.phase.collectAsState()
+    val isStopping by flightViewModel.isStopping.collectAsState()
+    val elapsedMs by flightViewModel.elapsedMs.collectAsState()
+    val preStartTime by flightViewModel.preStartTime.collectAsState()
+    val isPreBlinking by flightViewModel.isPreBlinking.collectAsState()
+    val scope = rememberCoroutineScope()
+    var soundJob by remember { mutableStateOf<Job?>(null) }
+
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == AppScreen.Flight) {
+            flightViewModel.prepareRace(startSignal, isMuted)
+        } else {
+            flightViewModel.reset()
+        }
+    }
 
     var showChannelDialog by remember { mutableStateOf(false) }
     var showPilotEditor by remember { mutableStateOf(false) }
@@ -229,8 +254,21 @@ fun AppRoot(
                             ) { screen ->
                                 when (screen) {
                                     AppScreen.Flight -> FlightContent(
-                                        onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },
+                                        phase = flightPhase,
+                                        startSignal = startSignal,
+                                        elapsedMs = elapsedMs,
+                                        preStartTime = preStartTime,
+                                        isPreBlinking = isPreBlinking,
+                                        isMuted = isMuted,
                                         timerPrecision = timerPrecision,
+                                        onSave = {
+                                            pilotViewModel.navigateTo(AppScreen.Training)
+                                            flightViewModel.reset()
+                                        },
+                                        onDiscard = {
+                                            pilotViewModel.navigateTo(AppScreen.Training)
+                                            flightViewModel.reset()
+                                        },
                                         modifier = Modifier.fillMaxSize()
                                     )
 
@@ -273,10 +311,12 @@ fun AppRoot(
                             )
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 12.dp),
+                                .padding(bottom = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
@@ -288,15 +328,60 @@ fun AppRoot(
                                     contentDescription = if (isMuted) "Unmute" else "Mute"
                                 )
                             }
+                            val isOnFlight = currentScreen == AppScreen.Flight
+                            val isManualPreStart = isOnFlight && flightPhase == FlightPhase.PRE && startSignal == StartSignal.MANUAL
+                            val isPreFixedOrRandom = isOnFlight && flightPhase == FlightPhase.PRE && startSignal != StartSignal.MANUAL
+
+                            val buttonText = when {
+                                !isOnFlight -> "Старт"
+                                isManualPreStart -> "GO GO GO"
+                                isPreFixedOrRandom -> "ОТМЕНА"
+                                flightPhase == FlightPhase.POST -> "Старт"
+                                else -> "Стоп"
+                            }
+                            val holdDurationMs = when {
+                                !isOnFlight -> if (isMuted) 2000 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
+                                isManualPreStart || isPreFixedOrRandom -> 0
+                                flightPhase == FlightPhase.POST -> if (isMuted) 2000 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
+                                flightPhase == FlightPhase.MAIN -> 1200
+                                else -> 2000
+                            }
+
                             HoldButton(
                                 onConfirm = {
-                                    if (currentScreen == AppScreen.Flight) {
-                                        pilotViewModel.navigateTo(AppScreen.Training)
-                                    } else {
-                                        pilotViewModel.navigateTo(AppScreen.Flight)
+                                    when {
+                                        !isOnFlight -> pilotViewModel.navigateTo(AppScreen.Flight)
+                                        isManualPreStart -> flightViewModel.manualStart(isMuted)
+                                        isPreFixedOrRandom -> {
+                                            pilotViewModel.navigateTo(AppScreen.Training)
+                                            flightViewModel.reset()
+                                        }
+                                        flightPhase == FlightPhase.MAIN -> {
+                                            flightViewModel.stopRace(isMuted)
+                                        }
+                                        flightPhase == FlightPhase.POST -> {
+                                            flightViewModel.reset()
+                                            flightViewModel.prepareRace(startSignal, isMuted)
+                                        }
+                                        else -> {
+                                            pilotViewModel.navigateTo(AppScreen.Training)
+                                            flightViewModel.reset()
+                                        }
                                     }
                                 },
-                                text = if (currentScreen == AppScreen.Flight) "Стоп" else "Старт",
+                                text = buttonText,
+                                holdDurationMs = holdDurationMs,
+                                onPressStart = {
+                                    if (!isMuted && (!isOnFlight || flightPhase == FlightPhase.POST)) {
+                                        soundJob = SoundManager.playStageSequence(scope)
+                                    }
+                                },
+                                onPressEnd = {
+                                    if (!isStopping) {
+                                        soundJob?.cancel()
+                                        SoundManager.stop()
+                                    }
+                                },
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(horizontal = 8.dp)
@@ -304,7 +389,7 @@ fun AppRoot(
                             )
                             IconButton(
                                 onClick = { pilotViewModel.navigateTo(AppScreen.Settings) },
-                                enabled = currentScreen != AppScreen.Flight,
+                                enabled = currentScreen != AppScreen.Flight || flightPhase == FlightPhase.POST,
                                 modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(

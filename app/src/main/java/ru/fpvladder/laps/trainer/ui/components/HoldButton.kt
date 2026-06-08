@@ -4,9 +4,13 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -17,13 +21,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,62 +50,34 @@ fun HoldButton(
     modifier: Modifier = Modifier,
     holdDurationMs: Int = 1200,
     text: String = "Старт",
-    iconRes: Int = R.drawable.ic_triangle
+    iconRes: Int = R.drawable.ic_triangle,
+    enabled: Boolean = true,
+    onPressStart: () -> Unit = {},
+    onPressEnd: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
 
-    var isFilling by remember { mutableStateOf(false) }
     var isSuccess by remember { mutableStateOf(false) }
+    var activeGesture by remember { mutableStateOf<Boolean?>(null) }
+
+    val currentOnConfirm by rememberUpdatedState(onConfirm)
+    val currentOnPressStart by rememberUpdatedState(onPressStart)
+    val currentOnPressEnd by rememberUpdatedState(onPressEnd)
+    val currentHoldDurationMs by rememberUpdatedState(holdDurationMs)
 
     val fillColor = Color(0xFFcc5555)
 
-    Box(
-        modifier = modifier
-            .height(54.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primary)
-            .pointerInput(holdDurationMs) {
-                detectTapGestures(
-                    onPress = {
-                        isSuccess = false
-                        isFilling = true
-                        val job = scope.launch {
-                            progress.animateTo(
-                                targetValue = 1f,
-                                animationSpec = tween(
-                                    durationMillis = holdDurationMs,
-                                    easing = LinearEasing
-                                )
-                            )
-                            isFilling = false
-                            isSuccess = true
-                            onConfirm()
-                            progress.animateTo(
-                                targetValue = 0f,
-                                animationSpec = tween(durationMillis = 300)
-                            )
-                            isSuccess = false
-                        }
-                        try {
-                            awaitRelease()
-                        } finally {
-                            if (job.isActive) {
-                                job.cancel()
-                                isFilling = false
-                                isSuccess = false
-                                scope.launch {
-                                    progress.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = tween(durationMillis = 300)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                )
-            }
-    ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val backgroundColor = if (isPressed) fillColor else MaterialTheme.colorScheme.primary
+
+    val baseModifier = modifier
+        .height(54.dp)
+        .clip(RoundedCornerShape(12.dp))
+        .background(backgroundColor)
+
+    val content: @Composable BoxScope.() -> Unit = {
         Box(
             modifier = Modifier
                 .align(if (isSuccess) Alignment.CenterEnd else Alignment.CenterStart)
@@ -126,5 +105,109 @@ fun HoldButton(
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
+    }
+
+    val isClickMode = activeGesture == null && currentHoldDurationMs <= 0
+
+    val gestureModifier = when {
+        activeGesture == true -> Modifier.pointerInput(Unit) {
+            detectTapGestures(
+                onPress = {
+                    activeGesture = true
+                    isSuccess = false
+                    currentOnPressStart()
+                    val confirmAtStart = currentOnConfirm
+                    val job = scope.launch {
+                        progress.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(
+                                durationMillis = currentHoldDurationMs,
+                                easing = LinearEasing
+                            )
+                        )
+                        isSuccess = true
+                        confirmAtStart()
+                        progress.animateTo(
+                            targetValue = 0f,
+                            animationSpec = tween(durationMillis = 300)
+                        )
+                        isSuccess = false
+                    }
+                    try {
+                        awaitRelease()
+                    } finally {
+                        activeGesture = null
+                        currentOnPressEnd()
+                        if (job.isActive) {
+                            job.cancel()
+                            isSuccess = false
+                            scope.launch {
+                                progress.animateTo(
+                                    targetValue = 0f,
+                                    animationSpec = tween(durationMillis = 300)
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+        }
+        !enabled -> Modifier
+        isClickMode -> Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = {
+                currentOnConfirm()
+            }
+        )
+        else -> Modifier.pointerInput(Unit) {
+            detectTapGestures(
+                onPress = {
+                    activeGesture = true
+                    isSuccess = false
+                    currentOnPressStart()
+                    val confirmAtStart = currentOnConfirm
+                    val job = scope.launch {
+                        progress.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(
+                                durationMillis = currentHoldDurationMs,
+                                easing = LinearEasing
+                            )
+                        )
+                        isSuccess = true
+                        confirmAtStart()
+                        progress.animateTo(
+                            targetValue = 0f,
+                            animationSpec = tween(durationMillis = 300)
+                        )
+                        isSuccess = false
+                    }
+                    try {
+                        awaitRelease()
+                    } finally {
+                        activeGesture = null
+                        currentOnPressEnd()
+                        if (job.isActive) {
+                            job.cancel()
+                            isSuccess = false
+                            scope.launch {
+                                progress.animateTo(
+                                    targetValue = 0f,
+                                    animationSpec = tween(durationMillis = 300)
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    Box(
+        modifier = baseModifier.then(gestureModifier),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
     }
 }
