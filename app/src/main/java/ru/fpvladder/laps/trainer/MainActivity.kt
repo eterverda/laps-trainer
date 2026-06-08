@@ -135,8 +135,12 @@ fun AppRoot(
     val scope = rememberCoroutineScope()
     var soundJob by remember { mutableStateOf<Job?>(null) }
 
+    val laps by flightViewModel.laps.collectAsState()
+    val currentLapTime by flightViewModel.currentLapTime.collectAsState()
+
     LaunchedEffect(currentScreen) {
         if (currentScreen == AppScreen.Flight) {
+            flightViewModel.setHoleshotEnabled(selectedTraining.rules.holeshotEnabled)
             flightViewModel.prepareRace(startSignal, isMuted)
         } else {
             flightViewModel.reset()
@@ -155,9 +159,22 @@ fun AppRoot(
         is Training.Team -> (selectedTraining as Training.Team).pilot
     }
 
-    if (currentScreen == AppScreen.Settings) {
-        BackHandler {
-            pilotViewModel.navigateTo(AppScreen.Training)
+    BackHandler(
+        enabled = currentScreen == AppScreen.Settings || currentScreen == AppScreen.Flight
+    ) {
+        when {
+            currentScreen == AppScreen.Settings -> {
+                pilotViewModel.navigateTo(AppScreen.Training)
+            }
+            currentScreen == AppScreen.Flight && flightPhase == FlightPhase.PRE -> {
+                pilotViewModel.navigateTo(AppScreen.Training)
+                flightViewModel.reset()
+            }
+            currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST -> {
+                pilotViewModel.navigateTo(AppScreen.Training)
+                flightViewModel.reset()
+            }
+            // MAIN — back игнорируется (enabled=true, но ничего не делаем)
         }
     }
 
@@ -261,6 +278,8 @@ fun AppRoot(
                                         isPreBlinking = isPreBlinking,
                                         isMuted = isMuted,
                                         timerPrecision = timerPrecision,
+                                        laps = laps,
+                                        currentLapTime = currentLapTime,
                                         onSave = {
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
@@ -268,6 +287,15 @@ fun AppRoot(
                                         onDiscard = {
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
+                                        },
+                                        onLapClick = {
+                                            flightViewModel.addLap()
+                                        },
+                                        onError = {
+                                            flightViewModel.addErrorToLastLap()
+                                        },
+                                        onFix = {
+                                            flightViewModel.addFixToLastLap()
                                         },
                                         modifier = Modifier.fillMaxSize()
                                     )
@@ -346,6 +374,7 @@ fun AppRoot(
                                 flightPhase == FlightPhase.MAIN -> 1200
                                 else -> 2000
                             }
+
 
                             HoldButton(
                                 onConfirm = {
