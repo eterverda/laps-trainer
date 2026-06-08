@@ -14,7 +14,9 @@ import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.model.LapEntry
 import ru.fpvladder.laps.trainer.model.LapIcon
 import ru.fpvladder.laps.trainer.model.LapStatus
+import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
+import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import kotlin.random.Random
 
@@ -44,19 +46,21 @@ class FlightViewModel : ViewModel() {
     private val _timerPrecision = MutableStateFlow(TimerPrecision.MILLISECONDS)
     val timerPrecision: StateFlow<TimerPrecision> = _timerPrecision.asStateFlow()
 
+    private val _stopReason = MutableStateFlow<StopReason?>(null)
+    val stopReason: StateFlow<StopReason?> = _stopReason.asStateFlow()
+
+    private val _preStartCountdownMs = MutableStateFlow(0L)
+    val preStartCountdownMs: StateFlow<Long> = _preStartCountdownMs.asStateFlow()
+
     private var timerJob: Job? = null
     private var preJob: Job? = null
     private var nextLapNumber = 0
-    private var holeshotEnabled = false
-    private var timeLimitSeconds = 0
+    private var rules: Rules = Rules.Individual()
+    private var raceIsMuted: Boolean = false
     private var lastLapElapsedMs = 0L
 
-    fun setHoleshotEnabled(enabled: Boolean) {
-        holeshotEnabled = enabled
-    }
-
-    fun setTimeLimit(seconds: Int) {
-        timeLimitSeconds = seconds
+    fun setRules(newRules: Rules) {
+        rules = newRules
     }
 
     fun setTimerPrecision(precision: TimerPrecision) {
@@ -69,6 +73,17 @@ class FlightViewModel : ViewModel() {
         preJob = viewModelScope.launch {
             when (startSignal) {
                 StartSignal.FIXED -> {
+                    val totalDelay = 1500L + if (isMuted) 0 else BUZZER_DURATION_MS
+                    launch {
+                        val start = SystemClock.elapsedRealtime()
+                        while (true) {
+                            val passed = SystemClock.elapsedRealtime() - start
+                            val remaining = (totalDelay - passed).coerceAtLeast(0)
+                            _preStartCountdownMs.value = remaining
+                            if (remaining <= 0) break
+                            delay(16)
+                        }
+                    }
                     delay(1500)
                     if (!isMuted) SoundManager.playBuzzer()
                     if (!isMuted) delay(BUZZER_DURATION_MS)
@@ -103,15 +118,21 @@ class FlightViewModel : ViewModel() {
     }
 
     fun stopRace(isMuted: Boolean) {
-        performStop(skipBuzzer = false, isMuted = isMuted)
+        performStop(skipBuzzer = false, isMuted = isMuted, reason = StopReason.MANUAL)
     }
 
-    private fun performStop(skipBuzzer: Boolean, isMuted: Boolean) {
+    private fun performStop(
+        skipBuzzer: Boolean,
+        isMuted: Boolean,
+        delayForBuzzer: Boolean = true,
+        reason: StopReason
+    ) {
+        _stopReason.value = reason
         _isStopping.value = true
         viewModelScope.launch {
             if (!skipBuzzer && !isMuted) {
                 SoundManager.playBuzzer()
-                delay(BUZZER_DURATION_MS)
+                if (delayForBuzzer) delay(BUZZER_DURATION_MS)
             }
             timerJob?.cancel()
 
@@ -133,12 +154,13 @@ class FlightViewModel : ViewModel() {
     fun addLap() {
         val lapTime = _elapsedMs.value - lastLapElapsedMs
         val current = _laps.value.toMutableList()
+        var status = LapStatus.RUNNING
         if (current.isNotEmpty()) {
             val lastIndex = current.size - 1
             val last = current[lastIndex]
             val newIcons = last.icons.toMutableList()
             newIcons.add(LapIcon.LAP)
-            val status = if (newIcons.size >= 2 && newIcons[newIcons.size - 2] == LapIcon.ERROR) {
+            status = if (newIcons.size >= 2 && newIcons[newIcons.size - 2] == LapIcon.ERROR) {
                 LapStatus.FAIL
             } else {
                 LapStatus.SUCCESS
@@ -151,6 +173,18 @@ class FlightViewModel : ViewModel() {
         }
         lastLapElapsedMs = _elapsedMs.value
         _currentLapTime.value = 0L
+
+        if (status == LapStatus.SUCCESS && nextLapNumber - 1 >= rules.maxLaps) {
+            _laps.value = current
+            performStop(
+                skipBuzzer = false,
+                isMuted = raceIsMuted,
+                delayForBuzzer = false,
+                reason = StopReason.MAX_LAPS
+            )
+            return
+        }
+
         val newLabel = if (nextLapNumber == 0) "HS" else "$nextLapNumber)"
         val entry = LapEntry(
             lapLabel = newLabel,
@@ -193,24 +227,27 @@ class FlightViewModel : ViewModel() {
         _preStartTime.value = 0L
         _phase.value = FlightPhase.PRE
         _laps.value = emptyList()
+        _stopReason.value = null
+        _preStartCountdownMs.value = 0L
         nextLapNumber = 0
         lastLapElapsedMs = 0L
     }
 
     private fun startTimer(isMuted: Boolean) {
         if (_phase.value == FlightPhase.MAIN) return
+        raceIsMuted = isMuted
         _phase.value = FlightPhase.MAIN
-        nextLapNumber = if (holeshotEnabled) 0 else 1
+        nextLapNumber = if (rules.holeshotEnabled) 0 else 1
         _laps.value = listOf(
             LapEntry(
-                lapLabel = if (holeshotEnabled) "HS" else "1)",
+                lapLabel = if (rules.holeshotEnabled) "HS" else "1)",
                 timeMs = 0L,
                 icons = emptyList(),
                 status = LapStatus.RUNNING
             )
         )
         val startTime = SystemClock.elapsedRealtime()
-        val limitMs = timeLimitSeconds * 1000L
+        val limitMs = rules.timeLimitSeconds * 1000L
         val buzzerStartMs = limitMs - BUZZER_DURATION_MS
         timerJob = viewModelScope.launch {
             var buzzerPlayed = false
@@ -219,12 +256,12 @@ class FlightViewModel : ViewModel() {
                 _elapsedMs.value = elapsed
                 _currentLapTime.value = elapsed - lastLapElapsedMs
 
-                if (timeLimitSeconds != Int.MAX_VALUE && !buzzerPlayed && elapsed >= buzzerStartMs) {
+                if (rules.timeLimitSeconds != Int.MAX_VALUE && !buzzerPlayed && elapsed >= buzzerStartMs) {
                     buzzerPlayed = true
                     if (!isMuted) SoundManager.playBuzzer()
                 }
-                if (timeLimitSeconds != Int.MAX_VALUE && elapsed >= limitMs) {
-                    performStop(skipBuzzer = true, isMuted = isMuted)
+                if (rules.timeLimitSeconds != Int.MAX_VALUE && elapsed >= limitMs) {
+                    performStop(skipBuzzer = true, isMuted = isMuted, reason = StopReason.TIME_LIMIT)
                     break
                 }
                 delay(16)

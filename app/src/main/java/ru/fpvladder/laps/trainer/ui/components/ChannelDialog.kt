@@ -210,21 +210,6 @@ fun ChannelEditorContent(
 }
 
 @Composable
-fun SectionTitle(
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-    )
-}
-
-@Composable
 private fun LetterGrid(selected: String, onSelect: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(

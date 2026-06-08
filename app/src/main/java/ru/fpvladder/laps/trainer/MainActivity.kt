@@ -1,7 +1,6 @@
 package ru.fpvladder.laps.trainer
 
 import android.os.Bundle
-import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -35,7 +34,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,7 +54,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -65,7 +62,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
@@ -79,14 +75,12 @@ import ru.fpvladder.laps.trainer.ui.screens.FlightContent
 import ru.fpvladder.laps.trainer.ui.screens.SettingsScreen
 import ru.fpvladder.laps.trainer.ui.screens.StatsContent
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
-import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.description
-import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.audio.STAGE_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
@@ -133,25 +127,11 @@ fun FlightTimer(
     phase: FlightPhase,
     startSignal: StartSignal,
     elapsedMs: Long,
-    preStartTime: Long,
+    preStartCountdownMs: Long,
     isPreBlinking: Boolean,
-    isMuted: Boolean,
     timerPrecision: TimerPrecision,
     timeLimitSeconds: Int
 ) {
-    var countdownMs by remember { mutableLongStateOf(1500L) }
-    LaunchedEffect(preStartTime, phase, startSignal) {
-        if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
-            while (true) {
-                val passed = SystemClock.elapsedRealtime() - preStartTime
-                countdownMs =
-                    (1500 + if (isMuted) 0 else BUZZER_DURATION_MS - passed).coerceAtLeast(0)
-                if (countdownMs <= 0) break
-                delay(16)
-            }
-        }
-    }
-
     val isBlinking = phase == FlightPhase.PRE && isPreBlinking
     val alpha by animateFloatAsState(
         targetValue = if (isBlinking) 0f else 1f,
@@ -160,7 +140,7 @@ fun FlightTimer(
     )
 
     val timeText = if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
-        formatCountdown(countdownMs, timerPrecision)
+        formatCountdown(preStartCountdownMs, timerPrecision) + " "
     } else {
         formatTime(
             if (phase == FlightPhase.PRE) 0L else elapsedMs,
@@ -200,7 +180,7 @@ fun FlightTimer(
         modifier = Modifier
             .padding(top = 4.dp, bottom = 4.dp)
             .alpha(if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) 1f else alpha),
-        textAlign = TextAlign.End
+        textAlign = TextAlign.Center
     )
 }
 
@@ -235,11 +215,12 @@ fun AppRoot(
 
     val laps by flightViewModel.laps.collectAsState()
     val currentLapTime by flightViewModel.currentLapTime.collectAsState()
+    val stopReason by flightViewModel.stopReason.collectAsState()
+    val preStartCountdownMs by flightViewModel.preStartCountdownMs.collectAsState()
 
     LaunchedEffect(currentScreen) {
         if (currentScreen == AppScreen.Flight) {
-            flightViewModel.setHoleshotEnabled(selectedTraining.rules.holeshotEnabled)
-            flightViewModel.setTimeLimit(selectedTraining.rules.timeLimitSeconds)
+            flightViewModel.setRules(selectedTraining.rules)
             flightViewModel.setTimerPrecision(timerPrecision)
             flightViewModel.prepareRace(startSignal, isMuted)
         } else {
@@ -339,14 +320,13 @@ fun AppRoot(
                         contentAlignment = Alignment.Center
                     ) {
                         FlightTimer(
-                        phase = flightPhase,
-                        startSignal = startSignal,
-                        elapsedMs = elapsedMs,
-                        preStartTime = preStartTime,
-                        isPreBlinking = isPreBlinking,
-                        isMuted = isMuted,
-                        timerPrecision = flightTimerPrecision,
-                        timeLimitSeconds = selectedTraining.rules.timeLimitSeconds
+                            phase = flightPhase,
+                            startSignal = startSignal,
+                            elapsedMs = elapsedMs,
+                            preStartCountdownMs = preStartCountdownMs,
+                            isPreBlinking = isPreBlinking,
+                            timerPrecision = flightTimerPrecision,
+                            timeLimitSeconds = selectedTraining.rules.timeLimitSeconds
                         )
                     }
                 }
@@ -406,6 +386,8 @@ fun AppRoot(
                                         currentLapTime = currentLapTime,
                                         elapsedMs = elapsedMs,
                                         timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
+                                        maxLaps = selectedTraining.rules.maxLaps,
+                                        stopReason = stopReason,
                                         onSave = {
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
@@ -569,7 +551,7 @@ fun AppRoot(
 
                                         flightPhase == FlightPhase.POST -> {
                                             flightViewModel.reset()
-                                            flightViewModel.setTimeLimit(selectedTraining.rules.timeLimitSeconds)
+                                            flightViewModel.setRules(selectedTraining.rules)
                                             flightViewModel.prepareRace(startSignal, isMuted)
                                         }
 

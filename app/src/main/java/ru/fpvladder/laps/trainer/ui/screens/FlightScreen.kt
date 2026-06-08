@@ -49,7 +49,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -58,7 +60,11 @@ import ru.fpvladder.laps.trainer.model.LapEntry
 import ru.fpvladder.laps.trainer.model.LapIcon
 import ru.fpvladder.laps.trainer.model.LapStatus
 import ru.fpvladder.laps.trainer.model.StartSignal
+import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.model.formatMinutesString
+import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
+import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 
 @Composable
@@ -69,12 +75,15 @@ fun FlightContent(
     currentLapTime: Long = 0L,
     elapsedMs: Long = 0L,
     timeLimitSeconds: Int = 0,
+    maxLaps: Int = Int.MAX_VALUE,
+    stopReason: StopReason? = null,
     onSave: () -> Unit = {},
     onDiscard: () -> Unit = {},
     onLapClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val mainClickModifier = if (phase == FlightPhase.MAIN) {
         Modifier.pointerInput(Unit) {
             detectTapGestures(onTap = { onLapClick() })
@@ -108,6 +117,9 @@ fun FlightContent(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.onSizeChanged { contentHeight = it.height }) {
                         Column(modifier = Modifier.fillMaxWidth()) {
+                            if (phase == FlightPhase.POST && laps.isNotEmpty()) {
+                                ScreenTitle(stringResource(R.string.flight_laps_header), Modifier.padding(bottom = 16.dp))
+                            }
                             LapList(laps = laps, currentLapTime = currentLapTime, timerPrecision = timerPrecision)
                             if (phase == FlightPhase.MAIN && laps.all { !it.icons.contains(LapIcon.LAP) }) {
                                 Box(
@@ -118,16 +130,25 @@ fun FlightContent(
                                 }
                             }
                             if (phase == FlightPhase.POST) {
-                                Text(
-                                    text = "Вылет завершен",
-                                    fontSize = 21.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 16.dp)
+                                val completedText = when (stopReason) {
+                                    StopReason.TIME_LIMIT -> {
+                                        val minsStr = formatMinutesString(context, timeLimitSeconds / 60.0)
+                                        stringResource(R.string.flight_completed_time, minsStr)
+                                    }
+                                    StopReason.MAX_LAPS -> {
+                                        val lapsStr = context.resources.getQuantityString(R.plurals.laps, maxLaps, maxLaps)
+                                        stringResource(R.string.flight_completed_laps, lapsStr)
+                                    }
+                                    else -> stringResource(R.string.flight_completed_manual)
+                                }
+                                ScreenTitle(
+                                    text = completedText,
+                                    modifier = Modifier.padding(top = 16.dp)
                                 )
-                                Summary(laps = laps, timerPrecision = timerPrecision)
+                                val hasValidLaps = laps.any { it.status == LapStatus.SUCCESS && it.lapLabel != "HS" }
+                                if (hasValidLaps) {
+                                    Summary(laps = laps, timerPrecision = timerPrecision)
+                                }
                             }
                         }
                     }

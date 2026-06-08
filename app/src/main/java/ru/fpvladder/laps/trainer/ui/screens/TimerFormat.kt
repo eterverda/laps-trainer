@@ -14,7 +14,7 @@ fun formatTime(elapsedMs: Long, timerPrecision: TimerPrecision, timeLimitSeconds
     val seconds = totalSeconds % 60
     val ms = rounded % 1000
 
-    val minutesFormat = if (timeLimitSeconds < 600) " %d" else "%02d"
+    val minutesFormat = if (timeLimitSeconds < 600) "%d" else "%02d"
 
     return when (timerPrecision.fractionDigits) {
         0 -> String.format("$minutesFormat:%02d", minutes, seconds)

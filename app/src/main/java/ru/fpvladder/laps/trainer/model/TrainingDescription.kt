@@ -40,7 +40,7 @@ private fun formatHalfMinutes(context: Context, seconds: Int): String {
     return formatMinutesString(context, seconds / 120.0)
 }
 
-private fun formatMinutesString(context: Context, minutes: Double): String {
+fun formatMinutesString(context: Context, minutes: Double): String {
     val minsStr = if (minutes == minutes.toInt().toDouble()) {
         "${minutes.toInt()}"
     } else {

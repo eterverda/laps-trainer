@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
 
 @Composable
 fun StatsContent(
@@ -78,12 +79,7 @@ fun StatsContent(
                     verticalAlignment = Alignment.Top
                 ) {
             Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                Text(
-                    text = "Правила",
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                ScreenTitle("Правила")
                 Text(
                     text = description,
                     fontSize = 16.sp,
@@ -139,13 +135,7 @@ fun StatsContent(
             SummaryText()
             Spacer(modifier = Modifier.height(12.dp))
         } else {
-            Text(
-                text = "Результаты",
-                fontSize = 21.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            )
+            ScreenTitle("Результаты")
             Spacer(modifier = Modifier.height(8.dp))
             ResultsInset()
             SummaryText()
@@ -157,13 +147,7 @@ fun StatsContent(
 
 @Composable
 private fun PilotResultsHeader(name: String) {
-    Text(
-        text = name,
-        fontSize = 21.sp,
-        fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth()
-    )
+    ScreenTitle(name)
     Spacer(modifier = Modifier.height(8.dp))
 }
 

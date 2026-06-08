@@ -24,4 +24,9 @@
     <string name="team_swap_time_with_laps">%1$s летит %2$s, затем %3$s летит %2$s. Максимум %4$s.</string>
     <string name="team_swap_laps">%1$s летит %2$s, затем %3$s летит %4$s</string>
     <string name="team_swap_laps_with_time">%1$s летит %2$s, затем %3$s летит %4$s. Максимум %5$s.</string>
+
+    <string name="flight_completed_time">Вылет завершен спустя %1$s</string>
+    <string name="flight_completed_laps">Вылет завершен спустя %1$s</string>
+    <string name="flight_completed_manual">Вылет завершен вручную</string>
+    <string name="flight_laps_header">Круги</string>
 </resources>
