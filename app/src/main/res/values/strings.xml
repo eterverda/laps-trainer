@@ -9,9 +9,9 @@
     </plurals>
 
     <plurals name="minutes">
-        <item quantity="one">%d минута</item>
-        <item quantity="few">%d минуты</item>
-        <item quantity="many">%d минут</item>
+        <item quantity="one">минута</item>
+        <item quantity="few">минуты</item>
+        <item quantity="many">минут</item>
     </plurals>
 
     <string name="flight_unlimited">Летаем без ограничений</string>
