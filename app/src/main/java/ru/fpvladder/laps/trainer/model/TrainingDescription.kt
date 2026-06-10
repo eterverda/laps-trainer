@@ -1,12 +1,76 @@
 package ru.fpvladder.laps.trainer.model
 
 import android.content.Context
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
 import ru.fpvladder.laps.trainer.R
+import java.util.EnumSet
 
-fun Training.description(context: Context): String {
+fun Training.description(context: Context): AnnotatedString {
     return when (this) {
-        is Training.Team -> formatTeamPart(context, this)
-        is Training.Individual -> formatBase(context, this.rules)
+        is Training.Team -> AnnotatedString(formatTeamPart(context, this))
+        is Training.Individual -> formatIndividualAnnotated(context, this)
+    }
+}
+
+private fun formatIndividualAnnotated(context: Context, training: Training.Individual): AnnotatedString {
+    val first = formatIndividualFirst(context, training)
+    val second = formatCalculations(training.rules.enabledBestLapKinds)
+    return buildAnnotatedString {
+        append(first)
+        if (second.isNotBlank()) {
+            append("\n")
+            append(second)
+        }
+    }
+}
+
+private fun formatIndividualFirst(context: Context, training: Training.Individual): String {
+    val rules = training.rules
+    val hasTime = rules.timeLimitSeconds != Int.MAX_VALUE
+    val hasLaps = rules.maxLaps != Int.MAX_VALUE
+
+    return when {
+        hasTime && hasLaps -> {
+            val mins = formatMinutesString(context, rules.timeLimitSeconds / 60.0)
+            val lapsUpTo = context.resources.getQuantityString(R.plurals.laps_up_to, rules.maxLaps, rules.maxLaps)
+            "Летаем $mins и $lapsUpTo"
+        }
+        hasTime -> {
+            val timePart = formatTimePart(context, rules.timeLimitSeconds)
+            context.getString(R.string.flight_time_only, timePart)
+        }
+        hasLaps -> {
+            val lapsStr = context.resources.getQuantityString(R.plurals.laps, rules.maxLaps, rules.maxLaps)
+            "Летаем $lapsStr"
+        }
+        else -> context.getString(R.string.flight_unlimited)
+    }
+}
+
+private fun formatCalculations(kinds: Set<BestLap.Kind>): String {
+    val hasBest1 = BestLap.Kind.BEST_1 in kinds
+    val hasBest2 = BestLap.Kind.BEST_2 in kinds
+    val hasBest3 = BestLap.Kind.BEST_3 in kinds
+    val hasMost = BestLap.Kind.MOST in kinds
+
+    val parts = mutableListOf<String>()
+    if (hasBest1) parts.add("лучший круг")
+    if (hasBest2) parts.add("2 лучших круга подряд")
+    if (hasBest3) parts.add("3 лучших круга подряд")
+
+    val bestText = when {
+        parts.isEmpty() -> ""
+        parts.size == 1 -> "Считаем ${parts[0]}"
+        hasBest2 && hasBest3 && !hasBest1 -> "Считаем 2 и 3 лучших круга подряд"
+        parts.size == 2 -> "Считаем ${parts[0]} и ${parts[1]}"
+        else -> "Считаем ${parts[0]}, 2 и 3 лучших круга подряд"
+    }
+
+    return when {
+        bestText.isEmpty() && hasMost -> "Считаем максимум кругов за вылет"
+        bestText.isNotEmpty() && hasMost -> "$bestText, а также максимум кругов за вылет"
+        else -> bestText
     }
 }
 

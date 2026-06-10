@@ -2,19 +2,14 @@ package ru.fpvladder.laps.trainer.ui.screens
 
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 
-fun roundMs(timeMs: Long, precision: TimerPrecision): Long {
-    val factor = precision.tickMs
-    return ((timeMs + factor / 2) / factor) * factor
-}
-
 fun formatTime(elapsedMs: Long, timerPrecision: TimerPrecision, timeLimitSeconds: Int = 0): String {
-    val rounded = roundMs(elapsedMs, timerPrecision)
+    val rounded = timerPrecision.roundMs(elapsedMs)
     val totalSeconds = rounded / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     val ms = rounded % 1000
 
-    val minutesFormat = if (timeLimitSeconds < 600) "%d" else "%02d"
+    val minutesFormat = if (timeLimitSeconds < 600) "%2d" else "%02d"
 
     return when (timerPrecision.fractionDigits) {
         0 -> String.format("$minutesFormat:%02d", minutes, seconds)
@@ -25,7 +20,7 @@ fun formatTime(elapsedMs: Long, timerPrecision: TimerPrecision, timeLimitSeconds
 }
 
 fun formatTimeDynamic(elapsedMs: Long, timerPrecision: TimerPrecision): String {
-    val rounded = roundMs(elapsedMs, timerPrecision)
+    val rounded = timerPrecision.roundMs(elapsedMs)
     val totalSeconds = rounded / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
@@ -54,7 +49,7 @@ fun formatTimeDynamic(elapsedMs: Long, timerPrecision: TimerPrecision): String {
 }
 
 fun formatCountdown(remainingMs: Long, timerPrecision: TimerPrecision): String {
-    val rounded = roundMs(remainingMs, timerPrecision)
+    val rounded = timerPrecision.roundMs(remainingMs)
     val totalSeconds = rounded / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60

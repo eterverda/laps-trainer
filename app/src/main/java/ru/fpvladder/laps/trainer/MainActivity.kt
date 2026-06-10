@@ -77,7 +77,13 @@ import ru.fpvladder.laps.trainer.ui.screens.StatsContent
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
+import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.Stats
+import ru.fpvladder.laps.trainer.model.computeFlightCounters
+import ru.fpvladder.laps.trainer.model.computeFlightRecords
+import ru.fpvladder.laps.trainer.model.mergeFlightRecords
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.description
@@ -214,6 +220,7 @@ fun AppRoot(
     var soundJob by remember { mutableStateOf<Job?>(null) }
 
     val laps by flightViewModel.laps.collectAsState()
+    val currentLap by flightViewModel.currentLap.collectAsState()
     val currentLapTime by flightViewModel.currentLapTime.collectAsState()
     val stopReason by flightViewModel.stopReason.collectAsState()
     val preStartCountdownMs by flightViewModel.preStartCountdownMs.collectAsState()
@@ -383,12 +390,33 @@ fun AppRoot(
                                         phase = flightPhase,
                                         startSignal = startSignal,
                                         laps = laps,
+                                        currentLap = currentLap,
                                         currentLapTime = currentLapTime,
                                         elapsedMs = elapsedMs,
                                         timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
                                         maxLaps = selectedTraining.rules.maxLaps,
                                         stopReason = stopReason,
+                                        enabledBestLapKinds = when (val r = selectedTraining.rules) {
+                                            is Rules.Individual -> r.enabledBestLapKinds
+                                            is Rules.Team -> r.enabledBestLapKinds
+                                            else -> emptySet()
+                                        },
                                         onSave = {
+                                            val currentStats = selectedTraining.stats
+                                            if (currentStats is Stats.Individual) {
+                                                val training = selectedTraining as Training.Individual
+                                                val records = computeFlightRecords(
+                                                    laps,
+                                                    flightTimerPrecision,
+                                                    training.rules.enabledBestLapKinds
+                                                )
+                                                val flightCounters = computeFlightCounters(laps)
+                                                val updatedStats = currentStats.mergeFlightRecords(
+                                                    records,
+                                                    flightCounters,
+                                                )
+                                                trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
+                                            }
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
                                         },
@@ -408,6 +436,8 @@ fun AppRoot(
                                         StatsContent(
                                             description = selectedTraining.description(LocalContext.current),
                                             onEditRulesClick = { showRulesEditor = true },
+                                            stats = selectedTraining.stats,
+                                            timerPrecision = flightTimerPrecision,
                                             isTeam = isTeam,
                                             pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1
                                                 ?: "",

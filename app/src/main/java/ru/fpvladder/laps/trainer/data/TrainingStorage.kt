@@ -3,14 +3,17 @@ package ru.fpvladder.laps.trainer.data
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import ru.fpvladder.laps.trainer.model.BestLap
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.ChannelColor
+import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.Training
 import java.io.File
+import java.util.EnumSet
 
 class TrainingStorage(private val context: Context) {
 
@@ -134,7 +137,11 @@ class TrainingStorage(private val context: Context) {
     }
 
     private fun individualRulesToJson(rules: Rules.Individual): JSONObject {
-        return rulesToJson(rules)
+        return rulesToJson(rules).apply {
+            put("enabledBestLapKinds", JSONArray().apply {
+                rules.enabledBestLapKinds.forEach { put(it.name) }
+            })
+        }
     }
 
     private fun teamRulesToJson(rules: Rules.Team): JSONObject {
@@ -154,10 +161,25 @@ class TrainingStorage(private val context: Context) {
     }
 
     private fun individualRulesFromJson(obj: JSONObject): Rules.Individual {
+        val timeLimit = obj.optInt("timeLimitSeconds", 180)
+        val defaultKinds = EnumSet.of(BestLap.Kind.BEST_1, BestLap.Kind.BEST_3).apply {
+            if (timeLimit != Int.MAX_VALUE) add(BestLap.Kind.MOST)
+        }
+        val kindsArray = obj.optJSONArray("enabledBestLapKinds")
+        val kinds = if (kindsArray != null) {
+            EnumSet.noneOf(BestLap.Kind::class.java).apply {
+                for (i in 0 until kindsArray.length()) {
+                    try {
+                        add(BestLap.Kind.valueOf(kindsArray.getString(i)))
+                    } catch (_: Exception) {}
+                }
+            }
+        } else defaultKinds
         return Rules.Individual(
             maxLaps = obj.optInt("maxLaps", Int.MAX_VALUE),
-            timeLimitSeconds = obj.optInt("timeLimitSeconds", 180),
-            holeshotEnabled = obj.optBoolean("holeshotEnabled", true)
+            timeLimitSeconds = timeLimit,
+            holeshotEnabled = obj.optBoolean("holeshotEnabled", true),
+            enabledBestLapKinds = kinds
         )
     }
 
@@ -179,7 +201,15 @@ class TrainingStorage(private val context: Context) {
     private fun statsToJson(stats: Stats): JSONObject {
         return JSONObject().apply {
             when (stats) {
-                is Stats.Individual -> put("type", "INDIVIDUAL")
+                is Stats.Individual -> {
+                    put("type", "INDIVIDUAL")
+                    put("bestLaps", JSONArray().apply {
+                        stats.bestLaps.forEach { put(bestLapToJson(it)) }
+                    })
+                    put("counters", JSONArray().apply {
+                        stats.counters.forEach { put(counterToJson(it)) }
+                    })
+                }
                 is Stats.Team -> put("type", "TEAM")
             }
         }
@@ -189,7 +219,69 @@ class TrainingStorage(private val context: Context) {
         if (obj == null) return Stats.Individual()
         return when (obj.optString("type", "INDIVIDUAL")) {
             "TEAM" -> Stats.Team()
-            else -> Stats.Individual()
+            else -> Stats.Individual(
+                bestLaps = bestLapsFromJson(obj.optJSONArray("bestLaps")),
+                counters = countersFromJson(obj.optJSONArray("counters"))
+            )
+        }
+    }
+
+    private fun bestLapToJson(bestLap: BestLap): JSONObject {
+        return JSONObject().apply {
+            put("count", bestLap.count)
+            put("timeMs", bestLap.timeMs)
+            put("kind", bestLap.kind.name)
+        }
+    }
+
+    private fun bestLapsFromJson(array: JSONArray?): List<BestLap> {
+        if (array == null) return emptyList()
+        return List(array.length()) { index ->
+            val obj = array.getJSONObject(index)
+            BestLap(
+                count = obj.optInt("count", 0),
+                timeMs = obj.optLong("timeMs", 0L),
+                kind = try {
+                    BestLap.Kind.valueOf(obj.optString("kind", "MOST"))
+                } catch (_: Exception) {
+                    BestLap.Kind.MOST
+                }
+            )
+        }
+    }
+
+    private fun counterToJson(counter: Counter): JSONObject {
+        return JSONObject().apply {
+            put("count", counter.count)
+            when (counter) {
+                is Counter.Builtin -> {
+                    put("type", "BUILTIN")
+                    put("kind", counter.kind.name)
+                }
+                is Counter.Custom -> {
+                    put("type", "CUSTOM")
+                    put("text", counter.text)
+                }
+            }
+        }
+    }
+
+    private fun countersFromJson(array: JSONArray?): List<Counter> {
+        if (array == null) return emptyList()
+        return List(array.length()) { index ->
+            val obj = array.getJSONObject(index)
+            val count = obj.optInt("count", 0)
+            when (obj.optString("type", "")) {
+                "CUSTOM" -> Counter.Custom(count = count, text = obj.optString("text", ""))
+                else -> Counter.Builtin(
+                    count = count,
+                    kind = try {
+                        Counter.Builtin.Kind.valueOf(obj.optString("kind", "LAP"))
+                    } catch (_: Exception) {
+                        Counter.Builtin.Kind.LAP
+                    }
+                )
+            }
         }
     }
 

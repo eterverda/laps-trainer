@@ -11,9 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.SoundManager
-import ru.fpvladder.laps.trainer.model.LapEntry
-import ru.fpvladder.laps.trainer.model.LapIcon
-import ru.fpvladder.laps.trainer.model.LapStatus
+import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.Lap.Status
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
@@ -37,8 +36,11 @@ class FlightViewModel : ViewModel() {
     private val _preStartTime = MutableStateFlow(0L)
     val preStartTime: StateFlow<Long> = _preStartTime.asStateFlow()
 
-    private val _laps = MutableStateFlow<List<LapEntry>>(emptyList())
-    val laps: StateFlow<List<LapEntry>> = _laps.asStateFlow()
+    private val _laps = MutableStateFlow<List<Lap>>(emptyList())
+    val laps: StateFlow<List<Lap>> = _laps.asStateFlow()
+
+    private val _currentLap = MutableStateFlow<Lap?>(null)
+    val currentLap: StateFlow<Lap?> = _currentLap.asStateFlow()
 
     private val _currentLapTime = MutableStateFlow(0L)
     val currentLapTime: StateFlow<Long> = _currentLapTime.asStateFlow()
@@ -136,15 +138,7 @@ class FlightViewModel : ViewModel() {
             }
             timerJob?.cancel()
 
-            val current = _laps.value.toMutableList()
-            if (current.isNotEmpty()) {
-                val lastIndex = current.size - 1
-                val last = current[lastIndex]
-                if (!last.icons.contains(LapIcon.LAP)) {
-                    current.removeAt(lastIndex)
-                }
-            }
-            _laps.value = current
+            _currentLap.value = null
 
             _phase.value = FlightPhase.POST
             _isStopping.value = false
@@ -153,29 +147,17 @@ class FlightViewModel : ViewModel() {
 
     fun addLap() {
         val lapTime = _elapsedMs.value - lastLapElapsedMs
-        val current = _laps.value.toMutableList()
-        var status = LapStatus.RUNNING
-        if (current.isNotEmpty()) {
-            val lastIndex = current.size - 1
-            val last = current[lastIndex]
-            val newIcons = last.icons.toMutableList()
-            newIcons.add(LapIcon.LAP)
-            status = if (newIcons.size >= 2 && newIcons[newIcons.size - 2] == LapIcon.ERROR) {
-                LapStatus.FAIL
-            } else {
-                LapStatus.SUCCESS
-            }
-            val label = if (status == LapStatus.FAIL) "" else last.lapLabel
-            if (status == LapStatus.SUCCESS) {
-                nextLapNumber++
-            }
-            current[lastIndex] = last.copy(timeMs = lapTime, icons = newIcons, status = status, lapLabel = label)
+        val current = _currentLap.value ?: return
+        val completed = current.copy(timeMs = lapTime)
+        _laps.value = _laps.value + completed
+
+        if (current.status != Lap.Status.FAIL) {
+            nextLapNumber++
         }
         lastLapElapsedMs = _elapsedMs.value
         _currentLapTime.value = 0L
 
-        if (status == LapStatus.SUCCESS && nextLapNumber - 1 >= rules.maxLaps) {
-            _laps.value = current
+        if (current.status == Lap.Status.SUCCESS && nextLapNumber - 1 >= rules.maxLaps) {
             performStop(
                 skipBuzzer = false,
                 isMuted = raceIsMuted,
@@ -186,35 +168,24 @@ class FlightViewModel : ViewModel() {
         }
 
         val newLabel = if (nextLapNumber == 0) "HS" else "$nextLapNumber)"
-        val entry = LapEntry(
-            lapLabel = newLabel,
+        _currentLap.value = Lap(
+            label = newLabel,
             timeMs = 0L,
-            icons = emptyList(),
-            status = LapStatus.RUNNING
+            status = if (nextLapNumber == 0) Lap.Status.HS else Lap.Status.SUCCESS
         )
-        _laps.value = current + entry
     }
 
     fun addErrorToLastLap() {
-        val current = _laps.value.toMutableList()
-        if (current.isEmpty()) return
-        val last = current.last()
-        if (last.icons.contains(LapIcon.ERROR)) return
-        val newIcons = last.icons.toMutableList()
-        newIcons.add(LapIcon.ERROR)
-        current[current.size - 1] = last.copy(icons = newIcons)
-        _laps.value = current
+        val current = _currentLap.value ?: return
+        if (current.status == Lap.Status.FAIL) return
+        _currentLap.value = current.copy(status = Lap.Status.FAIL)
     }
 
     fun addFixToLastLap() {
-        val current = _laps.value.toMutableList()
-        if (current.isEmpty()) return
-        val last = current.last()
-        if (!last.icons.contains(LapIcon.ERROR)) return
-        val newIcons = last.icons.toMutableList()
-        newIcons.remove(LapIcon.ERROR)
-        current[current.size - 1] = last.copy(icons = newIcons)
-        _laps.value = current
+        val current = _currentLap.value ?: return
+        if (current.status != Lap.Status.FAIL) return
+        val restoredStatus = if (current.label == "HS") Lap.Status.HS else Lap.Status.SUCCESS
+        _currentLap.value = current.copy(status = restoredStatus)
     }
 
     fun reset() {
@@ -227,6 +198,7 @@ class FlightViewModel : ViewModel() {
         _preStartTime.value = 0L
         _phase.value = FlightPhase.PRE
         _laps.value = emptyList()
+        _currentLap.value = null
         _stopReason.value = null
         _preStartCountdownMs.value = 0L
         nextLapNumber = 0
@@ -238,13 +210,11 @@ class FlightViewModel : ViewModel() {
         raceIsMuted = isMuted
         _phase.value = FlightPhase.MAIN
         nextLapNumber = if (rules.holeshotEnabled) 0 else 1
-        _laps.value = listOf(
-            LapEntry(
-                lapLabel = if (rules.holeshotEnabled) "HS" else "1)",
-                timeMs = 0L,
-                icons = emptyList(),
-                status = LapStatus.RUNNING
-            )
+        _laps.value = emptyList()
+        _currentLap.value = Lap(
+            label = if (rules.holeshotEnabled) "HS" else "1)",
+            timeMs = 0L,
+            status = if (rules.holeshotEnabled) Lap.Status.HS else Lap.Status.SUCCESS
         )
         val startTime = SystemClock.elapsedRealtime()
         val limitMs = rules.timeLimitSeconds * 1000L

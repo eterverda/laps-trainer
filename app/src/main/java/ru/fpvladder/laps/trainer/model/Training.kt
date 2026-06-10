@@ -4,6 +4,7 @@ import java.util.UUID
 
 sealed class Training {
     abstract val id: String
+    abstract val pilot: Pilot
     abstract val rules: Rules
     abstract val stats: Stats
     abstract val createdAt: Long
@@ -16,7 +17,7 @@ sealed class Training {
 
     class Individual(
         override val id: String = UUID.randomUUID().toString(),
-        val pilot: Pilot.Individual = Pilot.Individual(),
+        override val pilot: Pilot.Individual = Pilot.Individual(),
         override val rules: Rules.Individual = Rules.Individual(),
         override val stats: Stats = Stats.Individual(),
         override val createdAt: Long = System.currentTimeMillis(),
@@ -34,7 +35,7 @@ sealed class Training {
 
     class Team(
         override val id: String = UUID.randomUUID().toString(),
-        val pilot: Pilot.Team = Pilot.Team(),
+        override val pilot: Pilot.Team = Pilot.Team(),
         override val rules: Rules.Team = Rules.Team(),
         override val stats: Stats = Stats.Team(),
         override val createdAt: Long = System.currentTimeMillis(),

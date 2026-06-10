@@ -56,22 +56,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
-import ru.fpvladder.laps.trainer.model.LapEntry
-import ru.fpvladder.laps.trainer.model.LapIcon
-import ru.fpvladder.laps.trainer.model.LapStatus
+import ru.fpvladder.laps.trainer.model.BestLap
+import ru.fpvladder.laps.trainer.model.computeFlightRecords
+import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.Lap.Status
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.model.formatMinutesString
+import ru.fpvladder.laps.trainer.ui.components.BulletText
+import ru.fpvladder.laps.trainer.ui.screens.BestLapsInset
+import ru.fpvladder.laps.trainer.ui.screens.InsetCard
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
-import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 
 @Composable
 fun FlightContent(
     phase: FlightPhase,
     startSignal: StartSignal,
-    laps: List<LapEntry> = emptyList(),
+    laps: List<Lap> = emptyList(),
+    currentLap: Lap? = null,
     currentLapTime: Long = 0L,
     elapsedMs: Long = 0L,
     timeLimitSeconds: Int = 0,
@@ -81,6 +85,7 @@ fun FlightContent(
     onDiscard: () -> Unit = {},
     onLapClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
+    enabledBestLapKinds: Set<BestLap.Kind> = emptySet(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -120,8 +125,14 @@ fun FlightContent(
                             if (phase == FlightPhase.POST && laps.isNotEmpty()) {
                                 ScreenTitle(stringResource(R.string.flight_laps_header), Modifier.padding(bottom = 16.dp))
                             }
-                            LapList(laps = laps, currentLapTime = currentLapTime, timerPrecision = timerPrecision)
-                            if (phase == FlightPhase.MAIN && laps.all { !it.icons.contains(LapIcon.LAP) }) {
+                            LapList(
+                                laps = laps,
+                                currentLap = currentLap,
+                                currentLapTime = currentLapTime,
+                                timerPrecision = timerPrecision,
+                                phase = phase
+                            )
+                            if (phase == FlightPhase.MAIN && laps.isEmpty()) {
                                 Box(
                                     modifier = Modifier.fillMaxWidth(),
                                     contentAlignment = Alignment.Center
@@ -141,13 +152,33 @@ fun FlightContent(
                                     }
                                     else -> stringResource(R.string.flight_completed_manual)
                                 }
-                                ScreenTitle(
+                                Text(
                                     text = completedText,
+                                    fontSize = 16.sp,
                                     modifier = Modifier.padding(top = 16.dp)
                                 )
-                                val hasValidLaps = laps.any { it.status == LapStatus.SUCCESS && it.lapLabel != "HS" }
-                                if (hasValidLaps) {
-                                    Summary(laps = laps, timerPrecision = timerPrecision)
+                                val flightRecords = if (enabledBestLapKinds.isNotEmpty()) {
+                                    computeFlightRecords(laps, timerPrecision, enabledBestLapKinds)
+                                } else emptyList()
+
+                                val validLapCount = laps.count { it.status == Lap.Status.SUCCESS }
+                                if (validLapCount > 0) {
+                                    ScreenTitle(
+                                        text = "Результаты",
+                                        modifier = Modifier.padding(vertical = 16.dp)
+                                    )
+                                        BestLapsInset(
+                                            bestLaps = flightRecords,
+                                            timerPrecision = timerPrecision
+                                        )
+                                        BulletText(
+                                            text = context.resources.getQuantityString(
+                                                R.plurals.laps,
+                                                validLapCount,
+                                                validLapCount
+                                            ),
+                                            modifier = Modifier.padding(top = 8.dp)
+                                        )
                                 }
                             }
                         }
@@ -217,29 +248,6 @@ fun FlightContent(
 }
 
 @Composable
-private fun InsetCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val outlineColor = MaterialTheme.colorScheme.outline
-    Box(
-        modifier = modifier
-            .drawBehind {
-                val strokeWidth = 1.dp.toPx()
-                val cornerRadius = 8.dp.toPx()
-                drawRoundRect(
-                    color = outlineColor,
-                    style = Stroke(
-                        width = strokeWidth,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
-                    ),
-                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
-                )
-            }
-            .padding(12.dp)
-    ) {
-        content()
-    }
-}
-
-@Composable
 private fun Hint(text: String) {
     Text(
         text = text,
@@ -255,7 +263,7 @@ private fun Hint(text: String) {
 
 @Composable
 private fun Summary(
-    laps: List<LapEntry>,
+    laps: List<Lap>,
     timerPrecision: TimerPrecision
 ) {
     val items = remember(laps, timerPrecision) {
@@ -288,14 +296,14 @@ private fun Summary(
     }
 }
 
-private fun buildSummary(laps: List<LapEntry>, timerPrecision: TimerPrecision): List<Pair<String, Long?>> {
-    val validLaps = laps.filter { it.status == LapStatus.SUCCESS && it.lapLabel != "HS" }
+private fun buildSummary(laps: List<Lap>, timerPrecision: TimerPrecision): List<Pair<String, Long?>> {
+    val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
     val n = validLaps.size
 
     if (n == 0) return listOf("0/" to null)
 
-    val bestTime = validLaps.minOf { roundMs(it.timeMs, timerPrecision) }
-    val totalTime = validLaps.sumOf { roundMs(it.timeMs, timerPrecision) as Long }
+    val bestTime = validLaps.minOf { timerPrecision.roundMs(it.timeMs) }
+    val totalTime = validLaps.sumOf { timerPrecision.roundMs(it.timeMs) as Long }
 
     if (n == 1) {
         return listOf("1/" to bestTime)
@@ -317,9 +325,9 @@ private fun buildSummary(laps: List<LapEntry>, timerPrecision: TimerPrecision): 
 
     var minSum3 = Long.MAX_VALUE
     for (i in 0..validLaps.size - 3) {
-        val sum = roundMs(validLaps[i].timeMs, timerPrecision) +
-                  roundMs(validLaps[i + 1].timeMs, timerPrecision) +
-                  roundMs(validLaps[i + 2].timeMs, timerPrecision)
+        val sum = timerPrecision.roundMs(validLaps[i].timeMs) +
+                  timerPrecision.roundMs(validLaps[i + 1].timeMs) +
+                  timerPrecision.roundMs(validLaps[i + 2].timeMs)
         if (sum < minSum3) minSum3 = sum
     }
 
@@ -332,69 +340,82 @@ private fun buildSummary(laps: List<LapEntry>, timerPrecision: TimerPrecision): 
 
 @Composable
 private fun LapList(
-    laps: List<LapEntry>,
+    laps: List<Lap>,
+    currentLap: Lap?,
     currentLapTime: Long,
-    timerPrecision: TimerPrecision
+    timerPrecision: TimerPrecision,
+    phase: FlightPhase
 ) {
-    data class Item(val label: String, val time: String, val icons: List<LapIcon>, val isFailed: Boolean)
-
-    val items = remember(laps, currentLapTime, timerPrecision) {
-        laps.mapIndexed { index, lap ->
-            val isCurrent = index == laps.lastIndex && !lap.icons.contains(LapIcon.LAP)
-            val time = if (isCurrent) currentLapTime else lap.timeMs
-            val isFailed = lap.status == LapStatus.FAIL
-            Item(
-                label = if (isFailed) "" else lap.lapLabel,
-                time = formatTimeDynamic(time, timerPrecision),
-                icons = lap.icons,
-                isFailed = isFailed
+    @Composable
+    fun LapRow(
+        label: String,
+        time: String,
+        isFailed: Boolean,
+        isCurrentFail: Boolean,
+        maxLabelLen: Int,
+        maxTimeLen: Int
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${label.padStart(maxLabelLen)} ${time.padStart(maxTimeLen)}",
+                fontFamily = FontFamily.Monospace,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                textDecoration = if (isFailed) TextDecoration.LineThrough else null
             )
+            if (isFailed || isCurrentFail) {
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    painter = painterResource(R.drawable.ic_cross),
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
         }
     }
 
-    val maxLabelLen = items.filter { !it.isFailed }.maxOfOrNull { it.label.length } ?: 0
-    val maxTimeLen = items.maxOfOrNull { it.time.length } ?: 0
+    val currentVisible = currentLap.takeIf { phase != FlightPhase.POST }
+
+    val maxLabelLen = remember(laps, currentVisible) {
+        val candidates = laps.map { if (it.status == Lap.Status.FAIL) "" else it.label } +
+                listOfNotNull(currentVisible?.let { if (it.status == Lap.Status.FAIL) "" else it.label })
+        candidates.maxOfOrNull { it.length } ?: 0
+    }
+
+    val allTimes = remember(laps, currentVisible, currentLapTime, timerPrecision) {
+        laps.map { formatTimeDynamic(it.timeMs, timerPrecision) } +
+                listOfNotNull(currentVisible?.let { formatTimeDynamic(currentLapTime, timerPrecision) })
+    }
+    val maxTimeLen = allTimes.maxOfOrNull { it.length } ?: 0
 
     Column(
         modifier = Modifier.width(IntrinsicSize.Max),
         horizontalAlignment = Alignment.End
     ) {
-        items.forEach { item ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${item.label.padStart(maxLabelLen)} ${item.time.padStart(maxTimeLen)}",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textDecoration = if (item.isFailed) TextDecoration.LineThrough else null
-                )
-                if (item.icons.isNotEmpty()) {
-                    Spacer(Modifier.width(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        item.icons.forEach { icon ->
-                            when (icon) {
-                                LapIcon.ERROR -> Icon(
-                                    painter = painterResource(R.drawable.ic_cross),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                LapIcon.FIX -> Icon(
-                                    painter = painterResource(R.drawable.ic_square),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                else -> {}
-                            }
-                        }
-                    }
-                }
-            }
+        laps.forEach { lap ->
+            val isFailed = lap.status == Lap.Status.FAIL
+            LapRow(
+                label = if (isFailed) "" else lap.label,
+                time = formatTimeDynamic(lap.timeMs, timerPrecision),
+                isFailed = isFailed,
+                isCurrentFail = false,
+                maxLabelLen = maxLabelLen,
+                maxTimeLen = maxTimeLen
+            )
+        }
+        currentVisible?.let { lap ->
+            val isCurrentFail = lap.status == Lap.Status.FAIL
+            LapRow(
+                label = if (isCurrentFail) "" else lap.label,
+                time = formatTimeDynamic(currentLapTime, timerPrecision),
+                isFailed = false,
+                isCurrentFail = isCurrentFail,
+                maxLabelLen = maxLabelLen,
+                maxTimeLen = maxTimeLen
+            )
         }
     }
 }

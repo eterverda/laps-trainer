@@ -1,5 +1,7 @@
 package ru.fpvladder.laps.trainer.model
 
+import java.util.EnumSet
+
 sealed class Rules {
     abstract val maxLaps: Int
     abstract val timeLimitSeconds: Int
@@ -8,13 +10,18 @@ sealed class Rules {
     class Individual(
         override val maxLaps: Int = Int.MAX_VALUE,
         override val timeLimitSeconds: Int = 180,
-        override val holeshotEnabled: Boolean = true
+        override val holeshotEnabled: Boolean = true,
+        val enabledBestLapKinds: Set<BestLap.Kind> = EnumSet.of(
+            BestLap.Kind.BEST_1,
+            BestLap.Kind.BEST_3
+        ).apply { if (timeLimitSeconds != Int.MAX_VALUE) add(BestLap.Kind.MOST) }
     ) : Rules() {
         fun copy(
             maxLaps: Int = this.maxLaps,
             timeLimitSeconds: Int = this.timeLimitSeconds,
-            holeshotEnabled: Boolean = this.holeshotEnabled
-        ) = Individual(maxLaps, timeLimitSeconds, holeshotEnabled)
+            holeshotEnabled: Boolean = this.holeshotEnabled,
+            enabledBestLapKinds: Set<BestLap.Kind> = this.enabledBestLapKinds
+        ) = Individual(maxLaps, timeLimitSeconds, holeshotEnabled, enabledBestLapKinds)
     }
 
     class Team(
@@ -22,15 +29,19 @@ sealed class Rules {
         override val timeLimitSeconds: Int = Int.MAX_VALUE,
         override val holeshotEnabled: Boolean = true,
         val swapMode: SwapMode = SwapMode.LAPS,
-        val pilotOrderSwapped: Boolean = false
+        val pilotOrderSwapped: Boolean = false,
+        val enabledBestLapKinds: Set<BestLap.Kind> = EnumSet.of(
+            BestLap.Kind.BEST_1, BestLap.Kind.MOST,
+        )
     ) : Rules() {
         fun copy(
             maxLaps: Int = this.maxLaps,
             timeLimitSeconds: Int = this.timeLimitSeconds,
             holeshotEnabled: Boolean = this.holeshotEnabled,
             swapMode: SwapMode = this.swapMode,
-            pilotOrderSwapped: Boolean = this.pilotOrderSwapped
-        ) = Team(maxLaps, timeLimitSeconds, holeshotEnabled, swapMode, pilotOrderSwapped)
+            pilotOrderSwapped: Boolean = this.pilotOrderSwapped,
+            enabledBestLapKinds: Set<BestLap.Kind> = this.enabledBestLapKinds
+        ) = Team(maxLaps, timeLimitSeconds, holeshotEnabled, swapMode, pilotOrderSwapped, enabledBestLapKinds)
     }
 }
 

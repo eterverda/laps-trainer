@@ -24,9 +24,10 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     val selectedTraining: StateFlow<Training>
 
     init {
-        val default = Training.Individual()
-        _trainings.value = listOf(default)
-        _selectedTraining = MutableStateFlow(default)
+        val individual = Training.Individual()
+        val team = Training.Team(pilot = Pilot.Team(name1 = "Командор", name2 = "Дринкинс"))
+        _trainings.value = listOf(individual, team)
+        _selectedTraining = MutableStateFlow(individual)
         selectedTraining = _selectedTraining.asStateFlow()
     }
 
@@ -41,30 +42,18 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteTraining(training: Training) {
         val updated = _trainings.value.filter { it.id != training.id }
-        if (updated.isEmpty()) {
-            val default = Training.Individual()
-            _trainings.value = listOf(default)
-            _selectedTraining.value = default
-        } else {
-            _trainings.value = updated
-            if (_selectedTraining.value.id == training.id) {
-                _selectedTraining.value = updated.last()
-            }
+        _trainings.value = updated
+        if (_selectedTraining.value.id == training.id) {
+            _selectedTraining.value = updated.lastOrNull() ?: _selectedTraining.value
         }
     }
 
     fun archiveTraining(training: Training) {
         val updated = _trainings.value.filter { it.id != training.id }
         _archivedTrainings.value = _archivedTrainings.value + training.withArchived(true)
-        if (updated.isEmpty()) {
-            val default = Training.Individual()
-            _trainings.value = listOf(default)
-            _selectedTraining.value = default
-        } else {
-            _trainings.value = updated
-            if (_selectedTraining.value.id == training.id) {
-                _selectedTraining.value = updated.last()
-            }
+        _trainings.value = updated
+        if (_selectedTraining.value.id == training.id) {
+            _selectedTraining.value = updated.lastOrNull() ?: _selectedTraining.value
         }
     }
 
@@ -73,13 +62,15 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             is Training.Individual -> training.copy(rules = newRules as Rules.Individual)
             is Training.Team -> training.copy(rules = newRules as Rules.Team)
         }
-        val updatedList = _trainings.value.map {
-            if (it.id == training.id) updatedTraining else it
+        updateTrainingInList(updatedTraining)
+    }
+
+    fun updateTrainingStats(training: Training, stats: Stats) {
+        val updatedTraining = when (training) {
+            is Training.Individual -> training.copy(stats = stats as Stats.Individual)
+            is Training.Team -> training.copy(stats = stats as Stats.Team)
         }
-        _trainings.value = updatedList
-        if (_selectedTraining.value.id == training.id) {
-            _selectedTraining.value = updatedTraining
-        }
+        updateTrainingInList(updatedTraining)
     }
 
     fun applyChannelToAll(channel: Channel) {
