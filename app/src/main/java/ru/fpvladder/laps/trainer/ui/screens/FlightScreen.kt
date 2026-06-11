@@ -1,6 +1,8 @@
 package ru.fpvladder.laps.trainer.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,15 +24,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.ui.res.painterResource
 import ru.fpvladder.laps.trainer.R
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,32 +43,32 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
-import ru.fpvladder.laps.trainer.model.BestLap
+import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.computeFlightRecords
+import ru.fpvladder.laps.trainer.model.computeTeamFlightRecords
+import ru.fpvladder.laps.trainer.model.computeTeamFlightCounters
+import ru.fpvladder.laps.trainer.model.TeamCounterScope
+import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
-import ru.fpvladder.laps.trainer.model.Lap.Status
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimerPrecision
-import ru.fpvladder.laps.trainer.model.formatMinutesString
 import ru.fpvladder.laps.trainer.ui.components.BulletText
-import ru.fpvladder.laps.trainer.ui.screens.BestLapsInset
+import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
+import ru.fpvladder.laps.trainer.ui.screens.RecordsInset
 import ru.fpvladder.laps.trainer.ui.screens.InsetCard
+import ru.fpvladder.laps.trainer.ui.screens.PageIndicator
+import ru.fpvladder.laps.trainer.ui.screens.CountersSummary
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 
@@ -86,13 +87,19 @@ fun FlightContent(
     onDiscard: () -> Unit = {},
     onLapClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
-    enabledBestLapKinds: Set<BestLap.Kind> = emptySet(),
+    enabledRecordKinds: Set<Record.Kind> = emptySet(),
     pilot: Pilot? = null,
     pilotSwapIndex: Int? = null,
     pilotOrderSwapped: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val isTeam = pilot is Pilot.Team
+    val (rawName1, rawName2) = when (pilot) {
+        is Pilot.Team -> pilot.name1 to pilot.name2
+        else -> "" to ""
+    }
+    val headPilot = if (pilotOrderSwapped) rawName2 else rawName1
+    val tailPilot = if (pilotOrderSwapped) rawName1 else rawName2
     val context = LocalContext.current
     val mainClickModifier = if (phase == FlightPhase.MAIN) {
         Modifier.pointerInput(Unit) {
@@ -121,14 +128,14 @@ fun FlightContent(
                     .fillMaxWidth()
                     .onSizeChanged { boxHeight = it.height }
                     .verticalScroll(scrollState)
-                    .padding(all = 16.dp),
+                    .padding(vertical = 16.dp),
                 contentAlignment = Alignment.TopStart
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.onSizeChanged { contentHeight = it.height }) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             if (phase == FlightPhase.POST && laps.isNotEmpty()) {
-                                ScreenTitle(stringResource(R.string.flight_laps_header), Modifier.padding(bottom = 16.dp))
+                                ScreenTitle(stringResource(R.string.flight_laps_header), Modifier.padding(horizontal = 16.dp, vertical = 16.dp))
                             }
                             LapList(
                                 laps = laps,
@@ -138,7 +145,8 @@ fun FlightContent(
                                 phase = phase,
                                 pilot = pilot,
                                 pilotSwapIndex = pilotSwapIndex,
-                                pilotOrderSwapped = pilotOrderSwapped
+                                pilotOrderSwapped = pilotOrderSwapped,
+                                modifier = Modifier.padding(horizontal = 16.dp)
                             )
                             if (phase == FlightPhase.MAIN && laps.isEmpty()) {
                                 Box(
@@ -174,30 +182,57 @@ fun FlightContent(
                                 Text(
                                     text = completedText,
                                     fontSize = 16.sp,
-                                    modifier = Modifier.padding(top = 16.dp)
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
                                 )
-                                val flightRecords = if (enabledBestLapKinds.isNotEmpty()) {
-                                    computeFlightRecords(laps, timerPrecision, enabledBestLapKinds)
-                                } else emptyList()
-
                                 val validLapCount = laps.count { it.status == Lap.Status.SUCCESS }
                                 if (validLapCount > 0) {
-                                    ScreenTitle(
-                                        text = "Результаты",
-                                        modifier = Modifier.padding(vertical = 16.dp)
-                                    )
-                                        BestLapsInset(
-                                            bestLaps = flightRecords,
+                                    if (isTeam) {
+                                        val teamRecords = computeTeamFlightRecords(
+                                            laps = laps,
+                                            timerPrecision = timerPrecision,
+                                            enabledKinds = enabledRecordKinds,
+                                            pilotSwapIndex = pilotSwapIndex
+                                        )
+                                        TeamFlightPostResults(
+                                            commonRecords = teamRecords.common.distinctBy { it.count },
+                                            headRecords = teamRecords.head.distinctBy { it.count },
+                                            tailRecords = teamRecords.tail.distinctBy { it.count },
+                                            commonCounters = computeTeamFlightCounters(
+                                                laps, TeamCounterScope.COMMON, pilotSwapIndex
+                                            ),
+                                            headCounters = computeTeamFlightCounters(
+                                                laps, TeamCounterScope.HEAD, pilotSwapIndex
+                                            ),
+                                            tailCounters = computeTeamFlightCounters(
+                                                laps, TeamCounterScope.TAIL, pilotSwapIndex
+                                            ),
+                                            headPilotName = headPilot,
+                                            tailPilotName = tailPilot,
                                             timerPrecision = timerPrecision
                                         )
-                                        BulletText(
-                                            text = context.resources.getQuantityString(
-                                                R.plurals.laps,
-                                                validLapCount,
-                                                validLapCount
-                                            ),
-                                            modifier = Modifier.padding(top = 8.dp)
-                                        )
+                                    } else {
+                                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                            ScreenTitle(
+                                                text = "Результаты",
+                                                modifier = Modifier.padding(vertical = 16.dp)
+                                            )
+                                            val flightRecords = if (enabledRecordKinds.isNotEmpty()) {
+                                                computeFlightRecords(laps, timerPrecision, enabledRecordKinds)
+                                            } else emptyList()
+                                            RecordsInset(
+                                                records = flightRecords.distinctBy { it.count },
+                                                timerPrecision = timerPrecision
+                                            )
+                                            BulletText(
+                                                text = context.resources.getQuantityString(
+                                                    R.plurals.laps,
+                                                    validLapCount,
+                                                    validLapCount
+                                                ),
+                                                modifier = Modifier.padding(top = 8.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -215,7 +250,7 @@ fun FlightContent(
                                 .onSizeChanged { buttonsHeight = it.height },
                             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
                         ) {
-                            Button(
+                            OutlinedButton(
                                 onClick = onDiscard,
                                 shape = RoundedCornerShape(50),
                                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
@@ -231,7 +266,7 @@ fun FlightContent(
                                     fontSize = 14.sp
                                 )
                             }
-                            Button(
+                            OutlinedButton(
                                 onClick = onSave,
                                 shape = RoundedCornerShape(50),
                                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
@@ -366,7 +401,8 @@ private fun LapList(
     phase: FlightPhase,
     pilot: Pilot? = null,
     pilotSwapIndex: Int? = null,
-    pilotOrderSwapped: Boolean = false
+    pilotOrderSwapped: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     val isTeam = pilot is Pilot.Team
     val (rawName1, rawName2) = when (pilot) {
@@ -374,8 +410,8 @@ private fun LapList(
         is Pilot.Individual -> pilot.name to ""
         else -> "" to ""
     }
-    val firstPilot = if (pilotOrderSwapped) rawName2 else rawName1
-    val secondPilot = if (pilotOrderSwapped) rawName1 else rawName2
+    val headPilot = if (pilotOrderSwapped) rawName2 else rawName1
+    val tailPilot = if (pilotOrderSwapped) rawName1 else rawName2
     @Composable
     fun LapRow(
         label: String,
@@ -422,11 +458,11 @@ private fun LapList(
     val maxTimeLen = allTimes.maxOfOrNull { it.length } ?: 0
 
     Column(
-        modifier = Modifier.width(IntrinsicSize.Max),
+        modifier = modifier.width(IntrinsicSize.Max),
         horizontalAlignment = Alignment.End
     ) {
         if (isTeam) {
-            val startingPilot = firstPilot
+            val startingPilot = headPilot
             if (startingPilot.isNotBlank()) {
                 Text(
                     text = "Стартует $startingPilot",
@@ -448,7 +484,7 @@ private fun LapList(
                 maxTimeLen = maxTimeLen
             )
             if (isTeam && pilotSwapIndex != null && index == pilotSwapIndex) {
-                val nextPilot = secondPilot
+                val nextPilot = tailPilot
                 if (nextPilot.isNotBlank()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -473,7 +509,7 @@ private fun LapList(
             )
         }
         if (isTeam && pilotSwapIndex != null && pilotSwapIndex == laps.size) {
-            val nextPilot = secondPilot
+            val nextPilot = tailPilot
             if (nextPilot.isNotBlank()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -489,3 +525,86 @@ private fun LapList(
 }
 
 
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TeamFlightPostResults(
+    commonRecords: List<Record>,
+    headRecords: List<Record>,
+    tailRecords: List<Record>,
+    commonCounters: List<Counter>,
+    headCounters: List<Counter>,
+    tailCounters: List<Counter>,
+    headPilotName: String,
+    tailPilotName: String,
+    timerPrecision: TimerPrecision
+) {
+    val pages: List<Pair<String, @Composable () -> Unit>> = listOf(
+        "Результаты" to @Composable {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                ScreenTitle("Результаты")
+                Spacer(modifier = Modifier.height(8.dp))
+                if (commonRecords.isNotEmpty()) {
+                    RecordsInset(records = commonRecords, timerPrecision = timerPrecision)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                CountersSummary(counters = commonCounters)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        },
+        "Результаты: $headPilotName" to @Composable {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                ScreenTitle("Результаты: $headPilotName")
+                Spacer(modifier = Modifier.height(8.dp))
+                if (headRecords.isNotEmpty()) {
+                    RecordsInset(records = headRecords, timerPrecision = timerPrecision)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                CountersSummary(counters = headCounters)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        },
+        "Результаты: $tailPilotName" to @Composable {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                ScreenTitle("Результаты: $tailPilotName")
+                Spacer(modifier = Modifier.height(8.dp))
+                if (tailRecords.isNotEmpty()) {
+                    RecordsInset(records = tailRecords, timerPrecision = timerPrecision)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                CountersSummary(counters = tailCounters)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+    )
+
+    val pagerState = rememberPagerState(pageCount = { pages.size })
+
+    PageIndicator(
+        pageCount = pages.size,
+        currentPage = pagerState.currentPage,
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    MeasuredHorizontalPager(
+        state = pagerState,
+        pageCount = pages.size,
+        modifier = Modifier.fillMaxWidth()
+    ) { page ->
+        pages[page].second()
+    }
+}

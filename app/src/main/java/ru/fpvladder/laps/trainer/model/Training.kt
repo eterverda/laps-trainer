@@ -7,6 +7,7 @@ sealed class Training {
     abstract val pilot: Pilot
     abstract val rules: Rules
     abstract val stats: Stats
+    abstract val flights: List<Flight>
     abstract val createdAt: Long
     abstract val isArchived: Boolean
 
@@ -20,6 +21,7 @@ sealed class Training {
         override val pilot: Pilot.Individual = Pilot.Individual(),
         override val rules: Rules.Individual = Rules.Individual(),
         override val stats: Stats = Stats.Individual(),
+        override val flights: List<Flight.Individual> = emptyList(),
         override val createdAt: Long = System.currentTimeMillis(),
         override val isArchived: Boolean = false
     ) : Training() {
@@ -28,9 +30,10 @@ sealed class Training {
             pilot: Pilot.Individual = this.pilot,
             rules: Rules.Individual = this.rules,
             stats: Stats = this.stats,
+            flights: List<Flight.Individual> = this.flights,
             createdAt: Long = this.createdAt,
             isArchived: Boolean = this.isArchived
-        ) = Individual(id, pilot, rules, stats, createdAt, isArchived)
+        ) = Individual(id, pilot, rules, stats, flights, createdAt, isArchived)
     }
 
     class Team(
@@ -38,6 +41,7 @@ sealed class Training {
         override val pilot: Pilot.Team = Pilot.Team(),
         override val rules: Rules.Team = Rules.Team(),
         override val stats: Stats = Stats.Team(),
+        override val flights: List<Flight.Team> = emptyList(),
         override val createdAt: Long = System.currentTimeMillis(),
         override val isArchived: Boolean = false
     ) : Training() {
@@ -46,8 +50,9 @@ sealed class Training {
             pilot: Pilot.Team = this.pilot,
             rules: Rules.Team = this.rules,
             stats: Stats = this.stats,
+            flights: List<Flight.Team> = this.flights,
             createdAt: Long = this.createdAt,
             isArchived: Boolean = this.isArchived
-        ) = Team(id, pilot, rules, stats, createdAt, isArchived)
+        ) = Team(id, pilot, rules, stats, flights, createdAt, isArchived)
     }
 }

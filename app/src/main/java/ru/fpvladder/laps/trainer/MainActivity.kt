@@ -79,10 +79,10 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.SwapMode
+import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Stats
-import ru.fpvladder.laps.trainer.model.computeFlightCounters
-import ru.fpvladder.laps.trainer.model.computeFlightRecords
 import ru.fpvladder.laps.trainer.model.mergeFlightRecords
+import ru.fpvladder.laps.trainer.model.mergeTeamFlight
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.description
@@ -433,27 +433,35 @@ fun AppRoot(
                                         timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
                                         maxLaps = selectedTraining.rules.maxLaps,
                                         stopReason = stopReason,
-                                        enabledBestLapKinds = when (val r = selectedTraining.rules) {
-                                            is Rules.Individual -> r.enabledBestLapKinds
-                                            is Rules.Team -> r.enabledBestLapKinds
+                                        enabledRecordKinds = when (val r = selectedTraining.rules) {
+                                            is Rules.Individual -> r.enabledRecordKinds
+                                            is Rules.Team -> r.enabledRecordKinds
                                             else -> emptySet()
                                         },
                                         onSave = {
+                                            val flight = flightViewModel.buildFlight(selectedTraining)
                                             val currentStats = selectedTraining.stats
-                                            if (currentStats is Stats.Individual) {
-                                                val training = selectedTraining as Training.Individual
-                                                val records = computeFlightRecords(
-                                                    laps,
-                                                    flightTimerPrecision,
-                                                    training.rules.enabledBestLapKinds
-                                                )
-                                                val flightCounters = computeFlightCounters(laps)
-                                                val updatedStats = currentStats.mergeFlightRecords(
-                                                    records,
-                                                    flightCounters,
-                                                )
-                                                trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
+                                            when {
+                                                currentStats is Stats.Individual && flight is Flight.Individual -> {
+                                                    val updatedStats = currentStats.mergeFlightRecords(
+                                                        flight.records,
+                                                        flight.counters,
+                                                        flightTimerPrecision,
+                                                    )
+                                                    trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
+                                                }
+                                                currentStats is Stats.Team && flight is Flight.Team -> {
+                                                    val updatedStats = currentStats.mergeTeamFlight(
+                                                        common = flight.common,
+                                                        head = flight.head,
+                                                        tail = flight.tail,
+                                                        pilotOrderSwapped = flight.rules.pilotOrderSwapped,
+                                                        timerPrecision = flightTimerPrecision
+                                                    )
+                                                    trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
+                                                }
                                             }
+                                            trainingViewModel.addFlight(selectedTraining, flight)
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
                                         },

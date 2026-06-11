@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import ru.fpvladder.laps.trainer.model.Channel
+import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.SwapMode
@@ -69,6 +70,19 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         val updatedTraining = when (training) {
             is Training.Individual -> training.copy(stats = stats as Stats.Individual)
             is Training.Team -> training.copy(stats = stats as Stats.Team)
+        }
+        updateTrainingInList(updatedTraining)
+    }
+
+    fun addFlight(training: Training, flight: Flight) {
+        val current = _trainings.value.find { it.id == training.id } ?: training
+        val updatedTraining = when (current) {
+            is Training.Individual -> current.copy(
+                flights = current.flights + (flight as Flight.Individual)
+            )
+            is Training.Team -> current.copy(
+                flights = current.flights + (flight as Flight.Team)
+            )
         }
         updateTrainingInList(updatedTraining)
     }

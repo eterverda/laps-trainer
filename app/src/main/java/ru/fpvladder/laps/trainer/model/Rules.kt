@@ -11,17 +11,17 @@ sealed class Rules {
         override val maxLaps: Int = Int.MAX_VALUE,
         override val timeLimitSeconds: Int = 180,
         override val holeshotEnabled: Boolean = true,
-        val enabledBestLapKinds: Set<BestLap.Kind> = EnumSet.of(
-            BestLap.Kind.BEST_1,
-            BestLap.Kind.BEST_3
-        ).apply { if (timeLimitSeconds != Int.MAX_VALUE) add(BestLap.Kind.MOST) }
+        val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
+            Record.Kind.BEST_1,
+            Record.Kind.BEST_3
+        ).apply { if (timeLimitSeconds != Int.MAX_VALUE) add(Record.Kind.MOST) }
     ) : Rules() {
         fun copy(
             maxLaps: Int = this.maxLaps,
             timeLimitSeconds: Int = this.timeLimitSeconds,
             holeshotEnabled: Boolean = this.holeshotEnabled,
-            enabledBestLapKinds: Set<BestLap.Kind> = this.enabledBestLapKinds
-        ) = Individual(maxLaps, timeLimitSeconds, holeshotEnabled, enabledBestLapKinds)
+            enabledRecordKinds: Set<Record.Kind> = this.enabledRecordKinds
+        ) = Individual(maxLaps, timeLimitSeconds, holeshotEnabled, enabledRecordKinds)
     }
 
     class Team(
@@ -30,8 +30,8 @@ sealed class Rules {
         override val holeshotEnabled: Boolean = true,
         val swapMode: SwapMode = SwapMode.LAPS,
         val pilotOrderSwapped: Boolean = false,
-        val enabledBestLapKinds: Set<BestLap.Kind> = EnumSet.of(
-            BestLap.Kind.BEST_1, BestLap.Kind.MOST,
+        val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
+            Record.Kind.BEST_1, Record.Kind.MOST,
         )
     ) : Rules() {
         fun copy(
@@ -40,8 +40,8 @@ sealed class Rules {
             holeshotEnabled: Boolean = this.holeshotEnabled,
             swapMode: SwapMode = this.swapMode,
             pilotOrderSwapped: Boolean = this.pilotOrderSwapped,
-            enabledBestLapKinds: Set<BestLap.Kind> = this.enabledBestLapKinds
-        ) = Team(maxLaps, timeLimitSeconds, holeshotEnabled, swapMode, pilotOrderSwapped, enabledBestLapKinds)
+            enabledRecordKinds: Set<Record.Kind> = this.enabledRecordKinds
+        ) = Team(maxLaps, timeLimitSeconds, holeshotEnabled, swapMode, pilotOrderSwapped, enabledRecordKinds)
     }
 }
 

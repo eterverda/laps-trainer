@@ -12,12 +12,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.SoundManager
+import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.model.Training
+import ru.fpvladder.laps.trainer.model.TeamCounterScope
+import ru.fpvladder.laps.trainer.model.computeFlightCounters
+import ru.fpvladder.laps.trainer.model.computeFlightRecords
+import ru.fpvladder.laps.trainer.model.computeTeamFlightCounters
+import ru.fpvladder.laps.trainer.model.computeTeamFlightRecords
 import kotlin.random.Random
 
 class FlightViewModel : ViewModel() {
@@ -245,6 +252,56 @@ class FlightViewModel : ViewModel() {
         lastLapElapsedMs = 0L
         _pilotSwapIndex.value = null
         pendingPilotSwap = false
+    }
+
+    fun buildFlight(training: Training): Flight {
+        val completedAt = System.currentTimeMillis()
+        val stopReason = _stopReason.value ?: StopReason.MANUAL
+        return when (training) {
+            is Training.Individual -> Flight.Individual(
+                trainingId = training.id,
+                pilot = training.pilot,
+                rules = training.rules,
+                laps = _laps.value,
+                stopReason = stopReason,
+                records = computeFlightRecords(
+                    _laps.value,
+                    _timerPrecision.value,
+                    training.rules.enabledRecordKinds
+                ),
+                counters = computeFlightCounters(_laps.value),
+                completedAt = completedAt
+            )
+            is Training.Team -> {
+                val teamRecords = computeTeamFlightRecords(
+                    _laps.value,
+                    _timerPrecision.value,
+                    training.rules.enabledRecordKinds,
+                    _pilotSwapIndex.value
+                )
+                Flight.Team(
+                    trainingId = training.id,
+                    pilot = training.pilot,
+                    rules = training.rules,
+                    laps = _laps.value,
+                    stopReason = stopReason,
+                    pilotSwapIndex = _pilotSwapIndex.value,
+                    common = Flight.Team.Item(
+                        counters = computeTeamFlightCounters(_laps.value, TeamCounterScope.COMMON, _pilotSwapIndex.value),
+                        records = teamRecords.common
+                    ),
+                    head = Flight.Team.Item(
+                        counters = computeTeamFlightCounters(_laps.value, TeamCounterScope.HEAD, _pilotSwapIndex.value),
+                        records = teamRecords.head
+                    ),
+                    tail = Flight.Team.Item(
+                        counters = computeTeamFlightCounters(_laps.value, TeamCounterScope.TAIL, _pilotSwapIndex.value),
+                        records = teamRecords.tail
+                    ),
+                    completedAt = completedAt
+                )
+            }
+        }
     }
 
     private fun startTimer(isMuted: Boolean) {

@@ -2,7 +2,6 @@ package ru.fpvladder.laps.trainer.model
 
 import android.content.Context
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.buildAnnotatedString
 import ru.fpvladder.laps.trainer.R
 import java.util.EnumSet
 
@@ -15,14 +14,7 @@ fun Training.description(context: Context): AnnotatedString {
 
 private fun formatIndividualAnnotated(context: Context, training: Training.Individual): AnnotatedString {
     val first = formatIndividualFirst(context, training)
-    val second = formatCalculations(training.rules.enabledBestLapKinds)
-    return buildAnnotatedString {
-        append(first)
-        if (second.isNotBlank()) {
-            append("\n")
-            append(second)
-        }
-    }
+    return AnnotatedString(first)
 }
 
 private fun formatIndividualFirst(context: Context, training: Training.Individual): String {
@@ -48,29 +40,27 @@ private fun formatIndividualFirst(context: Context, training: Training.Individua
     }
 }
 
-private fun formatCalculations(kinds: Set<BestLap.Kind>): String {
-    val hasBest1 = BestLap.Kind.BEST_1 in kinds
-    val hasBest2 = BestLap.Kind.BEST_2 in kinds
-    val hasBest3 = BestLap.Kind.BEST_3 in kinds
-    val hasMost = BestLap.Kind.MOST in kinds
+internal fun formatCalculations(kinds: Set<Record.Kind>): String {
+    val hasBest1 = Record.Kind.BEST_1 in kinds
+    val hasBest2 = Record.Kind.BEST_2 in kinds
+    val hasBest3 = Record.Kind.BEST_3 in kinds
+    val hasMost = Record.Kind.MOST in kinds
+
+    if (!hasBest1 && !hasBest2 && !hasBest3 && !hasMost) return ""
 
     val parts = mutableListOf<String>()
     if (hasBest1) parts.add("лучший круг")
-    if (hasBest2) parts.add("2 лучших круга подряд")
-    if (hasBest3) parts.add("3 лучших круга подряд")
-
-    val bestText = when {
-        parts.isEmpty() -> ""
-        parts.size == 1 -> "Считаем ${parts[0]}"
-        hasBest2 && hasBest3 && !hasBest1 -> "Считаем 2 и 3 лучших круга подряд"
-        parts.size == 2 -> "Считаем ${parts[0]} и ${parts[1]}"
-        else -> "Считаем ${parts[0]}, 2 и 3 лучших круга подряд"
+    if (hasBest2 && hasBest3) {
+        parts.add("2 и 3 круга подряд")
+    } else {
+        if (hasBest2) parts.add("2 круга подряд")
+        if (hasBest3) parts.add("3 круга подряд")
     }
+    if (hasMost) parts.add("максимум кругов")
 
     return when {
-        bestText.isEmpty() && hasMost -> "Считаем максимум кругов за вылет"
-        bestText.isNotEmpty() && hasMost -> "$bestText, а также максимум кругов за вылет"
-        else -> bestText
+        parts.size == 1 -> "Считаем ${parts[0]}"
+        else -> "Считаем ${parts.dropLast(1).joinToString(", ")} и ${parts.last()}"
     }
 }
 
@@ -137,7 +127,7 @@ private fun formatTeamPart(context: Context, training: Training.Team): String {
     val p1 = if (rules.pilotOrderSwapped) rawP2 else rawP1
     val p2 = if (rules.pilotOrderSwapped) rawP1 else rawP2
 
-    return when {
+    val base = when {
         rules.swapMode == SwapMode.TIME && halfTimeMins != null -> {
             val text = context.getString(R.string.team_swap_time, p1, halfTimeMins, p2)
             if (hasLaps) {
@@ -155,4 +145,5 @@ private fun formatTeamPart(context: Context, training: Training.Team): String {
         }
         else -> formatBase(context, rules)
     }
+    return base
 }

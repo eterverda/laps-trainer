@@ -41,11 +41,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import ru.fpvladder.laps.trainer.model.BestLap
+import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.IndividualRulePresets
 import ru.fpvladder.laps.trainer.model.TeamRulePresets
+import ru.fpvladder.laps.trainer.model.formatCalculations
 import java.util.EnumSet
 
 @Composable
@@ -90,12 +91,18 @@ fun RulesEditorContent(
     var enabledKinds by remember {
         mutableStateOf(
             EnumSet.copyOf(
-                (currentRules as? Rules.Individual)?.enabledBestLapKinds ?: EnumSet.noneOf(BestLap.Kind::class.java)
+                when (currentRules) {
+                    is Rules.Individual -> currentRules.enabledRecordKinds
+                    is Rules.Team -> currentRules.enabledRecordKinds
+                }
             )
         )
     }
     val wasTimeLimited = currentRules.timeLimitSeconds != Int.MAX_VALUE
-    val initialMost = (currentRules as? Rules.Individual)?.enabledBestLapKinds?.contains(BestLap.Kind.MOST) ?: true
+    val initialMost = when (currentRules) {
+        is Rules.Individual -> Record.Kind.MOST in currentRules.enabledRecordKinds
+        is Rules.Team -> Record.Kind.MOST in currentRules.enabledRecordKinds
+    }
     var rememberedMost by rememberSaveable { mutableStateOf(if (wasTimeLimited) initialMost else true) }
     var prevSelectedTime by remember { mutableStateOf<Int?>(null) }
 
@@ -135,11 +142,11 @@ fun RulesEditorContent(
             if (prev == null) return@LaunchedEffect
 
             if (selectedTime == Int.MAX_VALUE && prev != Int.MAX_VALUE) {
-                rememberedMost = BestLap.Kind.MOST in enabledKinds
-                enabledKinds = EnumSet.copyOf(enabledKinds).apply { remove(BestLap.Kind.MOST) }
+                rememberedMost = Record.Kind.MOST in enabledKinds
+                enabledKinds = EnumSet.copyOf(enabledKinds).apply { remove(Record.Kind.MOST) }
             } else if (selectedTime != Int.MAX_VALUE && prev == Int.MAX_VALUE) {
                 if (rememberedMost) {
-                    enabledKinds = EnumSet.copyOf(enabledKinds).apply { add(BestLap.Kind.MOST) }
+                    enabledKinds = EnumSet.copyOf(enabledKinds).apply { add(Record.Kind.MOST) }
                 }
             }
         }
@@ -169,32 +176,41 @@ fun RulesEditorContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (!isTeam) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { countsExpanded = !countsExpanded },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Подсчеты",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Icon(
-                    imageVector = if (countsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (countsExpanded) "Свернуть" else "Развернуть",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { countsExpanded = !countsExpanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Подсчеты",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Icon(
+                imageVector = if (countsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (countsExpanded) "Свернуть" else "Развернуть",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
-            AnimatedVisibility(visible = countsExpanded) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+        AnimatedVisibility(visible = countsExpanded) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                if (isTeam) {
+                    TeamRecordKindGrid(
+                        enabledKinds = enabledKinds,
+                        onToggle = { kind ->
+                            enabledKinds = EnumSet.copyOf(enabledKinds).apply {
+                                if (contains(kind)) remove(kind) else add(kind)
+                            }
+                        }
+                    )
+                } else {
                     val mostAvailable = selectedTime != Int.MAX_VALUE
-                    BestLapKindGrid(
+                    RecordKindGrid(
                         enabledKinds = enabledKinds,
                         mostAvailable = mostAvailable,
                         onToggle = { kind ->
@@ -204,10 +220,19 @@ fun RulesEditorContent(
                         }
                     )
                 }
+                val calcText = formatCalculations(enabledKinds)
+                if (calcText.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = calcText,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             modifier = Modifier
@@ -323,13 +348,14 @@ fun RulesEditorContent(
                             maxLaps = selectedLaps,
                             timeLimitSeconds = selectedTime,
                             holeshotEnabled = holeshot,
-                            enabledBestLapKinds = EnumSet.copyOf(enabledKinds)
+                            enabledRecordKinds = EnumSet.copyOf(enabledKinds)
                         )
                         is Rules.Team -> Rules.Team(
                             maxLaps = selectedLaps,
                             timeLimitSeconds = selectedTime,
                             holeshotEnabled = holeshot,
-                            swapMode = swapMode
+                            swapMode = swapMode,
+                            enabledRecordKinds = EnumSet.copyOf(enabledKinds)
                         )
                     }
                     onConfirm(newRules)
@@ -374,16 +400,13 @@ private fun OptionGrid(
 }
 
 @Composable
-private fun BestLapKindGrid(
-    enabledKinds: EnumSet<BestLap.Kind>,
-    mostAvailable: Boolean,
-    onToggle: (BestLap.Kind) -> Unit
+private fun TeamRecordKindGrid(
+    enabledKinds: EnumSet<Record.Kind>,
+    onToggle: (Record.Kind) -> Unit
 ) {
     val items = listOf(
-        BestLap.Kind.BEST_1 to "1",
-        BestLap.Kind.BEST_2 to "2",
-        BestLap.Kind.BEST_3 to "3",
-        BestLap.Kind.MOST to "max"
+        Record.Kind.BEST_1 to "1",
+        Record.Kind.MOST to "max"
     )
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -391,7 +414,39 @@ private fun BestLapKindGrid(
     ) {
         items.forEach { (kind, label) ->
             val selected = kind in enabledKinds
-            val enabled = kind != BestLap.Kind.MOST || mostAvailable
+            SelectableOption(
+                text = label,
+                selected = selected,
+                onClick = { onToggle(kind) },
+                fontSize = 16.sp,
+                fontFamily = if (label == "max") FontFamily.Default else FontFamily.Monospace,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun RecordKindGrid(
+    enabledKinds: EnumSet<Record.Kind>,
+    mostAvailable: Boolean,
+    onToggle: (Record.Kind) -> Unit
+) {
+    val items = listOf(
+        Record.Kind.BEST_1 to "1",
+        Record.Kind.BEST_2 to "2",
+        Record.Kind.BEST_3 to "3",
+        Record.Kind.MOST to "max"
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items.forEach { (kind, label) ->
+            val selected = kind in enabledKinds
+            val enabled = kind != Record.Kind.MOST || mostAvailable
             SelectableOption(
                 text = label,
                 selected = selected && enabled,

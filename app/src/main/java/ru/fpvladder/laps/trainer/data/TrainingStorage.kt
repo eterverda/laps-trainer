@@ -3,13 +3,16 @@ package ru.fpvladder.laps.trainer.data
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import ru.fpvladder.laps.trainer.model.BestLap
+import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.ChannelColor
 import ru.fpvladder.laps.trainer.model.Counter
+import ru.fpvladder.laps.trainer.model.Flight
+import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.Stats
+import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.Training
 import java.io.File
@@ -60,6 +63,9 @@ class TrainingStorage(private val context: Context) {
                 }
             }
             put("stats", statsToJson(training.stats))
+            put("flights", JSONArray().apply {
+                training.flights.forEach { put(flightToJson(it)) }
+            })
         }
     }
 
@@ -74,6 +80,7 @@ class TrainingStorage(private val context: Context) {
                 pilot = pilotIndividualFromJson(obj.getJSONObject("pilot")),
                 rules = individualRulesFromJson(obj.getJSONObject("rules")),
                 stats = statsFromJson(obj.optJSONObject("stats")),
+                flights = flightsIndividualFromJson(obj.optJSONArray("flights")),
                 createdAt = createdAt,
                 isArchived = isArchived
             )
@@ -82,6 +89,7 @@ class TrainingStorage(private val context: Context) {
                 pilot = pilotTeamFromJson(obj.getJSONObject("pilot")),
                 rules = teamRulesFromJson(obj.getJSONObject("rules")),
                 stats = statsFromJson(obj.optJSONObject("stats")),
+                flights = flightsTeamFromJson(obj.optJSONArray("flights")),
                 createdAt = createdAt,
                 isArchived = isArchived
             )
@@ -138,16 +146,16 @@ class TrainingStorage(private val context: Context) {
 
     private fun individualRulesToJson(rules: Rules.Individual): JSONObject {
         return rulesToJson(rules).apply {
-            put("enabledBestLapKinds", JSONArray().apply {
-                rules.enabledBestLapKinds.forEach { put(it.name) }
+            put("enabledRecordKinds", JSONArray().apply {
+                rules.enabledRecordKinds.forEach { put(it.name) }
             })
         }
     }
 
     private fun teamRulesToJson(rules: Rules.Team): JSONObject {
         return rulesToJson(rules).apply {
-            put("enabledBestLapKinds", JSONArray().apply {
-                rules.enabledBestLapKinds.forEach { put(it.name) }
+            put("enabledRecordKinds", JSONArray().apply {
+                rules.enabledRecordKinds.forEach { put(it.name) }
             })
         }
     }
@@ -166,15 +174,15 @@ class TrainingStorage(private val context: Context) {
 
     private fun individualRulesFromJson(obj: JSONObject): Rules.Individual {
         val timeLimit = obj.optInt("timeLimitSeconds", 180)
-        val defaultKinds = EnumSet.of(BestLap.Kind.BEST_1, BestLap.Kind.BEST_3).apply {
-            if (timeLimit != Int.MAX_VALUE) add(BestLap.Kind.MOST)
+        val defaultKinds = EnumSet.of(Record.Kind.BEST_1, Record.Kind.BEST_3).apply {
+            if (timeLimit != Int.MAX_VALUE) add(Record.Kind.MOST)
         }
-        val kindsArray = obj.optJSONArray("enabledBestLapKinds")
+        val kindsArray = obj.optJSONArray("enabledRecordKinds")
         val kinds = if (kindsArray != null) {
-            EnumSet.noneOf(BestLap.Kind::class.java).apply {
+            EnumSet.noneOf(Record.Kind::class.java).apply {
                 for (i in 0 until kindsArray.length()) {
                     try {
-                        add(BestLap.Kind.valueOf(kindsArray.getString(i)))
+                        add(Record.Kind.valueOf(kindsArray.getString(i)))
                     } catch (_: Exception) {}
                 }
             }
@@ -183,7 +191,7 @@ class TrainingStorage(private val context: Context) {
             maxLaps = obj.optInt("maxLaps", Int.MAX_VALUE),
             timeLimitSeconds = timeLimit,
             holeshotEnabled = obj.optBoolean("holeshotEnabled", true),
-            enabledBestLapKinds = kinds
+            enabledRecordKinds = kinds
         )
     }
 
@@ -195,13 +203,13 @@ class TrainingStorage(private val context: Context) {
         }
         val maxLaps = obj.optInt("maxLaps", 10).coerceAtLeast(1)
         val timeLimit = obj.optInt("timeLimitSeconds", 60)
-        val defaultKinds = EnumSet.of(BestLap.Kind.BEST_1, BestLap.Kind.MOST)
-        val kindsArray = obj.optJSONArray("enabledBestLapKinds")
+        val defaultKinds = EnumSet.of(Record.Kind.BEST_1, Record.Kind.MOST)
+        val kindsArray = obj.optJSONArray("enabledRecordKinds")
         val kinds = if (kindsArray != null) {
-            EnumSet.noneOf(BestLap.Kind::class.java).apply {
+            EnumSet.noneOf(Record.Kind::class.java).apply {
                 for (i in 0 until kindsArray.length()) {
                     try {
-                        add(BestLap.Kind.valueOf(kindsArray.getString(i)))
+                        add(Record.Kind.valueOf(kindsArray.getString(i)))
                     } catch (_: Exception) {}
                 }
             }
@@ -212,7 +220,7 @@ class TrainingStorage(private val context: Context) {
             holeshotEnabled = obj.optBoolean("holeshotEnabled", true),
             swapMode = swapMode,
             pilotOrderSwapped = obj.optBoolean("pilotOrderSwapped", false),
-            enabledBestLapKinds = kinds
+            enabledRecordKinds = kinds
         )
     }
 
@@ -221,14 +229,20 @@ class TrainingStorage(private val context: Context) {
             when (stats) {
                 is Stats.Individual -> {
                     put("type", "INDIVIDUAL")
-                    put("bestLaps", JSONArray().apply {
-                        stats.bestLaps.forEach { put(bestLapToJson(it)) }
+                    put("records", JSONArray().apply {
+                        stats.records.forEach { put(recordToJson(it)) }
                     })
                     put("counters", JSONArray().apply {
                         stats.counters.forEach { put(counterToJson(it)) }
                     })
                 }
-                is Stats.Team -> put("type", "TEAM")
+                is Stats.Team -> {
+                    put("type", "TEAM")
+                    put("records", JSONArray().apply { stats.records.forEach { put(recordToJson(it)) } })
+                    put("counters", JSONArray().apply { stats.counters.forEach { put(counterToJson(it)) } })
+                    put("first", teamStatsItemToJson(stats.first))
+                    put("second", teamStatsItemToJson(stats.second))
+                }
             }
         }
     }
@@ -236,34 +250,195 @@ class TrainingStorage(private val context: Context) {
     private fun statsFromJson(obj: JSONObject?): Stats {
         if (obj == null) return Stats.Individual()
         return when (obj.optString("type", "INDIVIDUAL")) {
-            "TEAM" -> Stats.Team()
+            "TEAM" -> Stats.Team(
+                records = recordsFromJson(obj.optJSONArray("records")),
+                counters = countersFromJson(obj.optJSONArray("counters")),
+                first = teamStatsItemFromJson(obj.optJSONObject("first")),
+                second = teamStatsItemFromJson(obj.optJSONObject("second"))
+            )
             else -> Stats.Individual(
-                bestLaps = bestLapsFromJson(obj.optJSONArray("bestLaps")),
+                records = recordsFromJson(obj.optJSONArray("records")),
                 counters = countersFromJson(obj.optJSONArray("counters"))
             )
         }
     }
 
-    private fun bestLapToJson(bestLap: BestLap): JSONObject {
+    private fun flightToJson(flight: Flight): JSONObject {
         return JSONObject().apply {
-            put("count", bestLap.count)
-            put("timeMs", bestLap.timeMs)
-            put("kind", bestLap.kind.name)
+            put("id", flight.id)
+            put("trainingId", flight.trainingId)
+            put("rules", when (val rules = flight.rules) {
+                is Rules.Individual -> individualRulesToJson(rules)
+                is Rules.Team -> teamRulesToJson(rules)
+            })
+            put("pilot", when (val pilot = flight.pilot) {
+                is Pilot.Individual -> pilotIndividualToJson(pilot)
+                is Pilot.Team -> pilotTeamToJson(pilot)
+            })
+            put("laps", JSONArray().apply { flight.laps.forEach { put(lapToJson(it)) } })
+            put("stopReason", flight.stopReason.name)
+            put("createdAt", flight.createdAt)
+            put("completedAt", flight.completedAt ?: JSONObject.NULL)
+            put("type", when (flight) {
+                is Flight.Individual -> "INDIVIDUAL"
+                is Flight.Team -> "TEAM"
+            })
+            when (flight) {
+                is Flight.Individual -> {
+                    put("records", JSONArray().apply { flight.records.forEach { put(recordToJson(it)) } })
+                    put("counters", JSONArray().apply { flight.counters.forEach { put(counterToJson(it)) } })
+                }
+                is Flight.Team -> {
+                    put("pilotSwapIndex", flight.pilotSwapIndex ?: JSONObject.NULL)
+                    put("common", teamFlightItemToJson(flight.common))
+                    put("head", teamFlightItemToJson(flight.head))
+                    put("tail", teamFlightItemToJson(flight.tail))
+                }
+            }
         }
     }
 
-    private fun bestLapsFromJson(array: JSONArray?): List<BestLap> {
+    private fun flightsIndividualFromJson(array: JSONArray?): List<Flight.Individual> {
+        if (array == null) return emptyList()
+        return List(array.length()) { index ->
+            flightFromJson(array.getJSONObject(index)) as Flight.Individual
+        }
+    }
+
+    private fun flightsTeamFromJson(array: JSONArray?): List<Flight.Team> {
+        if (array == null) return emptyList()
+        return List(array.length()) { index ->
+            flightFromJson(array.getJSONObject(index)) as Flight.Team
+        }
+    }
+
+    private fun flightFromJson(obj: JSONObject): Flight {
+        val type = obj.getString("type")
+        val id = obj.getString("id")
+        val trainingId = obj.getString("trainingId")
+        val createdAt = obj.getLong("createdAt")
+        val completedAt = if (obj.isNull("completedAt")) null else obj.getLong("completedAt")
+        val stopReason = try {
+            StopReason.valueOf(obj.optString("stopReason", "MANUAL"))
+        } catch (_: Exception) {
+            StopReason.MANUAL
+        }
+        val laps = lapsFromJson(obj.optJSONArray("laps"))
+        return when (type) {
+            "INDIVIDUAL" -> Flight.Individual(
+                id = id,
+                trainingId = trainingId,
+                pilot = pilotIndividualFromJson(obj.getJSONObject("pilot")),
+                rules = individualRulesFromJson(obj.getJSONObject("rules")),
+                laps = laps,
+                stopReason = stopReason,
+                records = recordsFromJson(obj.optJSONArray("records")),
+                counters = countersFromJson(obj.optJSONArray("counters")),
+                createdAt = createdAt,
+                completedAt = completedAt
+            )
+            "TEAM" -> Flight.Team(
+                id = id,
+                trainingId = trainingId,
+                pilot = pilotTeamFromJson(obj.getJSONObject("pilot")),
+                rules = teamRulesFromJson(obj.getJSONObject("rules")),
+                laps = laps,
+                stopReason = stopReason,
+                pilotSwapIndex = if (obj.isNull("pilotSwapIndex")) null else obj.getInt("pilotSwapIndex"),
+                common = teamFlightItemFromJson(obj.optJSONObject("common")),
+                head = teamFlightItemFromJson(obj.optJSONObject("head") ?: obj.optJSONObject("first")),
+                tail = teamFlightItemFromJson(obj.optJSONObject("tail") ?: obj.optJSONObject("second")),
+                createdAt = createdAt,
+                completedAt = completedAt
+            )
+            else -> throw IllegalArgumentException("Unknown flight type: $type")
+        }
+    }
+
+    private fun teamStatsItemToJson(item: Stats.Team.Item): JSONObject {
+        return JSONObject().apply {
+            put("records", JSONArray().apply { item.records.forEach { put(recordToJson(it)) } })
+            put("recordsBeingHead", JSONArray().apply { item.recordsBeingHead.forEach { put(recordToJson(it)) } })
+            put("recordsBeingTail", JSONArray().apply { item.recordsBeingTail.forEach { put(recordToJson(it)) } })
+            put("counters", JSONArray().apply { item.counters.forEach { put(counterToJson(it)) } })
+        }
+    }
+
+    private fun teamStatsItemFromJson(obj: JSONObject?): Stats.Team.Item {
+        if (obj == null) return Stats.Team.Item()
+        return Stats.Team.Item(
+            records = recordsFromJson(obj.optJSONArray("records")),
+            recordsBeingHead = recordsFromJson(obj.optJSONArray("recordsBeingHead") ?: obj.optJSONArray("recordsBeingFirst")),
+            recordsBeingTail = recordsFromJson(obj.optJSONArray("recordsBeingTail") ?: obj.optJSONArray("recordsBeingSecond")),
+            counters = countersFromJson(obj.optJSONArray("counters"))
+        )
+    }
+
+    private fun teamFlightItemToJson(item: Flight.Team.Item): JSONObject {
+        return JSONObject().apply {
+            put("records", JSONArray().apply { item.records.forEach { put(recordToJson(it)) } })
+            put("counters", JSONArray().apply { item.counters.forEach { put(counterToJson(it)) } })
+        }
+    }
+
+    private fun teamFlightItemFromJson(obj: JSONObject?): Flight.Team.Item {
+        if (obj == null) return Flight.Team.Item()
+        return Flight.Team.Item(
+            records = recordsFromJson(obj.optJSONArray("records")),
+            counters = countersFromJson(obj.optJSONArray("counters"))
+        )
+    }
+
+    private fun lapToJson(lap: Lap): JSONObject {
+        return JSONObject().apply {
+            put("label", lap.label)
+            put("timeMs", lap.timeMs)
+            put("status", lap.status.name)
+        }
+    }
+
+    private fun lapsFromJson(array: JSONArray?): List<Lap> {
         if (array == null) return emptyList()
         return List(array.length()) { index ->
             val obj = array.getJSONObject(index)
-            BestLap(
-                count = obj.optInt("count", 0),
+            Lap(
+                label = obj.optString("label", ""),
                 timeMs = obj.optLong("timeMs", 0L),
-                kind = try {
-                    BestLap.Kind.valueOf(obj.optString("kind", "MOST"))
+                status = try {
+                    Lap.Status.valueOf(obj.optString("status", "SUCCESS"))
                 } catch (_: Exception) {
-                    BestLap.Kind.MOST
+                    Lap.Status.SUCCESS
                 }
+            )
+        }
+    }
+
+    private fun recordToJson(record: Record): JSONObject {
+        return JSONObject().apply {
+            put("count", record.count)
+            put("kind", record.kind.name)
+            put("lapTimesMs", JSONArray().apply { record.lapTimesMs.forEach { put(it) } })
+        }
+    }
+
+    private fun recordsFromJson(array: JSONArray?): List<Record> {
+        if (array == null) return emptyList()
+        return List(array.length()) { index ->
+            val obj = array.getJSONObject(index)
+            val lapTimesArray = obj.optJSONArray("lapTimesMs")
+            val lapTimesMs = if (lapTimesArray != null) {
+                List(lapTimesArray.length()) { lapTimesArray.getLong(it) }
+            } else {
+                emptyList()
+            }
+            Record(
+                count = obj.optInt("count", 0),
+                kind = try {
+                    Record.Kind.valueOf(obj.optString("kind", "MOST"))
+                } catch (_: Exception) {
+                    Record.Kind.MOST
+                },
+                lapTimesMs = lapTimesMs
             )
         }
     }
