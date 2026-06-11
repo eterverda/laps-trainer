@@ -67,7 +67,6 @@ import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
 import ru.fpvladder.laps.trainer.ui.components.IndividualNameDialog
 import ru.fpvladder.laps.trainer.ui.components.TeamNameDialog
-import ru.fpvladder.laps.trainer.ui.components.PilotEditorDialog
 // import ru.fpvladder.laps.trainer.ui.components.PilotSection
 import ru.fpvladder.laps.trainer.ui.components.RulesEditorDialog
 import ru.fpvladder.laps.trainer.ui.components.TrainingHeader
@@ -79,7 +78,7 @@ import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
-import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.computeFlightCounters
 import ru.fpvladder.laps.trainer.model.computeFlightRecords
@@ -136,7 +135,8 @@ fun FlightTimer(
     preStartCountdownMs: Long,
     isPreBlinking: Boolean,
     timerPrecision: TimerPrecision,
-    timeLimitSeconds: Int
+    timeLimitSeconds: Int,
+    swapRemainingMs: Long? = null
 ) {
     val isBlinking = phase == FlightPhase.PRE && isPreBlinking
     val alpha by animateFloatAsState(
@@ -165,16 +165,47 @@ fun FlightTimer(
         ) {
             append(timeText)
         }
-        if (timeLimitSeconds != Int.MAX_VALUE) {
+        val hasSwap = swapRemainingMs != null
+        val hasLimit = timeLimitSeconds != Int.MAX_VALUE
+        if (hasSwap) {
+            val swapHappened = swapRemainingMs!! <= 0
+            if (!swapHappened) {
+                append("\n")
+                withStyle(
+                    style = SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 14.sp
+                    )
+                ) {
+                    append(formatCountdown(swapRemainingMs, timerPrecision))
+                }
+                withStyle(style = SpanStyle(fontSize = 14.sp)) {
+                    append(" до смены")
+                }
+            } else if (hasLimit) {
+                append("\n")
+                val remainingMs = (timeLimitSeconds * 1000L - elapsedMs).coerceAtLeast(0)
+                withStyle(
+                    style = SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 14.sp
+                    )
+                ) {
+                    append(formatCountdown(remainingMs, timerPrecision))
+                }
+                withStyle(style = SpanStyle(fontSize = 14.sp)) {
+                    append(" до конца")
+                }
+            }
+        } else if (hasLimit) {
+            append("\n")
             val remainingMs = (timeLimitSeconds * 1000L - elapsedMs).coerceAtLeast(0)
-
             withStyle(
                 style = SpanStyle(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 14.sp
                 )
             ) {
-                append("\n")
                 append(formatCountdown(remainingMs, timerPrecision))
             }
         }
@@ -213,7 +244,6 @@ fun AppRoot(
     val flightPhase by flightViewModel.phase.collectAsState()
     val isStopping by flightViewModel.isStopping.collectAsState()
     val elapsedMs by flightViewModel.elapsedMs.collectAsState()
-    val preStartTime by flightViewModel.preStartTime.collectAsState()
     val isPreBlinking by flightViewModel.isPreBlinking.collectAsState()
     val flightTimerPrecision by flightViewModel.timerPrecision.collectAsState()
     val scope = rememberCoroutineScope()
@@ -224,6 +254,7 @@ fun AppRoot(
     val currentLapTime by flightViewModel.currentLapTime.collectAsState()
     val stopReason by flightViewModel.stopReason.collectAsState()
     val preStartCountdownMs by flightViewModel.preStartCountdownMs.collectAsState()
+    val flightPilotSwapIndex by flightViewModel.pilotSwapIndex.collectAsState()
 
     LaunchedEffect(currentScreen) {
         if (currentScreen == AppScreen.Flight) {
@@ -236,7 +267,6 @@ fun AppRoot(
     }
 
     var showChannelDialog by remember { mutableStateOf(false) }
-    var showPilotEditor by remember { mutableStateOf(false) }
     var showIndividualNameDialog by remember { mutableStateOf(false) }
     var showTeamNameDialog by remember { mutableStateOf(false) }
     var nameEditorIsNew by remember { mutableStateOf(false) }
@@ -326,6 +356,12 @@ fun AppRoot(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
+                        val swapRemainingMs = when (val r = selectedTraining.rules) {
+                            is Rules.Team -> if (r.swapMode == SwapMode.TIME) {
+                                (r.timeLimitSeconds * 1000L / 2 - elapsedMs).coerceAtLeast(0)
+                            } else null
+                            else -> null
+                        }
                         FlightTimer(
                             phase = flightPhase,
                             startSignal = startSignal,
@@ -333,7 +369,8 @@ fun AppRoot(
                             preStartCountdownMs = preStartCountdownMs,
                             isPreBlinking = isPreBlinking,
                             timerPrecision = flightTimerPrecision,
-                            timeLimitSeconds = selectedTraining.rules.timeLimitSeconds
+                            timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
+                            swapRemainingMs = swapRemainingMs
                         )
                     }
                 }
@@ -428,6 +465,9 @@ fun AppRoot(
                                             flightViewModel.addLap()
                                         },
                                         timerPrecision = flightTimerPrecision,
+                                        pilot = selectedTraining.pilot,
+                                        pilotSwapIndex = flightPilotSwapIndex,
+                                        pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
                                         modifier = Modifier.fillMaxSize()
                                     )
 
@@ -439,10 +479,8 @@ fun AppRoot(
                                             stats = selectedTraining.stats,
                                             timerPrecision = flightTimerPrecision,
                                             isTeam = isTeam,
-                                            pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1
-                                                ?: "",
-                                            pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2
-                                                ?: "",
+                                            pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
+                                            pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
                                             pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped
                                                 ?: false,
                                             onSwapPilots = { trainingViewModel.swapPilotOrder() },
@@ -703,17 +741,6 @@ fun AppRoot(
                 showTeamNameDialog = false
             },
             onDismiss = { showTeamNameDialog = false }
-        )
-    }
-
-    if (showPilotEditor) {
-        PilotEditorDialog(
-            currentPilot = currentPilot,
-            onConfirm = { pilot ->
-                trainingViewModel.updatePilot(pilot)
-                showPilotEditor = false
-            },
-            onDismiss = { showPilotEditor = false }
         )
     }
 

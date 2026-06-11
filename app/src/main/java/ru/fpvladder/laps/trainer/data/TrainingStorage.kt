@@ -145,7 +145,11 @@ class TrainingStorage(private val context: Context) {
     }
 
     private fun teamRulesToJson(rules: Rules.Team): JSONObject {
-        return rulesToJson(rules)
+        return rulesToJson(rules).apply {
+            put("enabledBestLapKinds", JSONArray().apply {
+                rules.enabledBestLapKinds.forEach { put(it.name) }
+            })
+        }
     }
 
     private fun rulesToJson(rules: Rules): JSONObject {
@@ -187,14 +191,28 @@ class TrainingStorage(private val context: Context) {
         val swapMode = when (val mode = obj.optString("swapMode", "")) {
             "TIME" -> SwapMode.TIME
             "LAPS" -> SwapMode.LAPS
-            else -> if (obj.optBoolean("swapByTime", true)) SwapMode.TIME else SwapMode.LAPS
+            else -> if (obj.optBoolean("swapByTime", false)) SwapMode.TIME else SwapMode.LAPS
         }
+        val maxLaps = obj.optInt("maxLaps", 10).coerceAtLeast(1)
+        val timeLimit = obj.optInt("timeLimitSeconds", 60)
+        val defaultKinds = EnumSet.of(BestLap.Kind.BEST_1, BestLap.Kind.MOST)
+        val kindsArray = obj.optJSONArray("enabledBestLapKinds")
+        val kinds = if (kindsArray != null) {
+            EnumSet.noneOf(BestLap.Kind::class.java).apply {
+                for (i in 0 until kindsArray.length()) {
+                    try {
+                        add(BestLap.Kind.valueOf(kindsArray.getString(i)))
+                    } catch (_: Exception) {}
+                }
+            }
+        } else defaultKinds
         return Rules.Team(
-            maxLaps = obj.optInt("maxLaps", Int.MAX_VALUE),
-            timeLimitSeconds = obj.optInt("timeLimitSeconds", 180),
+            maxLaps = maxLaps,
+            timeLimitSeconds = timeLimit,
             holeshotEnabled = obj.optBoolean("holeshotEnabled", true),
             swapMode = swapMode,
-            pilotOrderSwapped = obj.optBoolean("pilotOrderSwapped", false)
+            pilotOrderSwapped = obj.optBoolean("pilotOrderSwapped", false),
+            enabledBestLapKinds = kinds
         )
     }
 

@@ -75,9 +75,9 @@ class TimerFormatTest {
     @Test
     fun `formatTime rounds and carries over`() {
         // 59.95s with DECISECONDS should display as 1:00.0 (timeLimit default 0 adds leading space)
-        assertEquals(" 1:00.0", formatTime(59950L, TimerPrecision.DECISECONDS))
+        assertEquals("1:00.0", formatTime(59950L, TimerPrecision.DECISECONDS))
         // 59.995s with CENTISECONDS should display as 1:00.00
-        assertEquals(" 1:00.00", formatTime(59995L, TimerPrecision.CENTISECONDS))
+        assertEquals("1:00.00", formatTime(59995L, TimerPrecision.CENTISECONDS))
     }
 
     @Test
@@ -92,7 +92,7 @@ class TimerFormatTest {
     fun `formatTime with timeLimit padding`() {
         // 83450ms rounded to 83500ms = 83.5s = 1:23.5
         // timeLimit < 600 (10 min) => single space before single-digit minute
-        assertEquals(" 1:23.5", formatTime(83450L, TimerPrecision.DECISECONDS, timeLimitSeconds = 300))
+        assertEquals("1:23.5", formatTime(83450L, TimerPrecision.DECISECONDS, timeLimitSeconds = 300))
         // timeLimit >= 600 => zero-padded
         assertEquals("01:23.5", formatTime(83450L, TimerPrecision.DECISECONDS, timeLimitSeconds = 600))
     }

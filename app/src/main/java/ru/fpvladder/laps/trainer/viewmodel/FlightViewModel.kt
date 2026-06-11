@@ -1,6 +1,7 @@
 package ru.fpvladder.laps.trainer.viewmodel
 
 import android.os.SystemClock
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -12,10 +13,10 @@ import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.model.Lap
-import ru.fpvladder.laps.trainer.model.Lap.Status
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
+import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import kotlin.random.Random
 
@@ -61,8 +62,22 @@ class FlightViewModel : ViewModel() {
     private var raceIsMuted: Boolean = false
     private var lastLapElapsedMs = 0L
 
+    private val _pilotSwapIndex = MutableStateFlow<Int?>(null)
+    val pilotSwapIndex: StateFlow<Int?> = _pilotSwapIndex.asStateFlow()
+
+    private var pendingPilotSwap = false
+    private var swapPointLap = 0
+    private var swapPointTimeMs = 0L
+
     fun setRules(newRules: Rules) {
         rules = newRules
+        if (newRules is Rules.Team) {
+            swapPointLap = if (newRules.swapMode == SwapMode.LAPS) (newRules.maxLaps / 2).coerceAtLeast(0) else 0
+            swapPointTimeMs = if (newRules.swapMode == SwapMode.TIME) (newRules.timeLimitSeconds * 1000L / 2).coerceAtLeast(0L) else 0L
+        } else {
+            swapPointLap = 0
+            swapPointTimeMs = 0L
+        }
     }
 
     fun setTimerPrecision(precision: TimerPrecision) {
@@ -148,6 +163,7 @@ class FlightViewModel : ViewModel() {
     fun addLap() {
         val lapTime = _elapsedMs.value - lastLapElapsedMs
         val current = _currentLap.value ?: return
+        Log.d("FlightVM", "addLap: currentLabel=${current.label}, nextLapNumber=$nextLapNumber, swapPointLap=$swapPointLap, pendingPilotSwap=$pendingPilotSwap, lapsSize=${_laps.value.size}")
         val completed = current.copy(timeMs = lapTime)
         _laps.value = _laps.value + completed
 
@@ -156,6 +172,29 @@ class FlightViewModel : ViewModel() {
         }
         lastLapElapsedMs = _elapsedMs.value
         _currentLapTime.value = 0L
+
+        val teamRules = rules as? Rules.Team
+        if (teamRules != null) {
+            if (teamRules.swapMode == SwapMode.LAPS && !pendingPilotSwap && nextLapNumber - 1 == swapPointLap) {
+                pendingPilotSwap = true
+                Log.d("FlightVM", "Triggering pilot swap at lap ${nextLapNumber - 1}")
+                if (!raceIsMuted) SoundManager.playBuzzer()
+            }
+
+            if (pendingPilotSwap) {
+                if (_pilotSwapIndex.value == null) {
+                    _pilotSwapIndex.value = (_laps.value.size - 1).coerceAtLeast(0)
+                }
+                pendingPilotSwap = false
+                val newLabel = if (nextLapNumber == 0) "HS" else "$nextLapNumber)"
+                _currentLap.value = Lap(
+                    label = newLabel,
+                    timeMs = 0L,
+                    status = if (nextLapNumber == 0) Lap.Status.HS else Lap.Status.SUCCESS
+                )
+                return
+            }
+        }
 
         if (current.status == Lap.Status.SUCCESS && nextLapNumber - 1 >= rules.maxLaps) {
             performStop(
@@ -173,6 +212,7 @@ class FlightViewModel : ViewModel() {
             timeMs = 0L,
             status = if (nextLapNumber == 0) Lap.Status.HS else Lap.Status.SUCCESS
         )
+        Log.d("FlightVM", "addLap finished: newLabel=$newLabel, pilotSwapIndex=${_pilotSwapIndex.value}")
     }
 
     fun addErrorToLastLap() {
@@ -203,6 +243,8 @@ class FlightViewModel : ViewModel() {
         _preStartCountdownMs.value = 0L
         nextLapNumber = 0
         lastLapElapsedMs = 0L
+        _pilotSwapIndex.value = null
+        pendingPilotSwap = false
     }
 
     private fun startTimer(isMuted: Boolean) {
@@ -221,10 +263,19 @@ class FlightViewModel : ViewModel() {
         val buzzerStartMs = limitMs - BUZZER_DURATION_MS
         timerJob = viewModelScope.launch {
             var buzzerPlayed = false
+            var swapBuzzerPlayed = false
             while (true) {
                 val elapsed = SystemClock.elapsedRealtime() - startTime
                 _elapsedMs.value = elapsed
                 _currentLapTime.value = elapsed - lastLapElapsedMs
+
+                val localRules = rules
+                if (localRules is Rules.Team && localRules.swapMode == SwapMode.TIME && !swapBuzzerPlayed && elapsed >= swapPointTimeMs) {
+                    swapBuzzerPlayed = true
+                    if (!isMuted) SoundManager.playBuzzer()
+                    pendingPilotSwap = true
+                    _pilotSwapIndex.value = _laps.value.size
+                }
 
                 if (rules.timeLimitSeconds != Int.MAX_VALUE && !buzzerPlayed && elapsed >= buzzerStartMs) {
                     buzzerPlayed = true

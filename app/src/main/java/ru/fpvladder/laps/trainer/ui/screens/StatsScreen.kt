@@ -161,11 +161,11 @@ fun StatsContent(
 
             if (isTeam) {
                 if (hasResults) {
-                    PilotResultsHeader(p1Raw)
+                    PilotResultsHeader(p1)
                     ResultsInset()
                     SummaryText()
                     Spacer(modifier = Modifier.height(32.dp))
-                    PilotResultsHeader(p2Raw)
+                    PilotResultsHeader(p2)
                     ResultsInset()
                     SummaryText()
                     Spacer(modifier = Modifier.height(12.dp))

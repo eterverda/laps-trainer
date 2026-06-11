@@ -59,6 +59,7 @@ import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
 import ru.fpvladder.laps.trainer.model.BestLap
 import ru.fpvladder.laps.trainer.model.computeFlightRecords
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Lap.Status
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
@@ -86,8 +87,12 @@ fun FlightContent(
     onLapClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
     enabledBestLapKinds: Set<BestLap.Kind> = emptySet(),
+    pilot: Pilot? = null,
+    pilotSwapIndex: Int? = null,
+    pilotOrderSwapped: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isTeam = pilot is Pilot.Team
     val context = LocalContext.current
     val mainClickModifier = if (phase == FlightPhase.MAIN) {
         Modifier.pointerInput(Unit) {
@@ -130,7 +135,10 @@ fun FlightContent(
                                 currentLap = currentLap,
                                 currentLapTime = currentLapTime,
                                 timerPrecision = timerPrecision,
-                                phase = phase
+                                phase = phase,
+                                pilot = pilot,
+                                pilotSwapIndex = pilotSwapIndex,
+                                pilotOrderSwapped = pilotOrderSwapped
                             )
                             if (phase == FlightPhase.MAIN && laps.isEmpty()) {
                                 Box(
@@ -143,8 +151,19 @@ fun FlightContent(
                             if (phase == FlightPhase.POST) {
                                 val completedText = when (stopReason) {
                                     StopReason.TIME_LIMIT -> {
-                                        val minsStr = formatMinutesString(context, timeLimitSeconds / 60.0)
-                                        stringResource(R.string.flight_completed_time, minsStr)
+                                        val minutes = timeLimitSeconds / 60.0
+                                        if (minutes == minutes.toInt().toDouble()) {
+                                            context.resources.getQuantityString(
+                                                R.plurals.flight_completed_time_minutes,
+                                                minutes.toInt(),
+                                                minutes.toInt()
+                                            )
+                                        } else {
+                                            context.getString(
+                                                R.string.flight_completed_time_fraction,
+                                                String.format("%.1f", minutes).replace('.', ',')
+                                            )
+                                        }
                                     }
                                     StopReason.MAX_LAPS -> {
                                         val lapsStr = context.resources.getQuantityString(R.plurals.laps, maxLaps, maxLaps)
@@ -344,8 +363,19 @@ private fun LapList(
     currentLap: Lap?,
     currentLapTime: Long,
     timerPrecision: TimerPrecision,
-    phase: FlightPhase
+    phase: FlightPhase,
+    pilot: Pilot? = null,
+    pilotSwapIndex: Int? = null,
+    pilotOrderSwapped: Boolean = false
 ) {
+    val isTeam = pilot is Pilot.Team
+    val (rawName1, rawName2) = when (pilot) {
+        is Pilot.Team -> pilot.name1 to pilot.name2
+        is Pilot.Individual -> pilot.name to ""
+        else -> "" to ""
+    }
+    val firstPilot = if (pilotOrderSwapped) rawName2 else rawName1
+    val secondPilot = if (pilotOrderSwapped) rawName1 else rawName2
     @Composable
     fun LapRow(
         label: String,
@@ -395,7 +425,19 @@ private fun LapList(
         modifier = Modifier.width(IntrinsicSize.Max),
         horizontalAlignment = Alignment.End
     ) {
-        laps.forEach { lap ->
+        if (isTeam) {
+            val startingPilot = firstPilot
+            if (startingPilot.isNotBlank()) {
+                Text(
+                    text = "Стартует $startingPilot",
+                    fontSize = 16.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Start
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+        laps.forEachIndexed { index, lap ->
             val isFailed = lap.status == Lap.Status.FAIL
             LapRow(
                 label = if (isFailed) "" else lap.label,
@@ -405,17 +447,43 @@ private fun LapList(
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
             )
+            if (isTeam && pilotSwapIndex != null && index == pilotSwapIndex) {
+                val nextPilot = secondPilot
+                if (nextPilot.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Смена пилота. Стартует $nextPilot",
+                        fontSize = 16.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Start
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
         }
         currentVisible?.let { lap ->
             val isCurrentFail = lap.status == Lap.Status.FAIL
             LapRow(
-                label = if (isCurrentFail) "" else lap.label,
+                label = lap.label,
                 time = formatTimeDynamic(currentLapTime, timerPrecision),
                 isFailed = false,
                 isCurrentFail = isCurrentFail,
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
             )
+        }
+        if (isTeam && pilotSwapIndex != null && pilotSwapIndex == laps.size) {
+            val nextPilot = secondPilot
+            if (nextPilot.isNotBlank()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Смена пилота. Стартует $nextPilot",
+                    fontSize = 16.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Start
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }
