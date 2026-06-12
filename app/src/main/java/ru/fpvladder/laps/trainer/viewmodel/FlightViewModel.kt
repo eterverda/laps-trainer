@@ -29,8 +29,11 @@ import kotlin.random.Random
 
 class FlightViewModel : ViewModel() {
 
-    private val _phase = MutableStateFlow(FlightPhase.PRE)
-    val phase: StateFlow<FlightPhase> = _phase.asStateFlow()
+    private val _isPostFlight = MutableStateFlow(false)
+    val isPostFlight: StateFlow<Boolean> = _isPostFlight.asStateFlow()
+
+    private val _isStarted = MutableStateFlow(false)
+    val isStarted: StateFlow<Boolean> = _isStarted.asStateFlow()
 
     private val _isStopping = MutableStateFlow(false)
     val isStopping: StateFlow<Boolean> = _isStopping.asStateFlow()
@@ -161,7 +164,7 @@ class FlightViewModel : ViewModel() {
 
             _currentLap.value = null
 
-            _phase.value = FlightPhase.POST
+            _isPostFlight.value = true
             _isStopping.value = false
             val hasSuccessLap = _laps.value.any { it.status == Lap.Status.SUCCESS }
             _shouldSaveResult.value = hasSuccessLap
@@ -253,7 +256,8 @@ class FlightViewModel : ViewModel() {
         _elapsedMs.value = 0L
         _currentLapTime.value = 0L
         _preStartTime.value = 0L
-        _phase.value = FlightPhase.PRE
+        _isPostFlight.value = false
+        _isStarted.value = false
         _laps.value = emptyList()
         _currentLap.value = null
         _stopReason.value = null
@@ -315,9 +319,9 @@ class FlightViewModel : ViewModel() {
     }
 
     private fun startTimer(isMuted: Boolean) {
-        if (_phase.value == FlightPhase.MAIN) return
+        if (_isStarted.value) return
         raceIsMuted = isMuted
-        _phase.value = FlightPhase.MAIN
+        _isStarted.value = true
         nextLapNumber = if (rules.holeshotEnabled) 0 else 1
         _laps.value = emptyList()
         _currentLap.value = Lap(
