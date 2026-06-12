@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -23,7 +22,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,7 +43,9 @@ import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.IndividualRulePresets
+import ru.fpvladder.laps.trainer.model.Kind
 import ru.fpvladder.laps.trainer.model.TeamRulePresets
+import ru.fpvladder.laps.trainer.model.TEAM_HOLESHOT_ENABLED
 import ru.fpvladder.laps.trainer.model.formatCalculations
 import java.util.EnumSet
 
@@ -82,7 +82,14 @@ fun RulesEditorContent(
 ) {
     var selectedTime by rememberSaveable { mutableStateOf(currentRules.timeLimitSeconds) }
     var selectedLaps by rememberSaveable { mutableStateOf(currentRules.maxLaps) }
-    var holeshot by rememberSaveable { mutableStateOf(currentRules.holeshotEnabled) }
+    var holeshot by rememberSaveable {
+        mutableStateOf(
+            when (currentRules.kind) {
+                Kind.TEAM -> currentRules.holeshotEnabled && TEAM_HOLESHOT_ENABLED
+                else -> currentRules.holeshotEnabled
+            }
+        )
+    }
     var swapMode by remember {
         mutableStateOf((currentRules as? Rules.Team)?.swapMode ?: SwapMode.TIME)
     }
@@ -106,11 +113,16 @@ fun RulesEditorContent(
     var rememberedMost by rememberSaveable { mutableStateOf(if (wasTimeLimited) initialMost else true) }
     var prevSelectedTime by remember { mutableStateOf<Int?>(null) }
 
-    val isTeam = currentRules is Rules.Team
-    val timeOptions = if (isTeam) TeamRulePresets.timeOptions else IndividualRulePresets.timeOptions
-    val lapOptions = if (isTeam) TeamRulePresets.lapOptions else IndividualRulePresets.lapOptions
+    val timeOptions = when (currentRules.kind) {
+        Kind.INDIVIDUAL -> IndividualRulePresets.timeOptions
+        else -> TeamRulePresets.timeOptions
+    }
+    val lapOptions = when (currentRules.kind) {
+        Kind.INDIVIDUAL -> IndividualRulePresets.lapOptions
+        else -> TeamRulePresets.lapOptions
+    }
 
-    val bothUnlimited = selectedTime == Int.MAX_VALUE && selectedLaps == Int.MAX_VALUE
+    val timeOrLapsSet = selectedTime != Int.MAX_VALUE || selectedLaps != Int.MAX_VALUE
     val timeOnly = selectedTime != Int.MAX_VALUE && selectedLaps == Int.MAX_VALUE
     val lapsOnly = selectedLaps != Int.MAX_VALUE && selectedTime == Int.MAX_VALUE
     val bothSet = selectedTime != Int.MAX_VALUE && selectedLaps != Int.MAX_VALUE
@@ -118,7 +130,22 @@ fun RulesEditorContent(
     var prevTime by remember { mutableStateOf(selectedTime) }
     var prevLaps by remember { mutableStateOf(selectedLaps) }
 
-    if (isTeam) {
+    if (currentRules.kind == Kind.INDIVIDUAL) {
+        LaunchedEffect(selectedTime) {
+            val prev = prevSelectedTime
+            prevSelectedTime = selectedTime
+            if (prev == null) return@LaunchedEffect
+
+            if (selectedTime == Int.MAX_VALUE && prev != Int.MAX_VALUE) {
+                rememberedMost = Record.Kind.MOST in enabledKinds
+                enabledKinds = EnumSet.copyOf(enabledKinds).apply { remove(Record.Kind.MOST) }
+            } else if (selectedTime != Int.MAX_VALUE && prev == Int.MAX_VALUE) {
+                if (rememberedMost) {
+                    enabledKinds = EnumSet.copyOf(enabledKinds).apply { add(Record.Kind.MOST) }
+                }
+            }
+        }
+    } else {
         LaunchedEffect(selectedTime, selectedLaps) {
             if (selectedTime == Int.MAX_VALUE && selectedLaps == Int.MAX_VALUE) {
                 when {
@@ -134,21 +161,6 @@ fun RulesEditorContent(
             if (lapsOnly) swapMode = SwapMode.LAPS
             prevTime = selectedTime
             prevLaps = selectedLaps
-        }
-    } else {
-        LaunchedEffect(selectedTime) {
-            val prev = prevSelectedTime
-            prevSelectedTime = selectedTime
-            if (prev == null) return@LaunchedEffect
-
-            if (selectedTime == Int.MAX_VALUE && prev != Int.MAX_VALUE) {
-                rememberedMost = Record.Kind.MOST in enabledKinds
-                enabledKinds = EnumSet.copyOf(enabledKinds).apply { remove(Record.Kind.MOST) }
-            } else if (selectedTime != Int.MAX_VALUE && prev == Int.MAX_VALUE) {
-                if (rememberedMost) {
-                    enabledKinds = EnumSet.copyOf(enabledKinds).apply { add(Record.Kind.MOST) }
-                }
-            }
         }
     }
 
@@ -199,9 +211,11 @@ fun RulesEditorContent(
         AnimatedVisibility(visible = countsExpanded) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                if (isTeam) {
-                    TeamRecordKindGrid(
+                if (currentRules.kind == Kind.INDIVIDUAL) {
+                    val mostAvailable = selectedTime != Int.MAX_VALUE
+                    RecordKindGrid(
                         enabledKinds = enabledKinds,
+                        mostAvailable = mostAvailable,
                         onToggle = { kind ->
                             enabledKinds = EnumSet.copyOf(enabledKinds).apply {
                                 if (contains(kind)) remove(kind) else add(kind)
@@ -209,10 +223,8 @@ fun RulesEditorContent(
                         }
                     )
                 } else {
-                    val mostAvailable = selectedTime != Int.MAX_VALUE
-                    RecordKindGrid(
+                    TeamRecordKindGrid(
                         enabledKinds = enabledKinds,
-                        mostAvailable = mostAvailable,
                         onToggle = { kind ->
                             enabledKinds = EnumSet.copyOf(enabledKinds).apply {
                                 if (contains(kind)) remove(kind) else add(kind)
@@ -256,34 +268,40 @@ fun RulesEditorContent(
 
         AnimatedVisibility(visible = optionsExpanded) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(modifier = Modifier.offset(x = (-8).dp)) {
-                        Checkbox(
-                            checked = holeshot,
-                            onCheckedChange = { holeshot = it }
+                val holeshotEditable = when (currentRules.kind) {
+                    Kind.INDIVIDUAL -> true
+                    Kind.TEAM -> TEAM_HOLESHOT_ENABLED
+                }
+                if (holeshotEditable) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(modifier = Modifier.offset(x = (-8).dp)) {
+                            Checkbox(
+                                checked = holeshot,
+                                onCheckedChange = { holeshot = it }
+                            )
+                        }
+                        Text(
+                            text = "Holeshot",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     Text(
-                        text = "Holeshot",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        text = if (holeshot) {
+                            "Время первого круга считаем от первых ворот"
+                        } else {
+                            "Время первого круга считаем от стартового сигнала"
+                        },
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 44.dp)
                     )
                 }
-                Text(
-                    text = if (holeshot) {
-                        "Время первого круга считаем от первых ворот"
-                    } else {
-                        "Время первого круга считаем от стартового сигнала"
-                    },
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 44.dp)
-                )
 
-                if (isTeam) {
+                if (currentRules.kind == Kind.TEAM) {
                     Spacer(modifier = Modifier.height(8.dp))
                     val swapAlpha = if (bothSet) 1f else 0.38f
                     Row(
@@ -353,14 +371,17 @@ fun RulesEditorContent(
                         is Rules.Team -> Rules.Team(
                             maxLaps = selectedLaps,
                             timeLimitSeconds = selectedTime,
-                            holeshotEnabled = holeshot,
+                            holeshotEnabled = holeshot && TEAM_HOLESHOT_ENABLED,
                             swapMode = swapMode,
                             enabledRecordKinds = EnumSet.copyOf(enabledKinds)
                         )
                     }
                     onConfirm(newRules)
                 },
-                enabled = !(bothUnlimited && isTeam)
+                enabled = when (currentRules.kind) {
+                    Kind.INDIVIDUAL -> true
+                    Kind.TEAM -> timeOrLapsSet
+                }
             ) {
                 Text("OK")
             }

@@ -3,6 +3,7 @@ package ru.fpvladder.laps.trainer.model
 import java.util.EnumSet
 
 sealed class Rules {
+    abstract val kind: Kind
     abstract val maxLaps: Int
     abstract val timeLimitSeconds: Int
     abstract val holeshotEnabled: Boolean
@@ -16,6 +17,9 @@ sealed class Rules {
             Record.Kind.BEST_3
         ).apply { if (timeLimitSeconds != Int.MAX_VALUE) add(Record.Kind.MOST) }
     ) : Rules() {
+        override val kind: Kind
+            get() = Kind.INDIVIDUAL
+
         fun copy(
             maxLaps: Int = this.maxLaps,
             timeLimitSeconds: Int = this.timeLimitSeconds,
@@ -27,13 +31,16 @@ sealed class Rules {
     class Team(
         override val maxLaps: Int = 10,
         override val timeLimitSeconds: Int = 60,
-        override val holeshotEnabled: Boolean = true,
+        override val holeshotEnabled: Boolean = TEAM_HOLESHOT_ENABLED,
         val swapMode: SwapMode = SwapMode.LAPS,
         val pilotOrderSwapped: Boolean = false,
         val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
             Record.Kind.BEST_1, Record.Kind.MOST,
         )
     ) : Rules() {
+        override val kind: Kind
+            get() = Kind.TEAM
+
         fun copy(
             maxLaps: Int = this.maxLaps,
             timeLimitSeconds: Int = this.timeLimitSeconds,
@@ -43,6 +50,10 @@ sealed class Rules {
             enabledRecordKinds: Set<Record.Kind> = this.enabledRecordKinds
         ) = Team(maxLaps, timeLimitSeconds, holeshotEnabled, swapMode, pilotOrderSwapped, enabledRecordKinds)
     }
+}
+
+enum class Kind {
+    INDIVIDUAL, TEAM,
 }
 
 object IndividualRulePresets {
