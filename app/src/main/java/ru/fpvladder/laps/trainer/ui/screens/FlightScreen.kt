@@ -196,7 +196,6 @@ fun FlightContent(
                                 if (isTeam) {
                                     val teamRecords = computeTeamFlightRecords(
                                         laps = laps,
-                                        timerPrecision = timerPrecision,
                                         enabledKinds = enabledRecordKinds,
                                         pilotSwapIndex = pilotSwapIndex
                                     )
@@ -224,7 +223,7 @@ fun FlightContent(
                                         ScreenTitle("Результаты")
                                         Spacer(modifier = Modifier.height(8.dp))
                                         val flightRecords = if (enabledRecordKinds.isNotEmpty()) {
-                                            computeFlightRecords(laps, timerPrecision, enabledRecordKinds)
+                                            computeFlightRecords(laps, enabledRecordKinds)
                                         } else emptyList()
                                         RecordsInset(
                                             records = flightRecords.distinctBy { it.count },

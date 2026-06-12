@@ -249,7 +249,7 @@ fun AppRoot(
     val isStopping by flightViewModel.isStopping.collectAsState()
     val elapsedMs by flightViewModel.elapsedMs.collectAsState()
     val isPreBlinking by flightViewModel.isPreBlinking.collectAsState()
-    val flightTimerPrecision by flightViewModel.timerPrecision.collectAsState()
+
     val scope = rememberCoroutineScope()
     var soundJob by remember { mutableStateOf<Job?>(null) }
 
@@ -265,7 +265,6 @@ fun AppRoot(
     LaunchedEffect(currentScreen) {
         if (currentScreen == AppScreen.Flight) {
             flightViewModel.setRules(selectedTraining.rules)
-            flightViewModel.setTimerPrecision(timerPrecision)
             flightViewModel.prepareRace(effectiveStartSignal, isMuted)
         } else {
             flightViewModel.reset()
@@ -291,8 +290,7 @@ fun AppRoot(
                 currentStats is Stats.Individual && flight is Flight.Individual -> {
                     val updatedStats = currentStats.mergeFlightRecords(
                         flight.records,
-                        flight.counters,
-                        flightTimerPrecision,
+                        flight.counters
                     )
                     trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
                 }
@@ -301,8 +299,7 @@ fun AppRoot(
                         common = flight.common,
                         head = flight.head,
                         tail = flight.tail,
-                        pilotOrderSwapped = flight.rules.pilotOrderSwapped,
-                        timerPrecision = flightTimerPrecision
+                        pilotOrderSwapped = flight.rules.pilotOrderSwapped
                     )
                     trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
                 }
@@ -418,7 +415,7 @@ fun AppRoot(
                             elapsedMs = elapsedMs,
                             preStartCountdownMs = preStartCountdownMs,
                             isPreBlinking = isPreBlinking,
-                            timerPrecision = flightTimerPrecision,
+                            timerPrecision = timerPrecision,
                             timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
                             swapRemainingMs = swapRemainingMs
                         )
@@ -499,7 +496,7 @@ fun AppRoot(
                                         onLapClick = {
                                             flightViewModel.addLap()
                                         },
-                                        timerPrecision = flightTimerPrecision,
+                                        timerPrecision = timerPrecision,
                                         pilot = selectedTraining.pilot,
                                         pilotSwapIndex = flightPilotSwapIndex,
                                         pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
@@ -515,7 +512,7 @@ fun AppRoot(
                                             description = selectedTraining.description(LocalContext.current),
                                             onEditRulesClick = { showRulesEditor = true },
                                             stats = selectedTraining.stats,
-                                            timerPrecision = flightTimerPrecision,
+                                            timerPrecision = timerPrecision,
                                             isTeam = isTeam,
                                             pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
                                             pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
@@ -723,7 +720,12 @@ fun AppRoot(
                                     .height(54.dp)
                             )
                             IconButton(
-                                onClick = { pilotViewModel.navigateTo(AppScreen.Settings) },
+                                onClick = {
+                                    if (currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST) {
+                                        finishFlight(shouldSaveResult, false)
+                                    }
+                                    pilotViewModel.navigateTo(AppScreen.Settings)
+                                },
                                 enabled = currentScreen != AppScreen.Flight || flightPhase == FlightPhase.POST,
                                 modifier = Modifier.size(48.dp)
                             ) {

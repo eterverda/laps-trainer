@@ -53,9 +53,6 @@ class FlightViewModel : ViewModel() {
     private val _currentLapTime = MutableStateFlow(0L)
     val currentLapTime: StateFlow<Long> = _currentLapTime.asStateFlow()
 
-    private val _timerPrecision = MutableStateFlow(TimerPrecision.MILLISECONDS)
-    val timerPrecision: StateFlow<TimerPrecision> = _timerPrecision.asStateFlow()
-
     private val _stopReason = MutableStateFlow<StopReason?>(null)
     val stopReason: StateFlow<StopReason?> = _stopReason.asStateFlow()
 
@@ -91,10 +88,6 @@ class FlightViewModel : ViewModel() {
             swapPointLap = 0
             swapPointTimeMs = 0L
         }
-    }
-
-    fun setTimerPrecision(precision: TimerPrecision) {
-        _timerPrecision.value = precision
     }
 
     fun prepareRace(startSignal: StartSignal, isMuted: Boolean) {
@@ -285,7 +278,6 @@ class FlightViewModel : ViewModel() {
                 stopReason = stopReason,
                 records = computeFlightRecords(
                     _laps.value,
-                    _timerPrecision.value,
                     training.rules.enabledRecordKinds
                 ),
                 counters = computeFlightCounters(_laps.value),
@@ -294,7 +286,6 @@ class FlightViewModel : ViewModel() {
             is Training.Team -> {
                 val teamRecords = computeTeamFlightRecords(
                     _laps.value,
-                    _timerPrecision.value,
                     training.rules.enabledRecordKinds,
                     _pilotSwapIndex.value
                 )

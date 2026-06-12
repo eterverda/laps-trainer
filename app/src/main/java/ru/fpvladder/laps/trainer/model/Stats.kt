@@ -31,14 +31,14 @@ data class Record(
 ) {
     enum class Kind { BEST_1, BEST_2, BEST_3, MOST }
 
+    fun rawTimeMs(): Long = lapTimesMs.sum()
+
     fun timeMs(precision: TimerPrecision): Long {
         return lapTimesMs.sumOf { precision.roundMs(it) }
     }
 
-    fun isBetterThan(other: Record, precision: TimerPrecision): Boolean {
-        return count > other.count || (count == other.count && timeMs(precision) < other.timeMs(
-            precision
-        ))
+    fun isBetterThan(other: Record): Boolean {
+        return count > other.count || (count == other.count && rawTimeMs() < other.rawTimeMs())
     }
 }
 
@@ -108,7 +108,6 @@ private fun MutableList<Counter>.mergeIn(counter: Counter) {
 
 fun computeFlightRecords(
     laps: List<Lap>,
-    timerPrecision: TimerPrecision,
     enabledKinds: Set<Record.Kind>
 ): List<Record> {
     val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
@@ -120,7 +119,7 @@ fun computeFlightRecords(
     val records = mutableListOf<Record>()
 
     if (Record.Kind.BEST_1 in enabledKinds) {
-        val best1 = validLaps.minByOrNull { timerPrecision.roundMs(it.timeMs) }!!
+        val best1 = validLaps.minByOrNull { it.timeMs }!!
         records.add(
             Record(
                 count = 1,
@@ -132,8 +131,7 @@ fun computeFlightRecords(
 
     if (Record.Kind.BEST_2 in enabledKinds) {
         val size = minOf(2, validLaps.size)
-        val windowLaps = minWindowLaps(validLaps, size, timerPrecision)
-        val minSum = windowLaps.sumOf { timerPrecision.roundMs(it.timeMs) }
+        val windowLaps = minWindowLaps(validLaps, size)
         records.add(
             Record(
                 count = size,
@@ -145,8 +143,7 @@ fun computeFlightRecords(
 
     if (Record.Kind.BEST_3 in enabledKinds) {
         val size = minOf(3, validLaps.size)
-        val windowLaps = minWindowLaps(validLaps, size, timerPrecision)
-        val minSum = windowLaps.sumOf { timerPrecision.roundMs(it.timeMs) }
+        val windowLaps = minWindowLaps(validLaps, size)
         records.add(
             Record(
                 count = size,
@@ -157,7 +154,7 @@ fun computeFlightRecords(
     }
 
     if (Record.Kind.MOST in enabledKinds) {
-        val total = validLaps.sumOf { timerPrecision.roundMs(it.timeMs) }
+        val total = validLaps.sumOf { it.timeMs }
         records.add(
             Record(
                 count = validLaps.size,
@@ -221,10 +218,9 @@ fun Stats.Team.mergeTeamFlight(
     common: Flight.Team.Item,
     head: Flight.Team.Item,
     tail: Flight.Team.Item,
-    pilotOrderSwapped: Boolean,
-    timerPrecision: TimerPrecision
+    pilotOrderSwapped: Boolean
 ): Stats.Team {
-    val mergedCommonRecords = mergeRecordLists(records, common.records, timerPrecision)
+    val mergedCommonRecords = mergeRecordLists(records, common.records)
     val mergedCommonCounters = mergeCounterLists(
         counters,
         common.counters + Counter.SINGLE_FLIGHT
@@ -284,30 +280,26 @@ fun Stats.Team.mergeTeamFlight(
         records = mergedCommonRecords,
         counters = mergedCommonCounters,
         first = this.first.copy(
-            records = mergeRecordLists(this.first.records, name1Best1, timerPrecision),
+            records = mergeRecordLists(this.first.records, name1Best1),
             recordsBeingHead = mergeRecordLists(
                 this.first.recordsBeingHead,
-                name1MostBeingHead,
-                timerPrecision
+                name1MostBeingHead
             ),
             recordsBeingTail = mergeRecordLists(
                 this.first.recordsBeingTail,
-                name1MostBeingTail,
-                timerPrecision
+                name1MostBeingTail
             ),
             counters = mergeCounterLists(this.first.counters, name1Counters.withFlightIfMissing())
         ),
         second = this.second.copy(
-            records = mergeRecordLists(this.second.records, name2Best1, timerPrecision),
+            records = mergeRecordLists(this.second.records, name2Best1),
             recordsBeingHead = mergeRecordLists(
                 this.second.recordsBeingHead,
-                name2MostBeingHead,
-                timerPrecision
+                name2MostBeingHead
             ),
             recordsBeingTail = mergeRecordLists(
                 this.second.recordsBeingTail,
-                name2MostBeingTail,
-                timerPrecision
+                name2MostBeingTail
             ),
             counters = mergeCounterLists(this.second.counters, name2Counters.withFlightIfMissing())
         )
@@ -316,14 +308,13 @@ fun Stats.Team.mergeTeamFlight(
 
 private fun mergeRecordLists(
     existing: List<Record>,
-    new: List<Record>,
-    timerPrecision: TimerPrecision
+    new: List<Record>
 ): List<Record> {
     if (new.isEmpty()) return existing
     val bestMap = existing.associateBy { it.kind }.toMutableMap()
     new.forEach { record ->
         val current = bestMap[record.kind]
-        if (current == null || record.isBetterThan(current, timerPrecision)) {
+        if (current == null || record.isBetterThan(current)) {
             bestMap[record.kind] = record
         }
     }
@@ -342,8 +333,7 @@ private fun mergeCounterLists(existing: List<Counter>, new: List<Counter>): List
 
 private fun minWindowLaps(
     laps: List<Lap>,
-    size: Int,
-    timerPrecision: TimerPrecision
+    size: Int
 ): List<Lap> {
     if (size >= laps.size) {
         return laps
@@ -353,7 +343,7 @@ private fun minWindowLaps(
     for (i in 0..laps.size - size) {
         var sum = 0L
         for (j in 0 until size) {
-            sum += timerPrecision.roundMs(laps[i + j].timeMs)
+            sum += laps[i + j].timeMs
         }
         if (sum < minSum) {
             minSum = sum
@@ -366,10 +356,9 @@ private fun minWindowLaps(
 
 fun Stats.Individual.mergeFlightRecords(
     records: List<Record>,
-    flightCounters: List<Counter>,
-    timerPrecision: TimerPrecision
+    flightCounters: List<Counter>
 ): Stats.Individual {
-    val newRecords = mergeRecordLists(emptyList(), records, timerPrecision)
+    val newRecords = mergeRecordLists(emptyList(), records)
 
     val mergedCounters = buildList {
         addAll(counters)
@@ -388,7 +377,6 @@ fun Stats.Individual.mergeFlightRecords(
 
 fun computeTeamFlightRecords(
     laps: List<Lap>,
-    timerPrecision: TimerPrecision,
     enabledKinds: Set<Record.Kind>,
     pilotSwapIndex: Int?
 ): TeamFlightRecords {
@@ -441,7 +429,7 @@ fun computeTeamFlightRecords(
     }
 
     if (Record.Kind.BEST_1 in enabledKinds && headPilotSuccessLaps.isNotEmpty()) {
-        headPilotSuccessLaps.minByOrNull { timerPrecision.roundMs(it.timeMs) }?.let {
+        headPilotSuccessLaps.minByOrNull { it.timeMs }?.let {
             head.add(
                 Record(
                     count = 1,
@@ -453,7 +441,7 @@ fun computeTeamFlightRecords(
     }
 
     if (Record.Kind.BEST_1 in enabledKinds && tailPilotSuccessLaps.isNotEmpty()) {
-        tailPilotSuccessLaps.minByOrNull { timerPrecision.roundMs(it.timeMs) }?.let {
+        tailPilotSuccessLaps.minByOrNull { it.timeMs }?.let {
             tail.add(
                 Record(
                     count = 1,
@@ -467,7 +455,7 @@ fun computeTeamFlightRecords(
     if (Record.Kind.BEST_2 in enabledKinds) {
         val size1 = minOf(2, headPilotSuccessLaps.size)
         if (size1 > 0) {
-            val windowLaps = minWindowLaps(headPilotSuccessLaps, size1, timerPrecision)
+            val windowLaps = minWindowLaps(headPilotSuccessLaps, size1)
             head.add(
                 Record(
                     count = size1,
@@ -478,7 +466,7 @@ fun computeTeamFlightRecords(
         }
         val size2 = minOf(2, tailPilotSuccessLaps.size)
         if (size2 > 0) {
-            val windowLaps = minWindowLaps(tailPilotSuccessLaps, size2, timerPrecision)
+            val windowLaps = minWindowLaps(tailPilotSuccessLaps, size2)
             tail.add(
                 Record(
                     count = size2,
@@ -492,7 +480,7 @@ fun computeTeamFlightRecords(
     if (Record.Kind.BEST_3 in enabledKinds) {
         val size1 = minOf(3, headPilotSuccessLaps.size)
         if (size1 > 0) {
-            val windowLaps = minWindowLaps(headPilotSuccessLaps, size1, timerPrecision)
+            val windowLaps = minWindowLaps(headPilotSuccessLaps, size1)
             head.add(
                 Record(
                     count = size1,
@@ -503,7 +491,7 @@ fun computeTeamFlightRecords(
         }
         val size2 = minOf(3, tailPilotSuccessLaps.size)
         if (size2 > 0) {
-            val windowLaps = minWindowLaps(tailPilotSuccessLaps, size2, timerPrecision)
+            val windowLaps = minWindowLaps(tailPilotSuccessLaps, size2)
             tail.add(
                 Record(
                     count = size2,
