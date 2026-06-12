@@ -81,7 +81,6 @@ fun TrainingHeader(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val hasMultipleTrainings = trainings.size > 1
     val screenHeightDp = LocalConfiguration.current.screenHeightDp.dp
     val maxListHeight = screenHeightDp / 2
 
@@ -118,7 +117,7 @@ fun TrainingHeader(
                 .height(IntrinsicSize.Min)
                 .statusBarsPadding()
                 .padding(horizontal = 12.dp, vertical = 8.dp)
-                .padding(bottom = 8.dp),
+                .padding(bottom = 8.dp, top = 4.dp),
             verticalAlignment = Alignment.Top
         ) {
             ChannelBadge(
@@ -166,7 +165,9 @@ fun TrainingHeader(
                     Icon(
                         imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (expanded) "Свернуть" else "Развернуть",
-                        tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = 0.38f
+                        )
                     )
                 }
             }
@@ -335,6 +336,7 @@ private fun PilotNameDisplay(
                 )
             }
         }
+
         is Pilot.Team -> {
             val hasName1 = pilot.name1.isNotBlank()
             val hasName2 = pilot.name2.isNotBlank()
@@ -356,6 +358,7 @@ private fun PilotNameDisplay(
                         modifier = modifier
                     )
                 }
+
                 hasName1 && hasName2 -> {
                     Column(modifier = modifier) {
                         Text(
@@ -376,6 +379,7 @@ private fun PilotNameDisplay(
                         )
                     }
                 }
+
                 else -> {
                     Text(
                         text = if (hasName1) pilot.name1 else pilot.name2,
@@ -453,6 +457,7 @@ private fun TrainingListItem(
                         )
                     }
                 }
+
                 is Pilot.Team -> {
                     val n1Blank = pilot.name1.isBlank()
                     val n2Blank = pilot.name2.isBlank()
@@ -471,6 +476,7 @@ private fun TrainingListItem(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
+
                         n1Blank -> {
                             Text(
                                 text = pilot.name2,
@@ -480,6 +486,7 @@ private fun TrainingListItem(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
+
                         n2Blank -> {
                             Text(
                                 text = pilot.name1,
@@ -489,6 +496,7 @@ private fun TrainingListItem(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
+
                         else -> {
                             Text(
                                 text = pilot.name1,

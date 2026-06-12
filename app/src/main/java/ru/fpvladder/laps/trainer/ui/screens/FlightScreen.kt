@@ -255,7 +255,7 @@ fun FlightScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
+                                        .padding(horizontal = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(
                                         16.dp,
                                         Alignment.CenterHorizontally

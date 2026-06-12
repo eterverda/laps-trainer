@@ -112,18 +112,18 @@ fun PostFlightContent(
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { boxHeight = it.height }
-                .padding(vertical = 16.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
+                    .padding(vertical = 16.dp)
             ) {
                 Box(modifier = Modifier.onSizeChanged { contentHeight = it.height }) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         ScreenTitle(
                             stringResource(R.string.flight_laps_header),
-                            Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)
+                            Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)
                         )
                         LapList(
                             laps = laps,
@@ -135,7 +135,7 @@ fun PostFlightContent(
                             pilot = pilot,
                             pilotSwapIndex = pilotSwapIndex,
                             pilotOrderSwapped = pilotOrderSwapped,
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            modifier = Modifier.padding(horizontal = 24.dp)
                         )
                         val completedText = when (stopReason) {
                             StopReason.TIME_LIMIT -> {
@@ -162,7 +162,7 @@ fun PostFlightContent(
                         Text(
                             text = completedText,
                             fontSize = 16.sp,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
                         )
                         if (isTeam) {
                             val teamRecords = computeTeamFlightRecords(
@@ -190,7 +190,7 @@ fun PostFlightContent(
                                 onPagerWiggleComplete = onPagerWiggleComplete
                             )
                         } else {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                                 ScreenTitle("Результаты")
                                 Spacer(modifier = Modifier.height(8.dp))
                                 val flightRecords = if (enabledRecordKinds.isNotEmpty()) {
@@ -312,7 +312,7 @@ private fun TeamFlightPostResults(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 24.dp)
             ) {
                 ScreenTitle("Результаты")
                 Spacer(modifier = Modifier.height(8.dp))
@@ -328,7 +328,7 @@ private fun TeamFlightPostResults(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 24.dp)
             ) {
                 ScreenTitle("Результаты: $headPilotName")
                 Spacer(modifier = Modifier.height(8.dp))
@@ -344,7 +344,7 @@ private fun TeamFlightPostResults(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 24.dp)
             ) {
                 ScreenTitle("Результаты: $tailPilotName")
                 Spacer(modifier = Modifier.height(8.dp))

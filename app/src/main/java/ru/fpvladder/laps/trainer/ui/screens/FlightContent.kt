@@ -59,12 +59,12 @@ internal fun FlightContent(
         modifier = modifier
             .then(tapModifier)
             .fillMaxSize()
-            .padding(vertical = 16.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
+                .padding(vertical = 16.dp)
         ) {
             LapList(
                 laps = laps,
@@ -76,7 +76,7 @@ internal fun FlightContent(
                 pilot = pilot,
                 pilotSwapIndex = pilotSwapIndex,
                 pilotOrderSwapped = pilotOrderSwapped,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
 

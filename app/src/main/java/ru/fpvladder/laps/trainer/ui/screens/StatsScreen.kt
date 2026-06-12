@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -92,7 +91,7 @@ fun StatsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 24.dp),
             verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
@@ -179,7 +178,7 @@ fun StatsScreen(
                     onPagerWiggleComplete = onPagerWiggleComplete
                 )
             } else if (stats is Stats.Individual) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                     ScreenTitle("Результаты")
                     Spacer(modifier = Modifier.height(8.dp))
                     if (stats.records.isNotEmpty()) {
@@ -213,7 +212,7 @@ private fun TeamStatsContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 24.dp)
             ) {
                 ScreenTitle("Результаты")
                 Spacer(modifier = Modifier.height(8.dp))
@@ -229,7 +228,7 @@ private fun TeamStatsContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 24.dp)
             ) {
                 ScreenTitle("Результаты: $name1")
                 Spacer(modifier = Modifier.height(8.dp))
@@ -253,7 +252,7 @@ private fun TeamStatsContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 24.dp)
             ) {
                 ScreenTitle("Результаты: $name2")
                 Spacer(modifier = Modifier.height(8.dp))
@@ -401,47 +400,6 @@ fun CountersSummary(counters: List<Counter>) {
             }
             BulletText(text = text)
         }
-    }
-}
-
-@Composable
-private fun ResultsInset() {
-    val borderColor = MaterialTheme.colorScheme.outline
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .drawBehind {
-                val strokeWidth = 1.dp.toPx()
-                val cornerRadius = 8.dp.toPx()
-                drawRoundRect(
-                    color = borderColor,
-                    style = Stroke(
-                        width = strokeWidth,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
-                    ),
-                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
-                )
-            }
-            .padding(12.dp)
-    ) {
-        Text(
-            text = "1/   17.813 ✨",
-            fontSize = 18.sp,
-            fontFamily = FontFamily.Monospace,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = "3/ 1:12.101 ✨",
-            fontSize = 18.sp,
-            fontFamily = FontFamily.Monospace,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = "8/ 3:45.190 ✨",
-            fontSize = 18.sp,
-            fontFamily = FontFamily.Monospace,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
