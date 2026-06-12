@@ -17,6 +17,7 @@ import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
+import ru.fpvladder.laps.trainer.model.TimeInterval
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.model.Training
@@ -176,7 +177,7 @@ class FlightViewModel : ViewModel() {
         val lapTime = _elapsedMs.value - lastLapElapsedMs
         val current = _currentLap.value ?: return
         Log.d("FlightVM", "addLap: currentLabel=${current.label}, nextLapNumber=$nextLapNumber, swapPointLap=$swapPointLap, pendingPilotSwap=$pendingPilotSwap, lapsSize=${_laps.value.size}")
-        val completed = current.copy(timeMs = lapTime)
+        val completed = current.copy(interval = TimeInterval(current.startMs, _elapsedMs.value))
         _laps.value = _laps.value + completed
 
         if (current.status != Lap.Status.FAIL) {
@@ -201,7 +202,7 @@ class FlightViewModel : ViewModel() {
                 val newLabel = if (nextLapNumber == 0) "HS" else "$nextLapNumber)"
                 _currentLap.value = Lap(
                     label = newLabel,
-                    timeMs = 0L,
+                    interval = TimeInterval(lastLapElapsedMs, lastLapElapsedMs),
                     status = if (nextLapNumber == 0) Lap.Status.HS else Lap.Status.SUCCESS
                 )
                 return
@@ -221,7 +222,7 @@ class FlightViewModel : ViewModel() {
         val newLabel = if (nextLapNumber == 0) "HS" else "$nextLapNumber)"
         _currentLap.value = Lap(
             label = newLabel,
-            timeMs = 0L,
+            interval = TimeInterval(lastLapElapsedMs, lastLapElapsedMs),
             status = if (nextLapNumber == 0) Lap.Status.HS else Lap.Status.SUCCESS
         )
         Log.d("FlightVM", "addLap finished: newLabel=$newLabel, pilotSwapIndex=${_pilotSwapIndex.value}")
@@ -326,7 +327,7 @@ class FlightViewModel : ViewModel() {
         _laps.value = emptyList()
         _currentLap.value = Lap(
             label = if (rules.holeshotEnabled) "HS" else "1)",
-            timeMs = 0L,
+            interval = TimeInterval(lastLapElapsedMs, lastLapElapsedMs),
             status = if (rules.holeshotEnabled) Lap.Status.HS else Lap.Status.SUCCESS
         )
         val startTime = SystemClock.elapsedRealtime()

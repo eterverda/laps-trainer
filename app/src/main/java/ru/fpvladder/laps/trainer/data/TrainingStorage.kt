@@ -13,6 +13,7 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.StopReason
+import ru.fpvladder.laps.trainer.model.TimeInterval
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.Training
 import java.io.File
@@ -392,7 +393,10 @@ class TrainingStorage(private val context: Context) {
     private fun lapToJson(lap: Lap): JSONObject {
         return JSONObject().apply {
             put("label", lap.label)
-            put("timeMs", lap.timeMs)
+            put("interval", JSONArray().apply {
+                put(lap.startMs)
+                put(lap.endMs)
+            })
             put("status", lap.status.name)
         }
     }
@@ -401,9 +405,11 @@ class TrainingStorage(private val context: Context) {
         if (array == null) return emptyList()
         return List(array.length()) { index ->
             val obj = array.getJSONObject(index)
+            val intervalArray = obj.getJSONArray("interval")
+            val interval = TimeInterval(intervalArray.getLong(0), intervalArray.getLong(1))
             Lap(
                 label = obj.optString("label", ""),
-                timeMs = obj.optLong("timeMs", 0L),
+                interval = interval,
                 status = try {
                     Lap.Status.valueOf(obj.optString("status", "SUCCESS"))
                 } catch (_: Exception) {
@@ -417,7 +423,14 @@ class TrainingStorage(private val context: Context) {
         return JSONObject().apply {
             put("count", record.count)
             put("kind", record.kind.name)
-            put("lapTimesMs", JSONArray().apply { record.lapTimesMs.forEach { put(it) } })
+            put("intervals", JSONArray().apply {
+                record.intervals.forEach { interval ->
+                    put(JSONArray().apply {
+                        put(interval.startMs)
+                        put(interval.endMs)
+                    })
+                }
+            })
         }
     }
 
@@ -425,12 +438,13 @@ class TrainingStorage(private val context: Context) {
         if (array == null) return emptyList()
         return List(array.length()) { index ->
             val obj = array.getJSONObject(index)
-            val lapTimesArray = obj.optJSONArray("lapTimesMs")
-            val lapTimesMs = if (lapTimesArray != null) {
-                List(lapTimesArray.length()) { lapTimesArray.getLong(it) }
-            } else {
-                emptyList()
-            }
+            val intervalsArray = obj.optJSONArray("intervals")
+            val intervals = if (intervalsArray != null) {
+                List(intervalsArray.length()) { i ->
+                    val interval = intervalsArray.getJSONArray(i)
+                    TimeInterval(interval.getLong(0), interval.getLong(1))
+                }
+            } else emptyList()
             Record(
                 count = obj.optInt("count", 0),
                 kind = try {
@@ -438,7 +452,7 @@ class TrainingStorage(private val context: Context) {
                 } catch (_: Exception) {
                     Record.Kind.MOST
                 },
-                lapTimesMs = lapTimesMs
+                intervals = intervals
             )
         }
     }

@@ -27,14 +27,14 @@ sealed class Stats {
 data class Record(
     val count: Int,
     val kind: Kind,
-    val lapTimesMs: List<Long> = emptyList()
+    val intervals: List<TimeInterval> = emptyList()
 ) {
     enum class Kind { BEST_1, BEST_2, BEST_3, MOST }
 
-    fun rawTimeMs(): Long = lapTimesMs.sum()
+    fun rawTimeMs(): Long = intervals.sumOf { it.durationMs }
 
     fun timeMs(precision: TimerPrecision): Long {
-        return lapTimesMs.sumOf { precision.roundMs(it) }
+        return intervals.sumOf { precision.roundMs(it.endMs) - precision.roundMs(it.startMs) }
     }
 
     fun isBetterThan(other: Record): Boolean {
@@ -111,8 +111,9 @@ fun computeFlightRecords(
     enabledKinds: Set<Record.Kind>
 ): List<Record> {
     val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
+    val completedLaps = laps.filter { it.status != Lap.Status.HS }
 
-    if (validLaps.isEmpty()) {
+    if (validLaps.isEmpty() && completedLaps.isEmpty()) {
         return emptyList()
     }
 
@@ -124,7 +125,7 @@ fun computeFlightRecords(
             Record(
                 count = 1,
                 kind = Record.Kind.BEST_1,
-                lapTimesMs = listOf(best1.timeMs)
+                intervals = listOf(best1.interval)
             )
         )
     }
@@ -136,7 +137,7 @@ fun computeFlightRecords(
             Record(
                 count = size,
                 kind = Record.Kind.BEST_2,
-                lapTimesMs = windowLaps.map { it.timeMs }
+                intervals = windowLaps.map { it.interval }
             )
         )
     }
@@ -148,18 +149,17 @@ fun computeFlightRecords(
             Record(
                 count = size,
                 kind = Record.Kind.BEST_3,
-                lapTimesMs = windowLaps.map { it.timeMs }
+                intervals = windowLaps.map { it.interval }
             )
         )
     }
 
-    if (Record.Kind.MOST in enabledKinds) {
-        val total = validLaps.sumOf { it.timeMs }
+    if (Record.Kind.MOST in enabledKinds && completedLaps.isNotEmpty()) {
         records.add(
             Record(
-                count = validLaps.size,
+                count = completedLaps.size,
                 kind = Record.Kind.MOST,
-                lapTimesMs = validLaps.map { it.timeMs }
+                intervals = completedLaps.map { it.interval }
             )
         )
     }
@@ -405,7 +405,7 @@ fun computeTeamFlightRecords(
             Record(
                 count = validLaps.size,
                 kind = Record.Kind.MOST,
-                lapTimesMs = completedLaps.map { it.timeMs }
+                intervals = completedLaps.map { it.interval }
             )
         )
         if (headPilotCompletedLaps.isNotEmpty()) {
@@ -413,7 +413,7 @@ fun computeTeamFlightRecords(
                 Record(
                     count = headPilotSuccessLaps.size,
                     kind = Record.Kind.MOST,
-                    lapTimesMs = headPilotCompletedLaps.map { it.timeMs }
+                    intervals = headPilotCompletedLaps.map { it.interval }
                 )
             )
         }
@@ -422,7 +422,7 @@ fun computeTeamFlightRecords(
                 Record(
                     count = tailPilotSuccessLaps.size,
                     kind = Record.Kind.MOST,
-                    lapTimesMs = tailPilotCompletedLaps.map { it.timeMs }
+                    intervals = tailPilotCompletedLaps.map { it.interval }
                 )
             )
         }
@@ -434,7 +434,7 @@ fun computeTeamFlightRecords(
                 Record(
                     count = 1,
                     kind = Record.Kind.BEST_1,
-                    lapTimesMs = listOf(it.timeMs)
+                    intervals = listOf(it.interval)
                 )
             )
         }
@@ -446,7 +446,7 @@ fun computeTeamFlightRecords(
                 Record(
                     count = 1,
                     kind = Record.Kind.BEST_1,
-                    lapTimesMs = listOf(it.timeMs)
+                    intervals = listOf(it.interval)
                 )
             )
         }
@@ -460,7 +460,7 @@ fun computeTeamFlightRecords(
                 Record(
                     count = size1,
                     kind = Record.Kind.BEST_2,
-                    lapTimesMs = windowLaps.map { it.timeMs }
+                    intervals = windowLaps.map { it.interval }
                 )
             )
         }
@@ -471,7 +471,7 @@ fun computeTeamFlightRecords(
                 Record(
                     count = size2,
                     kind = Record.Kind.BEST_2,
-                    lapTimesMs = windowLaps.map { it.timeMs }
+                    intervals = windowLaps.map { it.interval }
                 )
             )
         }
@@ -485,7 +485,7 @@ fun computeTeamFlightRecords(
                 Record(
                     count = size1,
                     kind = Record.Kind.BEST_3,
-                    lapTimesMs = windowLaps.map { it.timeMs }
+                    intervals = windowLaps.map { it.interval }
                 )
             )
         }
@@ -496,7 +496,7 @@ fun computeTeamFlightRecords(
                 Record(
                     count = size2,
                     kind = Record.Kind.BEST_3,
-                    lapTimesMs = windowLaps.map { it.timeMs }
+                    intervals = windowLaps.map { it.interval }
                 )
             )
         }
