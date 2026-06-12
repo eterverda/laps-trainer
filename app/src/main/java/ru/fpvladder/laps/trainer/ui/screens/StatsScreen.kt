@@ -281,10 +281,8 @@ private fun TeamStatsContent(
         currentPage = pagerState.currentPage,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp)
+            .padding(bottom = 12.dp)
     )
-
-    Spacer(modifier = Modifier.height(8.dp))
 
     MeasuredHorizontalPager(
         state = pagerState,
