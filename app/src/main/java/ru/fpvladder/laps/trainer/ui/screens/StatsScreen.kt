@@ -61,9 +61,10 @@ fun StatsContent(
     pilot2Name: String = "",
     pilotOrderSwapped: Boolean = false,
     onSwapPilots: () -> Unit = {},
+    hasPagerWiggled: Boolean = false,
+    onPagerWiggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
-) {
-    val p1Raw = pilot1Name.takeIf { it.isNotBlank() } ?: "Первый пилот"
+) {    val p1Raw = pilot1Name.takeIf { it.isNotBlank() } ?: "Первый пилот"
     val p2Raw = pilot2Name.takeIf { it.isNotBlank() } ?: "Второй пилот"
     val p1 = if (pilotOrderSwapped) p2Raw else p1Raw
     val p2 = if (pilotOrderSwapped) p1Raw else p2Raw
@@ -159,7 +160,9 @@ fun StatsContent(
                     stats = stats,
                     timerPrecision = timerPrecision,
                     pilot1Name = pilot1Name,
-                    pilot2Name = pilot2Name
+                    pilot2Name = pilot2Name,
+                    hasPagerWiggled = hasPagerWiggled,
+                    onPagerWiggleComplete = onPagerWiggleComplete
                 )
             } else if (stats is Stats.Individual) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -183,7 +186,9 @@ private fun TeamStatsContent(
     stats: Stats.Team,
     timerPrecision: TimerPrecision,
     pilot1Name: String,
-    pilot2Name: String
+    pilot2Name: String,
+    hasPagerWiggled: Boolean = false,
+    onPagerWiggleComplete: () -> Unit = {}
 ) {
     val name1 = pilot1Name.takeIf { it.isNotBlank() } ?: "Пилот 1"
     val name2 = pilot2Name.takeIf { it.isNotBlank() } ?: "Пилот 2"
@@ -254,15 +259,19 @@ private fun TeamStatsContent(
     PageIndicator(
         pageCount = pages.size,
         currentPage = pagerState.currentPage,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp)
     )
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(12.dp))
 
     MeasuredHorizontalPager(
         state = pagerState,
         pageCount = pages.size,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        wiggleOnAppear = !hasPagerWiggled,
+        onWiggleComplete = onPagerWiggleComplete
     ) { page ->
         pages[page].second()
     }

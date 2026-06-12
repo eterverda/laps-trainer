@@ -21,6 +21,9 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     private val _archivedTrainings = MutableStateFlow<List<Training>>(emptyList())
     val archivedTrainings: StateFlow<List<Training>> = _archivedTrainings.asStateFlow()
 
+    private val _hasPagerWiggled = MutableStateFlow(false)
+    val hasPagerWiggled: StateFlow<Boolean> = _hasPagerWiggled.asStateFlow()
+
     private val _selectedTraining: MutableStateFlow<Training>
     val selectedTraining: StateFlow<Training>
 
@@ -34,6 +37,10 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     fun selectTraining(training: Training) {
         _selectedTraining.value = training
+    }
+
+    fun markPagerWiggled() {
+        _hasPagerWiggled.value = true
     }
 
     fun addTraining(training: Training) {

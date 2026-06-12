@@ -1,15 +1,19 @@
 package ru.fpvladder.laps.trainer.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
@@ -23,11 +27,23 @@ fun MeasuredHorizontalPager(
     state: PagerState,
     pageCount: Int,
     modifier: Modifier = Modifier,
+    wiggleOnAppear: Boolean = true,
+    onWiggleComplete: () -> Unit = {},
     pageContent: @Composable (page: Int) -> Unit
 ) {
     val density = LocalDensity.current
     var maxHeightPx by remember { mutableIntStateOf(0) }
     val fallbackHeightPx = remember(density) { with(density) { 200.dp.roundToPx() } }
+
+    if (wiggleOnAppear && pageCount > 1) {
+        LaunchedEffect(Unit) {
+            delay(300)
+            val spec = tween<Float>(durationMillis = 450, easing = FastOutSlowInEasing)
+            state.animateScrollToPage(page = 0, pageOffsetFraction = 0.12f, animationSpec = spec)
+            state.animateScrollToPage(page = 0, pageOffsetFraction = 0f, animationSpec = spec)
+            onWiggleComplete()
+        }
+    }
 
     Layout(
         modifier = modifier.fillMaxWidth(),

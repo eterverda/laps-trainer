@@ -7,3 +7,4 @@ package ru.fpvladder.laps.trainer.model
  * in the source and can be re-enabled by flipping the flag.
  */
 val TEAM_HOLESHOT_ENABLED = "false".toBoolean()
+val WIGGLE_ONCE_ENABLED = "false".toBoolean()

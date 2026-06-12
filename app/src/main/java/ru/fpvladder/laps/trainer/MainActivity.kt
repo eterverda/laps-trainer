@@ -79,6 +79,7 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.SwapMode
+import ru.fpvladder.laps.trainer.model.WIGGLE_ONCE_ENABLED
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.mergeFlightRecords
@@ -233,6 +234,7 @@ fun AppRoot(
     val currentScreen by pilotViewModel.currentScreen.collectAsState()
     val trainings by trainingViewModel.trainings.collectAsState()
     val selectedTraining by trainingViewModel.selectedTraining.collectAsState()
+    val hasPagerWiggled by trainingViewModel.hasPagerWiggled.collectAsState()
     val channelGrid by settingsViewModel.channelGrid.collectAsState()
     val colorCount by settingsViewModel.colorCount.collectAsState()
     val isMuted by settingsViewModel.isMuted.collectAsState()
@@ -476,6 +478,8 @@ fun AppRoot(
                                         pilot = selectedTraining.pilot,
                                         pilotSwapIndex = flightPilotSwapIndex,
                                         pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
+                                        hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
+                                        onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
                                         modifier = Modifier.fillMaxSize()
                                     )
 
@@ -492,6 +496,8 @@ fun AppRoot(
                                             pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped
                                                 ?: false,
                                             onSwapPilots = { trainingViewModel.swapPilotOrder() },
+                                            hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
+                                            onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     }

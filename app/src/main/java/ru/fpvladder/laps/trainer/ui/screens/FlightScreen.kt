@@ -91,6 +91,8 @@ fun FlightContent(
     pilot: Pilot? = null,
     pilotSwapIndex: Int? = null,
     pilotOrderSwapped: Boolean = false,
+    hasPagerWiggled: Boolean = false,
+    onPagerWiggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isTeam = pilot is Pilot.Team
@@ -208,7 +210,9 @@ fun FlightContent(
                                             ),
                                             headPilotName = headPilot,
                                             tailPilotName = tailPilot,
-                                            timerPrecision = timerPrecision
+                                            timerPrecision = timerPrecision,
+                                            hasPagerWiggled = hasPagerWiggled,
+                                            onPagerWiggleComplete = onPagerWiggleComplete
                                         )
                                     } else {
                                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -537,7 +541,9 @@ private fun TeamFlightPostResults(
     tailCounters: List<Counter>,
     headPilotName: String,
     tailPilotName: String,
-    timerPrecision: TimerPrecision
+    timerPrecision: TimerPrecision,
+    hasPagerWiggled: Boolean = false,
+    onPagerWiggleComplete: () -> Unit = {}
 ) {
     val pages: List<Pair<String, @Composable () -> Unit>> = listOf(
         "Результаты" to @Composable {
@@ -595,15 +601,19 @@ private fun TeamFlightPostResults(
     PageIndicator(
         pageCount = pages.size,
         currentPage = pagerState.currentPage,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp)
     )
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(12.dp))
 
     MeasuredHorizontalPager(
         state = pagerState,
         pageCount = pages.size,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        wiggleOnAppear = !hasPagerWiggled,
+        onWiggleComplete = onPagerWiggleComplete
     ) { page ->
         pages[page].second()
     }
