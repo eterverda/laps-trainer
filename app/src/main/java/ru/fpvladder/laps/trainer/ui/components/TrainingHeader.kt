@@ -436,7 +436,7 @@ private fun TrainingListItem(
                                 }
                             },
                             fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     } else {
                         Text(
@@ -463,7 +463,7 @@ private fun TrainingListItem(
                                     }
                                 },
                                 fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         n1Blank -> {
