@@ -21,12 +21,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -54,7 +56,7 @@ import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
 
 @Composable
-fun StatsContent(
+fun StatsScreen(
     description: AnnotatedString,
     onEditRulesClick: () -> Unit,
     stats: Stats = Stats.Individual(),
@@ -73,12 +75,18 @@ fun StatsContent(
     val p1 = if (pilotOrderSwapped) p2Raw else p1Raw
     val p2 = if (pilotOrderSwapped) p1Raw else p2Raw
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         Spacer(modifier = Modifier.height(20.dp))
         Row(
             modifier = Modifier
@@ -184,6 +192,7 @@ fun StatsContent(
             }
         }
     }
+}
 }
 
 @OptIn(ExperimentalFoundationApi::class)

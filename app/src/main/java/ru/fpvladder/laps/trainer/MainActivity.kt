@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -24,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,15 +39,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
@@ -64,7 +59,7 @@ import ru.fpvladder.laps.trainer.ui.components.RulesEditorDialog
 import ru.fpvladder.laps.trainer.ui.components.TrainingHeader
 import ru.fpvladder.laps.trainer.ui.screens.FlightScreen
 import ru.fpvladder.laps.trainer.ui.screens.SettingsScreen
-import ru.fpvladder.laps.trainer.ui.screens.StatsContent
+import ru.fpvladder.laps.trainer.ui.screens.StatsScreen
 import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
@@ -322,90 +317,82 @@ fun AppRoot(
                             .weight(1f)
                     )
 
-                    else -> Surface(
+                    else -> Box(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 0.dp
+                            .padding(bottom = 8.dp)
                     ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            AnimatedContent(
-                                targetState = currentScreen,
-                                transitionSpec = {
-                                    (scaleIn(
-                                        initialScale = 0.85f,
-                                        animationSpec = tween(300)
-                                    ) + fadeIn(animationSpec = tween(300))) togetherWith
-                                            (scaleOut(
-                                                targetScale = 0.85f,
-                                                animationSpec = tween(300)
-                                            ) + fadeOut(animationSpec = tween(300)))
-                                },
-                                label = "flight_training_transition"
-                            ) { screen ->
-                                when (screen) {
-                                    AppScreen.Flight -> FlightScreen(
-                                        isPostFlight = isPostFlight,
-                                        isStarted = isStarted,
-                                        startSignal = effectiveStartSignal,
-                                        laps = laps,
-                                        currentLap = currentLap,
-                                        currentLapTime = currentLapTime,
-                                        elapsedMs = elapsedMs,
-                                        preStartCountdownMs = preStartCountdownMs,
-                                        isPreBlinking = isPreBlinking,
-                                        timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
-                                        maxLaps = selectedTraining.rules.maxLaps,
-                                        stopReason = stopReason,
-                                        enabledRecordKinds = when (val r = selectedTraining.rules) {
-                                            is Rules.Individual -> r.enabledRecordKinds
-                                            is Rules.Team -> r.enabledRecordKinds
-                                            else -> emptySet()
-                                        },
-                                        holeshotEnabled = selectedTraining.rules.holeshotEnabled,
-                                        shouldSaveResult = shouldSaveResult,
-                                        onShouldSaveResultChange = { flightViewModel.setShouldSaveResult(it) },
-                                        swapPilotsForNextFlight = swapPilotsForNextFlight,
-                                        onSwapPilotsForNextFlightChange = { flightViewModel.setSwapPilotsForNextFlight(it) },
-                                        useLapButton = useLapButton,
-                                        onLapClick = {
-                                            flightViewModel.addLap()
-                                        },
+                        AnimatedContent(
+                            targetState = currentScreen,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith
+                                        fadeOut(animationSpec = tween(300))
+                            },
+                            label = "flight_training_transition"
+                        ) { screen ->
+                            when (screen) {
+                                AppScreen.Flight -> FlightScreen(
+                                    isPostFlight = isPostFlight,
+                                    isStarted = isStarted,
+                                    startSignal = effectiveStartSignal,
+                                    laps = laps,
+                                    currentLap = currentLap,
+                                    currentLapTime = currentLapTime,
+                                    elapsedMs = elapsedMs,
+                                    preStartCountdownMs = preStartCountdownMs,
+                                    isPreBlinking = isPreBlinking,
+                                    timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
+                                    maxLaps = selectedTraining.rules.maxLaps,
+                                    stopReason = stopReason,
+                                    enabledRecordKinds = when (val r = selectedTraining.rules) {
+                                        is Rules.Individual -> r.enabledRecordKinds
+                                        is Rules.Team -> r.enabledRecordKinds
+                                        else -> emptySet()
+                                    },
+                                    holeshotEnabled = selectedTraining.rules.holeshotEnabled,
+                                    shouldSaveResult = shouldSaveResult,
+                                    onShouldSaveResultChange = { flightViewModel.setShouldSaveResult(it) },
+                                    swapPilotsForNextFlight = swapPilotsForNextFlight,
+                                    onSwapPilotsForNextFlightChange = { flightViewModel.setSwapPilotsForNextFlight(it) },
+                                    useLapButton = useLapButton,
+                                    useErrorFixButtons = useErrorFixButtons,
+                                    onLapClick = {
+                                        flightViewModel.addLap()
+                                    },
+                                    onErrorClick = { flightViewModel.addErrorToLastLap() },
+                                    onFixClick = { flightViewModel.addFixToLastLap() },
+                                    timerPrecision = timerPrecision,
+                                    pilot = selectedTraining.pilot,
+                                    pilotSwapIndex = flightPilotSwapIndex,
+                                    pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
+                                    swapRemainingMs = swapRemainingMs,
+                                    hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
+                                    onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
+                                    onBackClick = { finishFlight(shouldSaveResult, true) },
+                                    appTheme = appTheme,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                AppScreen.Training -> {
+                                    val isTeam = selectedTraining is Training.Team
+                                    StatsScreen(
+                                        description = selectedTraining.description(LocalContext.current),
+                                        onEditRulesClick = { showRulesEditor = true },
+                                        stats = selectedTraining.stats,
                                         timerPrecision = timerPrecision,
-                                        pilot = selectedTraining.pilot,
-                                        pilotSwapIndex = flightPilotSwapIndex,
-                                        pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
-                                        swapRemainingMs = swapRemainingMs,
+                                        isTeam = isTeam,
+                                        pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
+                                        pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
+                                        pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped
+                                            ?: false,
+                                        onSwapPilots = { trainingViewModel.swapPilotOrder() },
                                         hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
                                         onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
-                                        onBackClick = { finishFlight(shouldSaveResult, true) },
-                                        appTheme = appTheme,
                                         modifier = Modifier.fillMaxSize()
                                     )
-
-                                    AppScreen.Training -> {
-                                        val isTeam = selectedTraining is Training.Team
-                                        StatsContent(
-                                            description = selectedTraining.description(LocalContext.current),
-                                            onEditRulesClick = { showRulesEditor = true },
-                                            stats = selectedTraining.stats,
-                                            timerPrecision = timerPrecision,
-                                            isTeam = isTeam,
-                                            pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
-                                            pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
-                                            pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped
-                                                ?: false,
-                                            onSwapPilots = { trainingViewModel.swapPilotOrder() },
-                                            hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
-                                            onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
-
-                                    else -> {}
                                 }
+
+                                else -> {}
                             }
                         }
                     }
@@ -425,92 +412,13 @@ fun AppRoot(
                                 text = "Подключите USB-клавиатуру",
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
                         val isOnFlight = currentScreen == AppScreen.Flight
-
-                        AnimatedVisibility(
-                            visible = isOnFlight && !isPostFlight && isStarted && (useErrorFixButtons || useLapButton),
-                            enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
-                            exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                if (useLapButton) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(modifier = Modifier.size(48.dp))
-                                        HoldButton(
-                                            onConfirm = { flightViewModel.addLap() },
-                                            text = "Круг",
-                                            iconRes = R.drawable.ic_circle,
-                                            holdDurationMs = 0,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(horizontal = 8.dp)
-                                                .height(54.dp)
-                                        )
-                                        Box(modifier = Modifier.size(48.dp))
-                                    }
-                                }
-                                if (useErrorFixButtons) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(
-                                            16.dp,
-                                            Alignment.CenterHorizontally
-                                        ),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Button(
-                                            onClick = { flightViewModel.addErrorToLastLap() },
-                                            shape = RoundedCornerShape(12.dp),
-                                            contentPadding = PaddingValues(
-                                                horizontal = 24.dp,
-                                                vertical = 6.dp
-                                            )
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.ic_cross),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("ОШИБКА", fontSize = 14.sp)
-                                        }
-                                        Button(
-                                            onClick = { flightViewModel.addFixToLastLap() },
-                                            shape = RoundedCornerShape(12.dp),
-                                            contentPadding = PaddingValues(
-                                                horizontal = 24.dp,
-                                                vertical = 6.dp
-                                            )
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.ic_square),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("ИСПРАВИЛ", fontSize = 14.sp)
-                                        }
-                                    }
-                                }
-                            }
-                        }
 
                         Row(
                             modifier = Modifier
