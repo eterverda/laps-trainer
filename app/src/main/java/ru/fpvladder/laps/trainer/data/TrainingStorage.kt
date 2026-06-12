@@ -446,15 +446,13 @@ class TrainingStorage(private val context: Context) {
     private fun counterToJson(counter: Counter): JSONObject {
         return JSONObject().apply {
             put("count", counter.count)
-            when (counter) {
-                is Counter.Builtin -> {
-                    put("type", "BUILTIN")
-                    put("kind", counter.kind.name)
-                }
-                is Counter.Custom -> {
-                    put("type", "CUSTOM")
-                    put("text", counter.text)
-                }
+            val kind = counter.kind
+            if (kind != null) {
+                put("type", "BUILTIN")
+                put("kind", kind.name)
+            } else {
+                put("type", "CUSTOM")
+                put("text", (counter as Counter.Custom).text)
             }
         }
     }
@@ -469,9 +467,9 @@ class TrainingStorage(private val context: Context) {
                 else -> Counter.Builtin(
                     count = count,
                     kind = try {
-                        Counter.Builtin.Kind.valueOf(obj.optString("kind", "LAP"))
+                        Counter.Kind.valueOf(obj.optString("kind", "LAP"))
                     } catch (_: Exception) {
-                        Counter.Builtin.Kind.LAP
+                        Counter.Kind.LAP
                     }
                 )
             }

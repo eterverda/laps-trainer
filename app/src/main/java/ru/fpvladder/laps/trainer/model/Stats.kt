@@ -36,55 +36,71 @@ data class Record(
     }
 
     fun isBetterThan(other: Record, precision: TimerPrecision): Boolean {
-        return count > other.count || (count == other.count && timeMs(precision) < other.timeMs(precision))
+        return count > other.count || (count == other.count && timeMs(precision) < other.timeMs(
+            precision
+        ))
     }
 }
 
 sealed class Counter {
     abstract val count: Int
+    abstract val kind: Kind?
+    abstract fun withAddedCount(other: Counter): Counter
 
     data class Builtin(
-        override val count: Int,
-        val kind: Kind
+        override val count: Int = 1,
+        override val kind: Kind
     ) : Counter() {
-        enum class Kind { FLIGHT, LAP }
+        override fun withAddedCount(other: Counter): Counter {
+            require(other is Builtin && other.kind == kind)
+            return copy(count = count + other.count)
+        }
     }
 
     data class Custom(
-        override val count: Int,
+        override val count: Int = 1,
         val text: String
-    ) : Counter()
+    ) : Counter() {
+        override val kind: Kind?
+            get() = null
+
+        override fun withAddedCount(other: Counter): Counter {
+            require(other is Custom && other.text == text)
+            return copy(count = count + other.count)
+        }
+    }
+
+    enum class Kind { FLIGHT, LAP }
+
+    companion object {
+        val SINGLE_FLIGHT = Builtin(count = 1, kind = Kind.FLIGHT)
+    }
 
     object SortComparator : Comparator<Counter> {
         override fun compare(a: Counter, b: Counter): Int {
+            val aKind = a.kind
+            val bKind = b.kind
             return when {
-                a is Builtin && b is Builtin -> a.kind.ordinal.compareTo(b.kind.ordinal)
-                a is Custom && b is Custom -> a.text.compareTo(b.text)
-                a is Builtin && b is Custom -> -1
+                aKind != null && bKind != null -> aKind.ordinal.compareTo(bKind.ordinal)
+                aKind == null && bKind == null ->
+                    (a as Custom).text.compareTo((b as Custom).text)
+
+                aKind != null -> -1
                 else -> 1
             }
         }
     }
 }
 
-fun Counter.same(other: Counter): Boolean = when (this) {
-    is Counter.Builtin -> other is Counter.Builtin && this.kind == other.kind
-    is Counter.Custom -> other is Counter.Custom && this.text == other.text
+fun Counter.same(other: Counter): Boolean = when (val k = kind) {
+    Counter.Kind.FLIGHT, Counter.Kind.LAP -> other.kind == k
+    null -> (this as Counter.Custom).text == (other as Counter.Custom).text
 }
 
 private fun MutableList<Counter>.mergeIn(counter: Counter) {
     val index = indexOfFirst { it.same(counter) }
     if (index >= 0) {
-        val existing = this[index]
-        this[index] = when {
-            existing is Counter.Builtin && counter is Counter.Builtin ->
-                existing.copy(count = existing.count + counter.count)
-
-            existing is Counter.Custom && counter is Counter.Custom ->
-                existing.copy(count = existing.count + counter.count)
-
-            else -> counter
-        }
+        this[index] = this[index].withAddedCount(counter)
     } else {
         add(counter)
     }
@@ -156,16 +172,12 @@ fun computeFlightRecords(
 
 fun computeFlightCounters(laps: List<Lap>): List<Counter> {
     val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
-    return if (validLaps.isNotEmpty()) {
-        listOf(
-            Counter.Builtin(
-                count = validLaps.size,
-                kind = Counter.Builtin.Kind.LAP
-            )
+    return listOf(
+        Counter.Builtin(
+            count = validLaps.size,
+            kind = Counter.Kind.LAP
         )
-    } else {
-        emptyList()
-    }
+    )
 }
 
 data class TeamFlightRecords(
@@ -190,14 +202,18 @@ fun computeTeamFlightCounters(
         } else {
             validLaps.size
         }
+
         TeamCounterScope.TAIL -> if (pilotSwapIndex != null) {
             laps.drop(pilotSwapIndex + 1).count { it.status == Lap.Status.SUCCESS }
         } else {
             0
         }
     }
+    if (scope == TeamCounterScope.TAIL && lapCount == 0) {
+        return emptyList()
+    }
     return listOf(
-        Counter.Builtin(count = lapCount, kind = Counter.Builtin.Kind.LAP)
+        Counter.Builtin(count = lapCount, kind = Counter.Kind.LAP)
     )
 }
 
@@ -211,7 +227,7 @@ fun Stats.Team.mergeTeamFlight(
     val mergedCommonRecords = mergeRecordLists(records, common.records, timerPrecision)
     val mergedCommonCounters = mergeCounterLists(
         counters,
-        common.counters + Counter.Builtin(count = 1, kind = Counter.Builtin.Kind.FLIGHT)
+        common.counters + Counter.SINGLE_FLIGHT
     )
 
     val name1Best1: List<Record>
@@ -258,20 +274,42 @@ fun Stats.Team.mergeTeamFlight(
         name2MostBeingTail = name2Most
     }
 
+    fun List<Counter>.withFlightIfMissing(): List<Counter> {
+        if (isEmpty()) return this
+        val hasFlight = any { it.kind == Counter.Kind.FLIGHT }
+        return if (hasFlight) this else this + Counter.SINGLE_FLIGHT
+    }
+
     return copy(
         records = mergedCommonRecords,
         counters = mergedCommonCounters,
         first = this.first.copy(
             records = mergeRecordLists(this.first.records, name1Best1, timerPrecision),
-            recordsBeingHead = mergeRecordLists(this.first.recordsBeingHead, name1MostBeingHead, timerPrecision),
-            recordsBeingTail = mergeRecordLists(this.first.recordsBeingTail, name1MostBeingTail, timerPrecision),
-            counters = mergeCounterLists(this.first.counters, name1Counters)
+            recordsBeingHead = mergeRecordLists(
+                this.first.recordsBeingHead,
+                name1MostBeingHead,
+                timerPrecision
+            ),
+            recordsBeingTail = mergeRecordLists(
+                this.first.recordsBeingTail,
+                name1MostBeingTail,
+                timerPrecision
+            ),
+            counters = mergeCounterLists(this.first.counters, name1Counters.withFlightIfMissing())
         ),
         second = this.second.copy(
             records = mergeRecordLists(this.second.records, name2Best1, timerPrecision),
-            recordsBeingHead = mergeRecordLists(this.second.recordsBeingHead, name2MostBeingHead, timerPrecision),
-            recordsBeingTail = mergeRecordLists(this.second.recordsBeingTail, name2MostBeingTail, timerPrecision),
-            counters = mergeCounterLists(this.second.counters, name2Counters)
+            recordsBeingHead = mergeRecordLists(
+                this.second.recordsBeingHead,
+                name2MostBeingHead,
+                timerPrecision
+            ),
+            recordsBeingTail = mergeRecordLists(
+                this.second.recordsBeingTail,
+                name2MostBeingTail,
+                timerPrecision
+            ),
+            counters = mergeCounterLists(this.second.counters, name2Counters.withFlightIfMissing())
         )
     )
 }
@@ -338,7 +376,7 @@ fun Stats.Individual.mergeFlightRecords(
         for (it in flightCounters) {
             mergeIn(it)
         }
-        mergeIn(Counter.Builtin(count = 1, kind = Counter.Builtin.Kind.FLIGHT))
+        mergeIn(Counter.SINGLE_FLIGHT)
         sortWith(Counter.SortComparator)
     }
 

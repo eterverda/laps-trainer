@@ -80,6 +80,7 @@ import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.WIGGLE_ONCE_ENABLED
+import ru.fpvladder.laps.trainer.model.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.mergeFlightRecords
@@ -257,6 +258,8 @@ fun AppRoot(
     val stopReason by flightViewModel.stopReason.collectAsState()
     val preStartCountdownMs by flightViewModel.preStartCountdownMs.collectAsState()
     val flightPilotSwapIndex by flightViewModel.pilotSwapIndex.collectAsState()
+    val shouldSaveResult by flightViewModel.shouldSaveResult.collectAsState()
+    val swapPilotsForNextFlight by flightViewModel.swapPilotsForNextFlight.collectAsState()
 
     LaunchedEffect(currentScreen) {
         if (currentScreen == AppScreen.Flight) {
@@ -279,6 +282,41 @@ fun AppRoot(
         is Training.Team -> (selectedTraining as Training.Team).pilot
     }
 
+    val finishFlight: (Boolean, Boolean) -> Unit = { shouldSave, navigateToTraining ->
+        if (shouldSave) {
+            val flight = flightViewModel.buildFlight(selectedTraining)
+            val currentStats = selectedTraining.stats
+            when {
+                currentStats is Stats.Individual && flight is Flight.Individual -> {
+                    val updatedStats = currentStats.mergeFlightRecords(
+                        flight.records,
+                        flight.counters,
+                        flightTimerPrecision,
+                    )
+                    trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
+                }
+                currentStats is Stats.Team && flight is Flight.Team -> {
+                    val updatedStats = currentStats.mergeTeamFlight(
+                        common = flight.common,
+                        head = flight.head,
+                        tail = flight.tail,
+                        pilotOrderSwapped = flight.rules.pilotOrderSwapped,
+                        timerPrecision = flightTimerPrecision
+                    )
+                    trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
+                }
+            }
+            trainingViewModel.addFlight(selectedTraining, flight)
+        }
+        if (selectedTraining is Training.Team && swapPilotsForNextFlight) {
+            trainingViewModel.swapPilotOrder()
+        }
+        if (navigateToTraining) {
+            pilotViewModel.navigateTo(AppScreen.Training)
+        }
+        flightViewModel.reset()
+    }
+
     BackHandler(
         enabled = currentScreen == AppScreen.Settings || currentScreen == AppScreen.Flight
     ) {
@@ -293,8 +331,7 @@ fun AppRoot(
             }
 
             currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST -> {
-                pilotViewModel.navigateTo(AppScreen.Training)
-                flightViewModel.reset()
+                finishFlight(shouldSaveResult, true)
             }
             // MAIN — back игнорируется (enabled=true, но ничего не делаем)
         }
@@ -312,12 +349,22 @@ fun AppRoot(
                     AppScreen.Flight -> TrainingHeader(
                         trainings = trainings,
                         selectedTraining = selectedTraining,
-                        enabled = false,
+                        enabled = flightPhase == FlightPhase.POST,
                         onChannelClick = {},
                         onNameLongClick = {},
-                        onAddIndividualClick = {},
-                        onAddTeamClick = {},
-                        onTrainingSelect = {}
+                        onAddIndividualClick = {
+                            nameEditorIsNew = true
+                            showIndividualNameDialog = true
+                        },
+                        onAddTeamClick = {
+                            nameEditorIsNew = true
+                            showTeamNameDialog = true
+                        },
+                        onTrainingSelect = {
+                            finishFlight(shouldSaveResult, false)
+                            trainingViewModel.selectTraining(it)
+                            pilotViewModel.navigateTo(AppScreen.Training)
+                        }
                     )
 
                     AppScreen.Training -> {
@@ -440,37 +487,11 @@ fun AppRoot(
                                             is Rules.Team -> r.enabledRecordKinds
                                             else -> emptySet()
                                         },
-                                        onSave = {
-                                            val flight = flightViewModel.buildFlight(selectedTraining)
-                                            val currentStats = selectedTraining.stats
-                                            when {
-                                                currentStats is Stats.Individual && flight is Flight.Individual -> {
-                                                    val updatedStats = currentStats.mergeFlightRecords(
-                                                        flight.records,
-                                                        flight.counters,
-                                                        flightTimerPrecision,
-                                                    )
-                                                    trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
-                                                }
-                                                currentStats is Stats.Team && flight is Flight.Team -> {
-                                                    val updatedStats = currentStats.mergeTeamFlight(
-                                                        common = flight.common,
-                                                        head = flight.head,
-                                                        tail = flight.tail,
-                                                        pilotOrderSwapped = flight.rules.pilotOrderSwapped,
-                                                        timerPrecision = flightTimerPrecision
-                                                    )
-                                                    trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
-                                                }
-                                            }
-                                            trainingViewModel.addFlight(selectedTraining, flight)
-                                            pilotViewModel.navigateTo(AppScreen.Training)
-                                            flightViewModel.reset()
-                                        },
-                                        onDiscard = {
-                                            pilotViewModel.navigateTo(AppScreen.Training)
-                                            flightViewModel.reset()
-                                        },
+                                        holeshotEnabled = selectedTraining.rules.holeshotEnabled,
+                                        shouldSaveResult = shouldSaveResult,
+                                        onShouldSaveResultChange = { flightViewModel.setShouldSaveResult(it) },
+                                        swapPilotsForNextFlight = swapPilotsForNextFlight,
+                                        onSwapPilotsForNextFlightChange = { flightViewModel.setSwapPilotsForNextFlight(it) },
                                         onLapClick = {
                                             flightViewModel.addLap()
                                         },
@@ -480,6 +501,7 @@ fun AppRoot(
                                         pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
                                         hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
                                         onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
+                                        onBackClick = { finishFlight(shouldSaveResult, true) },
                                         modifier = Modifier.fillMaxSize()
                                     )
 
@@ -605,13 +627,15 @@ fun AppRoot(
                                 !isOnFlight -> "Старт"
                                 isManualPreStart -> "GO GO GO"
                                 isPreFixedOrRandom -> "ОТМЕНА"
-                                flightPhase == FlightPhase.POST -> "Старт"
+                                flightPhase == FlightPhase.POST -> if (IMMEDIATE_START_ENABLED) "Старт" else "Закрыть"
                                 else -> "Стоп"
                             }
                             val holdDurationMs = when {
                                 !isOnFlight -> if (isMuted) 2000 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
                                 isManualPreStart || isPreFixedOrRandom -> 0
-                                flightPhase == FlightPhase.POST -> if (isMuted) 2000 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
+                                flightPhase == FlightPhase.POST -> if (IMMEDIATE_START_ENABLED) {
+                                    if (isMuted) 2000 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
+                                } else 0
                                 flightPhase == FlightPhase.MAIN -> 1200
                                 else -> 2000
                             }
@@ -632,9 +656,13 @@ fun AppRoot(
                                         }
 
                                         flightPhase == FlightPhase.POST -> {
-                                            flightViewModel.reset()
-                                            flightViewModel.setRules(selectedTraining.rules)
-                                            flightViewModel.prepareRace(startSignal, isMuted)
+                                            if (IMMEDIATE_START_ENABLED) {
+                                                finishFlight(shouldSaveResult, false)
+                                                flightViewModel.setRules(selectedTraining.rules)
+                                                flightViewModel.prepareRace(startSignal, isMuted)
+                                            } else {
+                                                finishFlight(shouldSaveResult, true)
+                                            }
                                         }
 
                                         else -> {
@@ -646,7 +674,7 @@ fun AppRoot(
                                 text = buttonText,
                                 holdDurationMs = holdDurationMs,
                                 onPressStart = {
-                                    if (!isMuted && (!isOnFlight || flightPhase == FlightPhase.POST)) {
+                                    if (!isMuted && (!isOnFlight || (flightPhase == FlightPhase.POST && IMMEDIATE_START_ENABLED))) {
                                         soundJob = SoundManager.playStageSequence(scope)
                                     }
                                 },
@@ -705,6 +733,10 @@ fun AppRoot(
         IndividualNameDialog(
             currentName = currentName,
             onConfirm = { name ->
+                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST
+                if (wasPostFlight) {
+                    finishFlight(shouldSaveResult, false)
+                }
                 if (nameEditorIsNew) {
                     val defaultChannel = when (val last = trainings.lastOrNull()) {
                         is Training.Individual -> last.pilot.channel
@@ -717,6 +749,9 @@ fun AppRoot(
                     trainingViewModel.selectTraining(newTraining)
                 } else {
                     trainingViewModel.updateCurrentPilotNames(name, "")
+                }
+                if (wasPostFlight) {
+                    pilotViewModel.navigateTo(AppScreen.Training)
                 }
                 showIndividualNameDialog = false
             },
@@ -739,6 +774,10 @@ fun AppRoot(
             name1 = currentName1,
             name2 = currentName2,
             onConfirm = { n1, n2 ->
+                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST
+                if (wasPostFlight) {
+                    finishFlight(shouldSaveResult, false)
+                }
                 if (nameEditorIsNew) {
                     val defaultChannel = when (val last = trainings.lastOrNull()) {
                         is Training.Individual -> last.pilot.channel
@@ -751,6 +790,9 @@ fun AppRoot(
                     trainingViewModel.selectTraining(newTraining)
                 } else {
                     trainingViewModel.updateCurrentPilotNames(n1, n2)
+                }
+                if (wasPostFlight) {
+                    pilotViewModel.navigateTo(AppScreen.Training)
                 }
                 showTeamNameDialog = false
             },

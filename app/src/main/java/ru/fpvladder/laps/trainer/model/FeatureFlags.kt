@@ -8,3 +8,4 @@ package ru.fpvladder.laps.trainer.model
  */
 val TEAM_HOLESHOT_ENABLED = "false".toBoolean()
 val WIGGLE_ONCE_ENABLED = "false".toBoolean()
+val IMMEDIATE_START_ENABLED = "true".toBoolean()

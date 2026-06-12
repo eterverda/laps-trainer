@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,16 +16,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.res.painterResource
 import ru.fpvladder.laps.trainer.R
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.PathEffect
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.model.Record
+import ru.fpvladder.laps.trainer.model.computeFlightCounters
 import ru.fpvladder.laps.trainer.model.computeFlightRecords
 import ru.fpvladder.laps.trainer.model.computeTeamFlightRecords
 import ru.fpvladder.laps.trainer.model.computeTeamFlightCounters
@@ -63,7 +65,7 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimerPrecision
-import ru.fpvladder.laps.trainer.ui.components.BulletText
+import ru.fpvladder.laps.trainer.model.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
 import ru.fpvladder.laps.trainer.ui.screens.RecordsInset
 import ru.fpvladder.laps.trainer.ui.screens.InsetCard
@@ -83,16 +85,20 @@ fun FlightContent(
     timeLimitSeconds: Int = 0,
     maxLaps: Int = Int.MAX_VALUE,
     stopReason: StopReason? = null,
-    onSave: () -> Unit = {},
-    onDiscard: () -> Unit = {},
+    shouldSaveResult: Boolean = false,
+    onShouldSaveResultChange: (Boolean) -> Unit = {},
+    swapPilotsForNextFlight: Boolean = false,
+    onSwapPilotsForNextFlightChange: (Boolean) -> Unit = {},
     onLapClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
     enabledRecordKinds: Set<Record.Kind> = emptySet(),
+    holeshotEnabled: Boolean = false,
     pilot: Pilot? = null,
     pilotSwapIndex: Int? = null,
     pilotOrderSwapped: Boolean = false,
     hasPagerWiggled: Boolean = false,
     onPagerWiggleComplete: () -> Unit = {},
+    onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isTeam = pilot is Pilot.Team
@@ -155,7 +161,13 @@ fun FlightContent(
                                     modifier = Modifier.fillMaxWidth(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Hint("Нажмите здесь когда пилот пройдет ворота")
+                                    Hint(
+                                    if (holeshotEnabled) {
+                                        "Нажимайте здесь каждый раз, когда пройдены стартовые ворота"
+                                    } else {
+                                        "Нажимайте здесь каждый раз, когда завершен круг"
+                                    }
+                                )
                                 }
                             }
                             if (phase == FlightPhase.POST) {
@@ -186,56 +198,48 @@ fun FlightContent(
                                     fontSize = 16.sp,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
                                 )
-                                val validLapCount = laps.count { it.status == Lap.Status.SUCCESS }
-                                if (validLapCount > 0) {
-                                    if (isTeam) {
-                                        val teamRecords = computeTeamFlightRecords(
-                                            laps = laps,
-                                            timerPrecision = timerPrecision,
-                                            enabledKinds = enabledRecordKinds,
-                                            pilotSwapIndex = pilotSwapIndex
+                                if (isTeam) {
+                                    val teamRecords = computeTeamFlightRecords(
+                                        laps = laps,
+                                        timerPrecision = timerPrecision,
+                                        enabledKinds = enabledRecordKinds,
+                                        pilotSwapIndex = pilotSwapIndex
+                                    )
+                                    TeamFlightPostResults(
+                                        commonRecords = teamRecords.common.distinctBy { it.count },
+                                        headRecords = teamRecords.head.distinctBy { it.count },
+                                        tailRecords = teamRecords.tail.distinctBy { it.count },
+                                        commonCounters = computeTeamFlightCounters(
+                                            laps, TeamCounterScope.COMMON, pilotSwapIndex
+                                        ),
+                                        headCounters = computeTeamFlightCounters(
+                                            laps, TeamCounterScope.HEAD, pilotSwapIndex
+                                        ),
+                                        tailCounters = computeTeamFlightCounters(
+                                            laps, TeamCounterScope.TAIL, pilotSwapIndex
+                                        ),
+                                        headPilotName = headPilot,
+                                        tailPilotName = tailPilot,
+                                        timerPrecision = timerPrecision,
+                                        hasPagerWiggled = hasPagerWiggled,
+                                        onPagerWiggleComplete = onPagerWiggleComplete
+                                    )
+                                } else {
+                                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                        ScreenTitle("Результаты")
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        val flightRecords = if (enabledRecordKinds.isNotEmpty()) {
+                                            computeFlightRecords(laps, timerPrecision, enabledRecordKinds)
+                                        } else emptyList()
+                                        RecordsInset(
+                                            records = flightRecords.distinctBy { it.count },
+                                            timerPrecision = timerPrecision
                                         )
-                                        TeamFlightPostResults(
-                                            commonRecords = teamRecords.common.distinctBy { it.count },
-                                            headRecords = teamRecords.head.distinctBy { it.count },
-                                            tailRecords = teamRecords.tail.distinctBy { it.count },
-                                            commonCounters = computeTeamFlightCounters(
-                                                laps, TeamCounterScope.COMMON, pilotSwapIndex
-                                            ),
-                                            headCounters = computeTeamFlightCounters(
-                                                laps, TeamCounterScope.HEAD, pilotSwapIndex
-                                            ),
-                                            tailCounters = computeTeamFlightCounters(
-                                                laps, TeamCounterScope.TAIL, pilotSwapIndex
-                                            ),
-                                            headPilotName = headPilot,
-                                            tailPilotName = tailPilot,
-                                            timerPrecision = timerPrecision,
-                                            hasPagerWiggled = hasPagerWiggled,
-                                            onPagerWiggleComplete = onPagerWiggleComplete
-                                        )
-                                    } else {
-                                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                            ScreenTitle(
-                                                text = "Результаты",
-                                                modifier = Modifier.padding(vertical = 16.dp)
-                                            )
-                                            val flightRecords = if (enabledRecordKinds.isNotEmpty()) {
-                                                computeFlightRecords(laps, timerPrecision, enabledRecordKinds)
-                                            } else emptyList()
-                                            RecordsInset(
-                                                records = flightRecords.distinctBy { it.count },
-                                                timerPrecision = timerPrecision
-                                            )
-                                            BulletText(
-                                                text = context.resources.getQuantityString(
-                                                    R.plurals.laps,
-                                                    validLapCount,
-                                                    validLapCount
-                                                ),
-                                                modifier = Modifier.padding(top = 8.dp)
-                                            )
+                                        if (flightRecords.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(8.dp))
                                         }
+                                        CountersSummary(counters = computeFlightCounters(laps))
+                                        Spacer(modifier = Modifier.height(8.dp))
                                     }
                                 }
                             }
@@ -248,43 +252,74 @@ fun FlightContent(
                             if (remaining > 0 && contentHeight > 0 && buttonsHeight > 0) remaining.toDp() else 16.dp
                         }
                         Spacer(modifier = Modifier.height(spacerHeight))
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onSizeChanged { buttonsHeight = it.height },
-                            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            OutlinedButton(
-                                onClick = onDiscard,
-                                shape = RoundedCornerShape(50),
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .toggleable(
+                                        value = shouldSaveResult,
+                                        onValueChange = onShouldSaveResultChange,
+                                        role = Role.Checkbox
+                                    )
+                                    .padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                Checkbox(
+                                    checked = shouldSaveResult,
+                                    onCheckedChange = null
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Удалить",
-                                    fontSize = 14.sp
+                                    text = "Сохранить результат",
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            OutlinedButton(
-                                onClick = onSave,
-                                shape = RoundedCornerShape(50),
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Save,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Сохранить",
-                                    fontSize = 14.sp
-                                )
+                            if (isTeam) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .toggleable(
+                                            value = swapPilotsForNextFlight,
+                                            onValueChange = onSwapPilotsForNextFlightChange,
+                                            role = Role.Checkbox
+                                        )
+                                        .padding(vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = swapPilotsForNextFlight,
+                                        onCheckedChange = null
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.swap_pilots_for_next_flight),
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                            if (IMMEDIATE_START_ENABLED) {
+                                TextButton(
+                                    onClick = onBackClick,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RectangleShape
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = null
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Назад",
+                                        fontSize = 16.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -556,10 +591,10 @@ private fun TeamFlightPostResults(
                 Spacer(modifier = Modifier.height(8.dp))
                 if (commonRecords.isNotEmpty()) {
                     RecordsInset(records = commonRecords, timerPrecision = timerPrecision)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
                 CountersSummary(counters = commonCounters)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
         },
         "Результаты: $headPilotName" to @Composable {
@@ -572,10 +607,10 @@ private fun TeamFlightPostResults(
                 Spacer(modifier = Modifier.height(8.dp))
                 if (headRecords.isNotEmpty()) {
                     RecordsInset(records = headRecords, timerPrecision = timerPrecision)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
                 CountersSummary(counters = headCounters)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
         },
         "Результаты: $tailPilotName" to @Composable {
@@ -588,10 +623,10 @@ private fun TeamFlightPostResults(
                 Spacer(modifier = Modifier.height(8.dp))
                 if (tailRecords.isNotEmpty()) {
                     RecordsInset(records = tailRecords, timerPrecision = timerPrecision)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
                 CountersSummary(counters = tailCounters)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     )
@@ -606,7 +641,7 @@ private fun TeamFlightPostResults(
             .padding(top = 4.dp)
     )
 
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 
     MeasuredHorizontalPager(
         state = pagerState,

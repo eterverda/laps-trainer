@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,7 +67,8 @@ fun StatsContent(
     hasPagerWiggled: Boolean = false,
     onPagerWiggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
-) {    val p1Raw = pilot1Name.takeIf { it.isNotBlank() } ?: "Первый пилот"
+) {
+    val p1Raw = pilot1Name.takeIf { it.isNotBlank() } ?: "Первый пилот"
     val p2Raw = pilot2Name.takeIf { it.isNotBlank() } ?: "Второй пилот"
     val p1 = if (pilotOrderSwapped) p2Raw else p1Raw
     val p2 = if (pilotOrderSwapped) p1Raw else p2Raw
@@ -79,6 +83,7 @@ fun StatsContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Min)
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.Top
         ) {
@@ -113,13 +118,14 @@ fun StatsContent(
                     }
                 }
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(modifier = Modifier.fillMaxHeight()) {
                 Box(
                     modifier = Modifier
+                        .align(Alignment.TopCenter)
                         .clip(CircleShape)
                         .clickable(onClick = onEditRulesClick)
                         .padding(8.dp),
-                    contentAlignment = Alignment.TopCenter
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
@@ -129,13 +135,13 @@ fun StatsContent(
                     )
                 }
                 if (isTeam) {
-                    Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
+                            .align(Alignment.BottomCenter)
                             .clip(CircleShape)
                             .clickable(onClick = onSwapPilots)
                             .padding(8.dp),
-                        contentAlignment = Alignment.TopCenter
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.SwapHoriz,
@@ -150,8 +156,8 @@ fun StatsContent(
 
         Spacer(modifier = Modifier.height(if (isTeam) 16.dp else 40.dp))
 
-        val flightCount = stats.counters.filterIsInstance<Counter.Builtin>()
-            .find { it.kind == Counter.Builtin.Kind.FLIGHT }?.count ?: 0
+        val flightCount = stats.counters
+            .find { it.kind == Counter.Kind.FLIGHT }?.count ?: 0
         val hasResults = flightCount > 0
 
         if (hasResults) {
@@ -170,10 +176,10 @@ fun StatsContent(
                     Spacer(modifier = Modifier.height(8.dp))
                     if (stats.records.isNotEmpty()) {
                         RecordsInset(stats.records.distinctBy { it.count }, timerPrecision)
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                     CountersSummary(stats.counters)
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -204,10 +210,10 @@ private fun TeamStatsContent(
                 Spacer(modifier = Modifier.height(8.dp))
                 if (stats.records.isNotEmpty()) {
                     RecordsInset(stats.records.distinctBy { it.count }, timerPrecision)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
                 CountersSummary(stats.counters)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
         },
         name1 to @Composable {
@@ -218,17 +224,20 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты: $name1")
                 Spacer(modifier = Modifier.height(8.dp))
-                PilotRecordsInset(
-                    records = stats.first.records.distinctBy { it.count },
-                    recordsBeingHead = stats.first.recordsBeingHead.distinctBy { it.count },
-                    recordsBeingTail = stats.first.recordsBeingTail.distinctBy { it.count },
-                    timerPrecision = timerPrecision
-                )
-                if (stats.first.counters.isNotEmpty()) {
+                val firstHasRecords = stats.first.records.isNotEmpty() ||
+                    stats.first.recordsBeingHead.isNotEmpty() ||
+                    stats.first.recordsBeingTail.isNotEmpty()
+                if (firstHasRecords) {
+                    PilotRecordsInset(
+                        records = stats.first.records.distinctBy { it.count },
+                        recordsBeingHead = stats.first.recordsBeingHead.distinctBy { it.count },
+                        recordsBeingTail = stats.first.recordsBeingTail.distinctBy { it.count },
+                        timerPrecision = timerPrecision
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    CountersSummary(stats.first.counters)
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                CountersSummary(stats.first.counters)
+                Spacer(modifier = Modifier.height(8.dp))
             }
         },
         name2 to @Composable {
@@ -239,17 +248,20 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты: $name2")
                 Spacer(modifier = Modifier.height(8.dp))
-                PilotRecordsInset(
-                    records = stats.second.records.distinctBy { it.count },
-                    recordsBeingHead = stats.second.recordsBeingHead.distinctBy { it.count },
-                    recordsBeingTail = stats.second.recordsBeingTail.distinctBy { it.count },
-                    timerPrecision = timerPrecision
-                )
-                if (stats.second.counters.isNotEmpty()) {
+                val secondHasRecords = stats.second.records.isNotEmpty() ||
+                    stats.second.recordsBeingHead.isNotEmpty() ||
+                    stats.second.recordsBeingTail.isNotEmpty()
+                if (secondHasRecords) {
+                    PilotRecordsInset(
+                        records = stats.second.records.distinctBy { it.count },
+                        recordsBeingHead = stats.second.recordsBeingHead.distinctBy { it.count },
+                        recordsBeingTail = stats.second.recordsBeingTail.distinctBy { it.count },
+                        timerPrecision = timerPrecision
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    CountersSummary(stats.second.counters)
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                CountersSummary(stats.second.counters)
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     )
@@ -264,7 +276,7 @@ private fun TeamStatsContent(
             .padding(top = 4.dp)
     )
 
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 
     MeasuredHorizontalPager(
         state = pagerState,
@@ -364,22 +376,19 @@ private fun PilotResultsHeader(name: String) {
 @Composable
 fun CountersSummary(counters: List<Counter>) {
     val context = LocalContext.current
-    val visible = counters.filter { it.count > 0 }
-    if (visible.isEmpty()) {
+    if (counters.isEmpty()) {
         BulletText(text = "0 вылетов")
         return
     }
     Column(modifier = Modifier.fillMaxWidth()) {
-        visible.forEach { counter ->
-            val text = when (counter) {
-                is Counter.Builtin -> when (counter.kind) {
-                    Counter.Builtin.Kind.FLIGHT ->
-                        context.resources.getQuantityString(R.plurals.flights, counter.count, counter.count)
-                    Counter.Builtin.Kind.LAP ->
-                        context.resources.getQuantityString(R.plurals.laps, counter.count, counter.count)
-                }
-                is Counter.Custom ->
-                    context.getString(R.string.counter_custom, counter.count, counter.text)
+        counters.forEach { counter ->
+            val text = when (val kind = counter.kind) {
+                Counter.Kind.FLIGHT ->
+                    context.resources.getQuantityString(R.plurals.flights, counter.count, counter.count)
+                Counter.Kind.LAP ->
+                    context.resources.getQuantityString(R.plurals.laps, counter.count, counter.count)
+                null ->
+                    context.getString(R.string.counter_custom, counter.count, (counter as Counter.Custom).text)
             }
             BulletText(text = text)
         }

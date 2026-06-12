@@ -59,6 +59,12 @@ class FlightViewModel : ViewModel() {
     private val _stopReason = MutableStateFlow<StopReason?>(null)
     val stopReason: StateFlow<StopReason?> = _stopReason.asStateFlow()
 
+    private val _shouldSaveResult = MutableStateFlow(false)
+    val shouldSaveResult: StateFlow<Boolean> = _shouldSaveResult.asStateFlow()
+
+    private val _swapPilotsForNextFlight = MutableStateFlow(false)
+    val swapPilotsForNextFlight: StateFlow<Boolean> = _swapPilotsForNextFlight.asStateFlow()
+
     private val _preStartCountdownMs = MutableStateFlow(0L)
     val preStartCountdownMs: StateFlow<Long> = _preStartCountdownMs.asStateFlow()
 
@@ -164,6 +170,9 @@ class FlightViewModel : ViewModel() {
 
             _phase.value = FlightPhase.POST
             _isStopping.value = false
+            val hasSuccessLap = _laps.value.any { it.status == Lap.Status.SUCCESS }
+            _shouldSaveResult.value = hasSuccessLap
+            _swapPilotsForNextFlight.value = hasSuccessLap && rules is Rules.Team
         }
     }
 
@@ -235,6 +244,14 @@ class FlightViewModel : ViewModel() {
         _currentLap.value = current.copy(status = restoredStatus)
     }
 
+    fun setShouldSaveResult(value: Boolean) {
+        _shouldSaveResult.value = value
+    }
+
+    fun setSwapPilotsForNextFlight(value: Boolean) {
+        _swapPilotsForNextFlight.value = value
+    }
+
     fun reset() {
         preJob?.cancel()
         timerJob?.cancel()
@@ -252,6 +269,8 @@ class FlightViewModel : ViewModel() {
         lastLapElapsedMs = 0L
         _pilotSwapIndex.value = null
         pendingPilotSwap = false
+        _shouldSaveResult.value = false
+        _swapPilotsForNextFlight.value = false
     }
 
     fun buildFlight(training: Training): Flight {
