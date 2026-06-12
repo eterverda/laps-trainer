@@ -27,6 +27,7 @@ class SettingsDataStore(private val context: Context) {
         private val APP_THEME_KEY = stringPreferencesKey("app_theme")
         private val TIMER_PRECISION_KEY = stringPreferencesKey("timer_precision")
         private val START_SIGNAL_KEY = stringPreferencesKey("start_signal")
+        private val USE_LAP_BUTTON_KEY = booleanPreferencesKey("use_lap_button")
         private val USE_ERROR_FIX_BUTTONS_KEY = booleanPreferencesKey("use_error_fix_buttons")
     }
 
@@ -107,6 +108,16 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setStartSignal(signal: StartSignal) {
         context.dataStore.edit { prefs ->
             prefs[START_SIGNAL_KEY] = signal.name
+        }
+    }
+
+    val useLapButton: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[USE_LAP_BUTTON_KEY] ?: true
+    }
+
+    suspend fun setUseLapButton(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[USE_LAP_BUTTON_KEY] = enabled
         }
     }
 

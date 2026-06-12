@@ -242,7 +242,8 @@ fun AppRoot(
     val isUsbKeyboardEnabled by settingsViewModel.isUsbKeyboardEnabled.collectAsState()
     val appTheme by settingsViewModel.appTheme.collectAsState()
     val timerPrecision by settingsViewModel.timerPrecision.collectAsState()
-    val startSignal by settingsViewModel.startSignal.collectAsState()
+    val effectiveStartSignal by settingsViewModel.effectiveStartSignal.collectAsState()
+    val useLapButton by settingsViewModel.useLapButton.collectAsState()
     val useErrorFixButtons by settingsViewModel.useErrorFixButtons.collectAsState()
     val flightPhase by flightViewModel.phase.collectAsState()
     val isStopping by flightViewModel.isStopping.collectAsState()
@@ -265,7 +266,7 @@ fun AppRoot(
         if (currentScreen == AppScreen.Flight) {
             flightViewModel.setRules(selectedTraining.rules)
             flightViewModel.setTimerPrecision(timerPrecision)
-            flightViewModel.prepareRace(startSignal, isMuted)
+            flightViewModel.prepareRace(effectiveStartSignal, isMuted)
         } else {
             flightViewModel.reset()
         }
@@ -413,7 +414,7 @@ fun AppRoot(
                         }
                         FlightTimer(
                             phase = flightPhase,
-                            startSignal = startSignal,
+                            startSignal = effectiveStartSignal,
                             elapsedMs = elapsedMs,
                             preStartCountdownMs = preStartCountdownMs,
                             isPreBlinking = isPreBlinking,
@@ -430,14 +431,16 @@ fun AppRoot(
                         colorCount = colorCount,
                         isMuted = isMuted,
                         isUsbKeyboardEnabled = isUsbKeyboardEnabled,
+                        useLapButton = useLapButton,
                         useErrorFixButtons = useErrorFixButtons,
                         appTheme = appTheme,
                         timerPrecision = timerPrecision,
-                        startSignal = startSignal,
+                        startSignal = effectiveStartSignal,
                         onChannelGridChange = { settingsViewModel.setChannelGrid(it) },
                         onColorCountChange = { settingsViewModel.setColorCount(it) },
                         onMutedChange = { settingsViewModel.setMuted(it) },
                         onUsbKeyboardChange = { settingsViewModel.setUsbKeyboardEnabled(it) },
+                        onUseLapButtonChange = { settingsViewModel.setUseLapButton(it) },
                         onUseErrorFixButtonsChange = { settingsViewModel.setUseErrorFixButtons(it) },
                         onAppThemeChange = { settingsViewModel.setAppTheme(it) },
                         onTimerPrecisionChange = { settingsViewModel.setTimerPrecision(it) },
@@ -474,7 +477,7 @@ fun AppRoot(
                                 when (screen) {
                                     AppScreen.Flight -> FlightContent(
                                         phase = flightPhase,
-                                        startSignal = startSignal,
+                                        startSignal = effectiveStartSignal,
                                         laps = laps,
                                         currentLap = currentLap,
                                         currentLapTime = currentLapTime,
@@ -492,6 +495,7 @@ fun AppRoot(
                                         onShouldSaveResultChange = { flightViewModel.setShouldSaveResult(it) },
                                         swapPilotsForNextFlight = swapPilotsForNextFlight,
                                         onSwapPilotsForNextFlightChange = { flightViewModel.setSwapPilotsForNextFlight(it) },
+                                        useLapButton = useLapButton,
                                         onLapClick = {
                                             flightViewModel.addLap()
                                         },
@@ -554,51 +558,80 @@ fun AppRoot(
                         val isOnFlight = currentScreen == AppScreen.Flight
 
                         AnimatedVisibility(
-                            visible = isOnFlight && flightPhase == FlightPhase.MAIN && useErrorFixButtons,
+                            visible = isOnFlight && flightPhase == FlightPhase.MAIN && (useErrorFixButtons || useLapButton),
                             enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
                             exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(bottom = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(
-                                    16.dp,
-                                    Alignment.CenterHorizontally
-                                ),
-                                verticalAlignment = Alignment.CenterVertically
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                Button(
-                                    onClick = { flightViewModel.addErrorToLastLap() },
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(
-                                        horizontal = 24.dp,
-                                        vertical = 6.dp
-                                    )
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_cross),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("ОШИБКА", fontSize = 14.sp)
+                                if (useLapButton) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(modifier = Modifier.size(48.dp))
+                                        HoldButton(
+                                            onConfirm = { flightViewModel.addLap() },
+                                            text = "Круг",
+                                            iconRes = R.drawable.ic_circle,
+                                            holdDurationMs = 0,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 8.dp)
+                                                .height(54.dp)
+                                        )
+                                        Box(modifier = Modifier.size(48.dp))
+                                    }
                                 }
-                                Button(
-                                    onClick = { flightViewModel.addFixToLastLap() },
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(
-                                        horizontal = 24.dp,
-                                        vertical = 6.dp
-                                    )
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_square),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("ИСПРАВИЛ", fontSize = 14.sp)
+                                if (useErrorFixButtons) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(
+                                            16.dp,
+                                            Alignment.CenterHorizontally
+                                        ),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Button(
+                                            onClick = { flightViewModel.addErrorToLastLap() },
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(
+                                                horizontal = 24.dp,
+                                                vertical = 6.dp
+                                            )
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_cross),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("ОШИБКА", fontSize = 14.sp)
+                                        }
+                                        Button(
+                                            onClick = { flightViewModel.addFixToLastLap() },
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(
+                                                horizontal = 24.dp,
+                                                vertical = 6.dp
+                                            )
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_square),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("ИСПРАВИЛ", fontSize = 14.sp)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -619,9 +652,9 @@ fun AppRoot(
                                 )
                             }
                             val isManualPreStart =
-                                isOnFlight && flightPhase == FlightPhase.PRE && startSignal == StartSignal.MANUAL
+                                isOnFlight && flightPhase == FlightPhase.PRE && effectiveStartSignal == StartSignal.MANUAL
                             val isPreFixedOrRandom =
-                                isOnFlight && flightPhase == FlightPhase.PRE && startSignal != StartSignal.MANUAL
+                                isOnFlight && flightPhase == FlightPhase.PRE && effectiveStartSignal != StartSignal.MANUAL
 
                             val buttonText = when {
                                 !isOnFlight -> "Старт"
@@ -659,7 +692,7 @@ fun AppRoot(
                                             if (IMMEDIATE_START_ENABLED) {
                                                 finishFlight(shouldSaveResult, false)
                                                 flightViewModel.setRules(selectedTraining.rules)
-                                                flightViewModel.prepareRace(startSignal, isMuted)
+                                                flightViewModel.prepareRace(effectiveStartSignal, isMuted)
                                             } else {
                                                 finishFlight(shouldSaveResult, true)
                                             }

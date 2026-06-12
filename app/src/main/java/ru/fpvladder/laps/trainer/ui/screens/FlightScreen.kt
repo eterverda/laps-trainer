@@ -1,5 +1,9 @@
 package ru.fpvladder.laps.trainer.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.pager.rememberPagerState
@@ -7,11 +11,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -89,6 +95,7 @@ fun FlightContent(
     onShouldSaveResultChange: (Boolean) -> Unit = {},
     swapPilotsForNextFlight: Boolean = false,
     onSwapPilotsForNextFlightChange: (Boolean) -> Unit = {},
+    useLapButton: Boolean = false,
     onLapClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
     enabledRecordKinds: Set<Record.Kind> = emptySet(),
@@ -109,7 +116,7 @@ fun FlightContent(
     val headPilot = if (pilotOrderSwapped) rawName2 else rawName1
     val tailPilot = if (pilotOrderSwapped) rawName1 else rawName2
     val context = LocalContext.current
-    val mainClickModifier = if (phase == FlightPhase.MAIN) {
+    val mainClickModifier = if (phase == FlightPhase.MAIN && !useLapButton) {
         Modifier.pointerInput(Unit) {
             detectTapGestures(onTap = { onLapClick() })
         }
@@ -119,7 +126,7 @@ fun FlightContent(
         modifier = modifier.then(mainClickModifier).fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (phase == FlightPhase.MAIN || phase == FlightPhase.POST) {
+        if (phase == FlightPhase.MAIN || phase == FlightPhase.POST || phase == FlightPhase.PRE) {
             val scrollState = rememberScrollState()
             LaunchedEffect(laps.size, phase) {
                 delay(50)
@@ -135,11 +142,13 @@ fun FlightContent(
                     .weight(1f)
                     .fillMaxWidth()
                     .onSizeChanged { boxHeight = it.height }
-                    .verticalScroll(scrollState)
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.TopStart
+                    .padding(vertical = 16.dp)
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                ) {
                     Box(modifier = Modifier.onSizeChanged { contentHeight = it.height }) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             if (phase == FlightPhase.POST && laps.isNotEmpty()) {
@@ -156,20 +165,6 @@ fun FlightContent(
                                 pilotOrderSwapped = pilotOrderSwapped,
                                 modifier = Modifier.padding(horizontal = 16.dp)
                             )
-                            if (phase == FlightPhase.MAIN && laps.isEmpty()) {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Hint(
-                                    if (holeshotEnabled) {
-                                        "Нажимайте здесь каждый раз, когда пройдены стартовые ворота"
-                                    } else {
-                                        "Нажимайте здесь каждый раз, когда завершен круг"
-                                    }
-                                )
-                                }
-                            }
                             if (phase == FlightPhase.POST) {
                                 val completedText = when (stopReason) {
                                     StopReason.TIME_LIMIT -> {
@@ -324,32 +319,56 @@ fun FlightContent(
                         }
                     }
                 }
+            val showTapHint = (phase == FlightPhase.MAIN || phase == FlightPhase.PRE) && laps.size < 3 && !useLapButton
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = (-40).dp),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showTapHint,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 1200)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 1200))
+                ) {
+                    Hint(
+                        text = if (holeshotEnabled) {
+                            "Нажимайте на экран каждый раз, когда пройдены стартовые ворота"
+                        } else {
+                            "Нажимайте на экран каждый раз, когда завершен круг"
+                        }
+                    )
+                }
+            }
+            if (phase == FlightPhase.PRE && startSignal == StartSignal.MANUAL) {
+                Hint(
+                    text = "Нажмите GO чтобы начать вылет",
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    paddingValues = PaddingValues(bottom = 16.dp)
+                )
+            }
             }
         } else {
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        if (phase == FlightPhase.PRE && startSignal == StartSignal.MANUAL) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Hint("Нажмите GO чтобы начать вылет")
-            }
-        }
     }
 }
 
 @Composable
-private fun Hint(text: String) {
+private fun Hint(
+    text: String,
+    modifier: Modifier = Modifier,
+    paddingValues: PaddingValues = PaddingValues(vertical = 48.dp)
+) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.primary,
         textAlign = TextAlign.Center,
-        modifier = Modifier
+        modifier = modifier
             .width(240.dp)
-            .padding(vertical = 48.dp)
+            .padding(paddingValues)
             .alpha(0.5f)
     )
 }

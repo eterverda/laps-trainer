@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.data.SettingsDataStore
@@ -38,6 +39,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     val startSignal: StateFlow<StartSignal> = dataStore.startSignal
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StartSignal.RANDOM)
+
+    val effectiveStartSignal: StateFlow<StartSignal> = combine(isMuted, startSignal) { muted, signal ->
+        if (muted) StartSignal.MANUAL else signal
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StartSignal.RANDOM)
+
+    val useLapButton: StateFlow<Boolean> = dataStore.useLapButton
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     val useErrorFixButtons: StateFlow<Boolean> = dataStore.useErrorFixButtons
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -81,6 +89,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setStartSignal(signal: StartSignal) {
         viewModelScope.launch {
             dataStore.setStartSignal(signal)
+        }
+    }
+
+    fun setUseLapButton(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.setUseLapButton(enabled)
         }
     }
 

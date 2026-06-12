@@ -1,5 +1,6 @@
 package ru.fpvladder.laps.trainer.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,13 +9,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,11 +26,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -38,7 +44,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -47,15 +56,17 @@ import ru.fpvladder.laps.trainer.model.ChannelGrid
 import ru.fpvladder.laps.trainer.model.ColorCount
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     channelGrid: ChannelGrid,
     colorCount: ColorCount,
     isMuted: Boolean,
     isUsbKeyboardEnabled: Boolean,
+    useLapButton: Boolean,
     useErrorFixButtons: Boolean,
     appTheme: AppTheme,
     timerPrecision: TimerPrecision,
@@ -64,6 +75,7 @@ fun SettingsScreen(
     onColorCountChange: (ColorCount) -> Unit,
     onMutedChange: (Boolean) -> Unit,
     onUsbKeyboardChange: (Boolean) -> Unit,
+    onUseLapButtonChange: (Boolean) -> Unit,
     onUseErrorFixButtonsChange: (Boolean) -> Unit,
     onAppThemeChange: (AppTheme) -> Unit,
     onTimerPrecisionChange: (TimerPrecision) -> Unit,
@@ -106,7 +118,7 @@ fun SettingsScreen(
             ListItem(
                 headlineContent = { Text("Поддержка USB-клавиатуры") },
                 trailingContent = {
-                    Switch(
+                    CompactSwitch(
                         checked = isUsbKeyboardEnabled,
                         onCheckedChange = onUsbKeyboardChange
                     )
@@ -118,7 +130,7 @@ fun SettingsScreen(
             ListItem(
                 headlineContent = { Text("Беззвучный режим") },
                 trailingContent = {
-                    Switch(
+                    CompactSwitch(
                         checked = isMuted,
                         onCheckedChange = onMutedChange
                     )
@@ -128,9 +140,65 @@ fun SettingsScreen(
             SectionDivider()
 
             ListItem(
-                headlineContent = { Text("Кнопки Ошибка/Исправил") },
+                headlineContent = {
+                    FlowRow(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("Кнопка ", modifier = Modifier.align(Alignment.CenterVertically))
+                        InlineButton(
+                            text = "Круг",
+                            iconRes = R.drawable.ic_circle
+                        )
+                        Text(
+                            if (useLapButton) " видна" else " скрыта",
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                    }
+                },
                 trailingContent = {
-                    Switch(
+                    CompactSwitch(
+                        checked = useLapButton,
+                        onCheckedChange = onUseLapButtonChange
+                    )
+                }
+            )
+            AnimatedVisibility(visible = !useLapButton) {
+                Text(
+                    text = "Нажимайте на экран чтобы засчитать круг",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            ListItem(
+                headlineContent = {
+                    FlowRow(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("Кнопки ", modifier = Modifier.align(Alignment.CenterVertically))
+                        InlineButton(
+                            text = "Ошибка",
+                            iconRes = R.drawable.ic_cross
+                        )
+                        Text(" и ", modifier = Modifier.align(Alignment.CenterVertically))
+                        InlineButton(
+                            text = "Исправил",
+                            iconRes = R.drawable.ic_square
+                        )
+                        Text(
+                            if (useErrorFixButtons) " видны" else " скрыты",
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                    }
+                },
+                trailingContent = {
+                    CompactSwitch(
                         checked = useErrorFixButtons,
                         onCheckedChange = onUseErrorFixButtonsChange
                     )
@@ -141,8 +209,28 @@ fun SettingsScreen(
 
             ListItem(
                 headlineContent = { Text("Сигнал на старт") },
-                supportingContent = { Text(startSignal.displayName) },
-                modifier = Modifier.clickable { showSignalDialog = true }
+                supportingContent = {
+                    Text(
+                        if (isMuted) {
+                            "В беззвучном режиме только Ручной"
+                        } else {
+                            startSignal.displayName
+                        }
+                    )
+                },
+                modifier = Modifier.clickable(enabled = !isMuted) { showSignalDialog = true },
+                colors = ListItemDefaults.colors(
+                    headlineColor = if (isMuted) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    supportingColor = if (isMuted) {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
             )
             ListItem(
                 headlineContent = { Text("Точность ручной засечки") },
@@ -248,24 +336,70 @@ fun SettingsScreen(
 
 @Composable
 private fun SectionDivider() {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically
+        contentAlignment = Alignment.Center
     ) {
-        repeat(3) {
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                        shape = CircleShape
-                    )
+        Box(
+            modifier = Modifier
+                .width(48.dp)
+                .height(3.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    shape = CircleShape
+                )
+        )
+    }
+}
+
+@Composable
+private fun InlineButton(
+    text: String,
+    iconRes: Int,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.padding(vertical = 3.dp),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurface
             )
+            Text(text = text)
         }
     }
+}
+
+@Composable
+private fun CompactSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = MaterialTheme.colorScheme.primary,
+            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+            checkedBorderColor = Color.Transparent,
+            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+            uncheckedBorderColor = Color.Transparent
+        )
+    )
 }
 
 @Composable
