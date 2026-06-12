@@ -1,10 +1,15 @@
 package ru.fpvladder.laps.trainer.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
@@ -23,11 +28,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.res.painterResource
 import ru.fpvladder.laps.trainer.R
@@ -43,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -50,8 +58,14 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -71,14 +85,128 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
+import ru.fpvladder.laps.trainer.ui.components.OutlinedText
 import ru.fpvladder.laps.trainer.ui.screens.RecordsInset
 import ru.fpvladder.laps.trainer.ui.screens.InsetCard
 import ru.fpvladder.laps.trainer.ui.screens.PageIndicator
 import ru.fpvladder.laps.trainer.ui.screens.CountersSummary
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
+
+private val TimerSurfaceShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+
+@Composable
+private fun FlightTimer(
+    phase: FlightPhase,
+    startSignal: StartSignal,
+    elapsedMs: Long,
+    preStartCountdownMs: Long,
+    isPreBlinking: Boolean,
+    timerPrecision: TimerPrecision,
+    timeLimitSeconds: Int,
+    swapRemainingMs: Long? = null
+) {
+    val isBlinking = phase == FlightPhase.PRE && isPreBlinking
+    val alpha by animateFloatAsState(
+        targetValue = if (isBlinking) 0f else 1f,
+        animationSpec = tween(200),
+        label = "timer_blink"
+    )
+
+    val timeText = if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
+        formatCountdown(preStartCountdownMs, timerPrecision) + " "
+    } else {
+        formatTime(
+            if (phase == FlightPhase.PRE) 0L else elapsedMs,
+            timerPrecision,
+            timeLimitSeconds
+        )
+    }
+
+    val hasSwap = swapRemainingMs != null
+    val hasLimit = timeLimitSeconds != Int.MAX_VALUE
+    val secondLine: AnnotatedString? = when {
+        hasSwap -> {
+            val remainingToSwap = swapRemainingMs!!
+            when {
+                remainingToSwap > 0 -> buildAnnotatedString {
+                    withStyle(
+                        style = SpanStyle(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 14.sp
+                        )
+                    ) {
+                        append(formatCountdown(remainingToSwap, timerPrecision))
+                    }
+                    withStyle(style = SpanStyle(fontSize = 14.sp)) {
+                        append(" до смены")
+                    }
+                }
+                hasLimit -> {
+                    val remainingMs = (timeLimitSeconds * 1000L - elapsedMs).coerceAtLeast(0)
+                    buildAnnotatedString {
+                        withStyle(
+                            style = SpanStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 14.sp
+                            )
+                        ) {
+                            append(formatCountdown(remainingMs, timerPrecision))
+                        }
+                        withStyle(style = SpanStyle(fontSize = 14.sp)) {
+                            append(" до конца")
+                        }
+                    }
+                }
+                else -> null
+            }
+        }
+        hasLimit -> {
+            val remainingMs = (timeLimitSeconds * 1000L - elapsedMs).coerceAtLeast(0)
+            buildAnnotatedString {
+                withStyle(
+                    style = SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 14.sp
+                    )
+                ) {
+                    append(formatCountdown(remainingMs, timerPrecision))
+                }
+            }
+        }
+        else -> null
+    }
+
+    val alphaValue = if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) 1f else alpha
+
+    Column(
+        modifier = Modifier
+            .padding(top = 4.dp, bottom = 4.dp)
+            .alpha(alphaValue),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        OutlinedText(
+            text = timeText,
+            style = TextStyle(
+                fontFamily = FontFamily.Monospace,
+                fontSize = 54.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            textAlign = TextAlign.Center
+        )
+        if (secondLine != null) {
+            OutlinedText(
+                text = secondLine,
+                strokeWidth = 4f,
+                style = TextStyle(fontSize = 14.sp),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
 
 @Composable
 fun FlightContent(
@@ -88,6 +216,8 @@ fun FlightContent(
     currentLap: Lap? = null,
     currentLapTime: Long = 0L,
     elapsedMs: Long = 0L,
+    preStartCountdownMs: Long = 0L,
+    isPreBlinking: Boolean = false,
     timeLimitSeconds: Int = 0,
     maxLaps: Int = Int.MAX_VALUE,
     stopReason: StopReason? = null,
@@ -103,9 +233,11 @@ fun FlightContent(
     pilot: Pilot? = null,
     pilotSwapIndex: Int? = null,
     pilotOrderSwapped: Boolean = false,
+    swapRemainingMs: Long? = null,
     hasPagerWiggled: Boolean = false,
     onPagerWiggleComplete: () -> Unit = {},
     onBackClick: () -> Unit = {},
+    appTheme: AppTheme,
     modifier: Modifier = Modifier
 ) {
     val isTeam = pilot is Pilot.Team
@@ -122,10 +254,77 @@ fun FlightContent(
         }
     } else Modifier
 
-    Column(
-        modifier = modifier.then(mainClickModifier).fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    val primary = MaterialTheme.colorScheme.primary
+    val isDarkTheme = appTheme == AppTheme.DARK || (appTheme == AppTheme.SYSTEM && isSystemInDarkTheme())
+    val timerSurfaceColor = if (isDarkTheme) {
+        Color(
+            red = primary.red * 0.55f,
+            green = primary.green * 0.55f,
+            blue = primary.blue * 0.55f
+        )
+    } else {
+        Color(
+            red = (primary.red + (1f - primary.red) * 0.35f).coerceIn(0f, 1f),
+            green = (primary.green + (1f - primary.green) * 0.35f).coerceIn(0f, 1f),
+            blue = (primary.blue + (1f - primary.blue) * 0.35f).coerceIn(0f, 1f)
+        )
+    }
+
+    Box(modifier = modifier.then(mainClickModifier).fillMaxSize()) {
+        var timerHeight by remember { mutableIntStateOf(0) }
+        val density = LocalDensity.current
+        val timerVisible = phase != FlightPhase.POST
+        val overlapPx = with(density) { 45.dp.roundToPx() }
+        val targetPadding = if (timerVisible) (timerHeight - overlapPx).coerceAtLeast(0) else 0
+        val animatedPadding by animateDpAsState(
+            targetValue = with(density) { targetPadding.toDp() },
+            label = "timer_reveal"
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { if (it.height > 0) timerHeight = it.height },
+            contentAlignment = Alignment.TopCenter
+        ) {
+            AnimatedVisibility(
+                visible = timerVisible,
+                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = timerSurfaceColor,
+                    shape = TimerSurfaceShape
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 54.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        FlightTimer(
+                            phase = phase,
+                            startSignal = startSignal,
+                            elapsedMs = elapsedMs,
+                            preStartCountdownMs = preStartCountdownMs,
+                            isPreBlinking = isPreBlinking,
+                            timerPrecision = timerPrecision,
+                            timeLimitSeconds = timeLimitSeconds,
+                            swapRemainingMs = swapRemainingMs
+                        )
+                    }
+                }
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = animatedPadding),
+            color = MaterialTheme.colorScheme.background,
+            shape = TimerSurfaceShape
+        ) {
         if (phase == FlightPhase.MAIN || phase == FlightPhase.POST || phase == FlightPhase.PRE) {
             val scrollState = rememberScrollState()
             LaunchedEffect(laps.size, phase) {
@@ -139,7 +338,7 @@ fun FlightContent(
             val gapPx = with(density) { 16.dp.roundToPx() }
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxSize()
                     .fillMaxWidth()
                     .onSizeChanged { boxHeight = it.height }
                     .padding(vertical = 16.dp)
@@ -151,8 +350,8 @@ fun FlightContent(
                 ) {
                     Box(modifier = Modifier.onSizeChanged { contentHeight = it.height }) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            if (phase == FlightPhase.POST && laps.isNotEmpty()) {
-                                ScreenTitle(stringResource(R.string.flight_laps_header), Modifier.padding(horizontal = 16.dp, vertical = 16.dp))
+                            if (phase == FlightPhase.POST) {
+                                ScreenTitle(stringResource(R.string.flight_laps_header), Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp))
                             }
                             LapList(
                                 laps = laps,
@@ -348,9 +547,10 @@ fun FlightContent(
             }
             }
         } else {
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.fillMaxSize())
         }
 
+        }
     }
 }
 

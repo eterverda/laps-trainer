@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -54,12 +53,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import androidx.compose.ui.unit.sp
@@ -85,6 +78,7 @@ import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.mergeFlightRecords
 import ru.fpvladder.laps.trainer.model.mergeTeamFlight
+import ru.fpvladder.laps.trainer.model.AppTheme
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.description
@@ -97,8 +91,6 @@ import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 import ru.fpvladder.laps.trainer.viewmodel.FlightViewModel
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
 import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
-import ru.fpvladder.laps.trainer.ui.screens.formatCountdown
-import ru.fpvladder.laps.trainer.ui.screens.formatTime
 import ru.fpvladder.laps.trainer.viewmodel.SettingsViewModel
 import ru.fpvladder.laps.trainer.viewmodel.TrainingViewModel
 
@@ -127,100 +119,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-@Composable
-fun FlightTimer(
-    phase: FlightPhase,
-    startSignal: StartSignal,
-    elapsedMs: Long,
-    preStartCountdownMs: Long,
-    isPreBlinking: Boolean,
-    timerPrecision: TimerPrecision,
-    timeLimitSeconds: Int,
-    swapRemainingMs: Long? = null
-) {
-    val isBlinking = phase == FlightPhase.PRE && isPreBlinking
-    val alpha by animateFloatAsState(
-        targetValue = if (isBlinking) 0f else 1f,
-        animationSpec = tween(200),
-        label = "timer_blink"
-    )
-
-    val timeText = if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) {
-        formatCountdown(preStartCountdownMs, timerPrecision) + " "
-    } else {
-        formatTime(
-            if (phase == FlightPhase.PRE) 0L else elapsedMs,
-            timerPrecision,
-            timeLimitSeconds
-        )
-    }
-
-    val annotatedText = buildAnnotatedString {
-        withStyle(
-            style = SpanStyle(
-                fontFamily = FontFamily.Monospace,
-                fontSize = 54.sp,
-                fontWeight = FontWeight.Bold
-            )
-        ) {
-            append(timeText)
-        }
-        val hasSwap = swapRemainingMs != null
-        val hasLimit = timeLimitSeconds != Int.MAX_VALUE
-        if (hasSwap) {
-            val swapHappened = swapRemainingMs!! <= 0
-            if (!swapHappened) {
-                append("\n")
-                withStyle(
-                    style = SpanStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 14.sp
-                    )
-                ) {
-                    append(formatCountdown(swapRemainingMs, timerPrecision))
-                }
-                withStyle(style = SpanStyle(fontSize = 14.sp)) {
-                    append(" до смены")
-                }
-            } else if (hasLimit) {
-                append("\n")
-                val remainingMs = (timeLimitSeconds * 1000L - elapsedMs).coerceAtLeast(0)
-                withStyle(
-                    style = SpanStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 14.sp
-                    )
-                ) {
-                    append(formatCountdown(remainingMs, timerPrecision))
-                }
-                withStyle(style = SpanStyle(fontSize = 14.sp)) {
-                    append(" до конца")
-                }
-            }
-        } else if (hasLimit) {
-            append("\n")
-            val remainingMs = (timeLimitSeconds * 1000L - elapsedMs).coerceAtLeast(0)
-            withStyle(
-                style = SpanStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 14.sp
-                )
-            ) {
-                append(formatCountdown(remainingMs, timerPrecision))
-            }
-        }
-    }
-
-    Text(
-        text = annotatedText,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier
-            .padding(top = 4.dp, bottom = 4.dp)
-            .alpha(if (phase == FlightPhase.PRE && startSignal == StartSignal.FIXED) 1f else alpha),
-        textAlign = TextAlign.Center
-    )
 }
 
 @Composable
@@ -282,6 +180,13 @@ fun AppRoot(
         is Training.Team -> (selectedTraining as Training.Team).pilot
     }
 
+    val swapRemainingMs = when (val r = selectedTraining.rules) {
+        is Rules.Team -> if (r.swapMode == SwapMode.TIME) {
+            (r.timeLimitSeconds * 1000L / 2 - elapsedMs).coerceAtLeast(0)
+        } else null
+        else -> null
+    }
+
     val finishFlight: (Boolean, Boolean) -> Unit = { shouldSave, navigateToTraining ->
         if (shouldSave) {
             val flight = flightViewModel.buildFlight(selectedTraining)
@@ -340,7 +245,7 @@ fun AppRoot(
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
+            color = MaterialTheme.colorScheme.surfaceContainerHighest
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 when (currentScreen) {
@@ -394,34 +299,6 @@ fun AppRoot(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = currentScreen == AppScreen.Flight && flightPhase != FlightPhase.POST,
-                    enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                    exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val swapRemainingMs = when (val r = selectedTraining.rules) {
-                            is Rules.Team -> if (r.swapMode == SwapMode.TIME) {
-                                (r.timeLimitSeconds * 1000L / 2 - elapsedMs).coerceAtLeast(0)
-                            } else null
-                            else -> null
-                        }
-                        FlightTimer(
-                            phase = flightPhase,
-                            startSignal = effectiveStartSignal,
-                            elapsedMs = elapsedMs,
-                            preStartCountdownMs = preStartCountdownMs,
-                            isPreBlinking = isPreBlinking,
-                            timerPrecision = timerPrecision,
-                            timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
-                            swapRemainingMs = swapRemainingMs
-                        )
-                    }
-                }
-
                 when (currentScreen) {
                     AppScreen.Settings -> SettingsScreen(
                         channelGrid = channelGrid,
@@ -452,7 +329,7 @@ fun AppRoot(
                         modifier = Modifier
                             .weight(1f)
                             .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(24.dp),
                         color = MaterialTheme.colorScheme.surface,
                         tonalElevation = 0.dp
                     ) {
@@ -479,6 +356,8 @@ fun AppRoot(
                                         currentLap = currentLap,
                                         currentLapTime = currentLapTime,
                                         elapsedMs = elapsedMs,
+                                        preStartCountdownMs = preStartCountdownMs,
+                                        isPreBlinking = isPreBlinking,
                                         timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
                                         maxLaps = selectedTraining.rules.maxLaps,
                                         stopReason = stopReason,
@@ -500,9 +379,11 @@ fun AppRoot(
                                         pilot = selectedTraining.pilot,
                                         pilotSwapIndex = flightPilotSwapIndex,
                                         pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
+                                        swapRemainingMs = swapRemainingMs,
                                         hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
                                         onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
                                         onBackClick = { finishFlight(shouldSaveResult, true) },
+                                        appTheme = appTheme,
                                         modifier = Modifier.fillMaxSize()
                                     )
 
