@@ -72,7 +72,6 @@ internal fun FlightContent(
                 currentLapTime = currentLapTime,
                 timerPrecision = timerPrecision,
                 isPostFlight = false,
-                isStarted = isStarted,
                 pilot = pilot,
                 pilotSwapIndex = pilotSwapIndex,
                 pilotOrderSwapped = pilotOrderSwapped,

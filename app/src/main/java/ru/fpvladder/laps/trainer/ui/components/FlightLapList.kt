@@ -35,7 +35,6 @@ internal fun LapList(
     currentLapTime: Long,
     timerPrecision: TimerPrecision,
     isPostFlight: Boolean,
-    isStarted: Boolean,
     pilot: Pilot? = null,
     pilotSwapIndex: Int? = null,
     pilotOrderSwapped: Boolean = false,

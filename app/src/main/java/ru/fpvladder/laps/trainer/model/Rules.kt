@@ -29,8 +29,8 @@ sealed class Rules {
     }
 
     class Team(
-        override val maxLaps: Int = 10,
-        override val timeLimitSeconds: Int = 60,
+        override val maxLaps: Int = 50,
+        override val timeLimitSeconds: Int = 1800,
         override val holeshotEnabled: Boolean = TEAM_HOLESHOT_ENABLED,
         val swapMode: SwapMode = SwapMode.LAPS,
         val pilotOrderSwapped: Boolean = false,
@@ -82,7 +82,7 @@ object IndividualRulePresets {
 
 object TeamRulePresets {
     val timeOptions: List<Pair<Int, String>> = listOf(
-        60 to "1:00",
+        60 to "10:00",
         900 to "15:00",
         1200 to "20:00",
         1500 to "25:00",
@@ -93,7 +93,7 @@ object TeamRulePresets {
     )
 
     val lapOptions: List<Pair<Int, String>> = listOf(
-        10 to "5×2",
+        10 to "10×2",
         30 to "15×2",
         40 to "20×2",
         50 to "25×2",

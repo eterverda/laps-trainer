@@ -8,13 +8,13 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,10 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -46,11 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -58,11 +54,10 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import ru.fpvladder.laps.trainer.model.ChannelColor
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Training
@@ -84,11 +79,13 @@ fun TrainingHeader(
     val screenHeightDp = LocalConfiguration.current.screenHeightDp.dp
     val maxListHeight = screenHeightDp / 2
 
-    val otherTrainings = remember(trainings, selectedTraining) {
-        trainings
-            .filter { it.id != selectedTraining.id }
-            .sortedByDescending { it.createdAt }
+    val individuals = remember(trainings) {
+        trainings.filterIsInstance<Training.Individual>()
     }
+    val teams = remember(trainings) {
+        trainings.filterIsInstance<Training.Team>()
+    }
+    val hasBoth = individuals.isNotEmpty() && teams.isNotEmpty()
 
     val channel = when (selectedTraining) {
         is Training.Individual -> selectedTraining.pilot.channel
@@ -99,17 +96,8 @@ fun TrainingHeader(
         is Training.Team -> selectedTraining.pilot
     }
 
-    var headerHeightPx by remember { mutableStateOf(0) }
-    val density = LocalDensity.current
-    val extraOffsetPx = with(density) { 12.dp.toPx() }.toInt()
-    val screenHeightPx = with(density) { screenHeightDp.toPx() }.toInt()
-    val popupHeightPx = (screenHeightPx - headerHeightPx - extraOffsetPx).coerceAtLeast(0)
-    val popupHeightDp = with(density) { popupHeightPx.toDp() }
-
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .onGloballyPositioned { headerHeightPx = it.size.height }
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -128,7 +116,7 @@ fun TrainingHeader(
                 modifier = Modifier
                     .fillMaxHeight()
                     .clickable(
-                        enabled = !expanded && enabled,
+                        enabled = enabled,
                         onClick = onChannelClick
                     )
             )
@@ -139,7 +127,7 @@ fun TrainingHeader(
                     .weight(1f)
                     .clip(RoundedCornerShape(8.dp))
                     .combinedClickable(
-                        enabled = !expanded && enabled,
+                        enabled = enabled,
                         onLongClick = onNameLongClick,
                         onClick = {}
                     )
@@ -153,7 +141,7 @@ fun TrainingHeader(
 
             Box(
                 modifier = Modifier.fillMaxHeight(),
-                contentAlignment = Alignment.BottomCenter
+                contentAlignment = Alignment.TopCenter
             ) {
                 Box(
                     modifier = Modifier
@@ -173,87 +161,127 @@ fun TrainingHeader(
             }
         }
 
-        Popup(
-            alignment = Alignment.TopStart,
-            offset = IntOffset(0, headerHeightPx + extraOffsetPx),
-            properties = PopupProperties(focusable = false)
-        ) {
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
+        if (expanded) {
+            Dialog(
+                onDismissRequest = { expanded = false },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    decorFitsSystemWindows = false
+                )
             ) {
-                Box(modifier = Modifier.height(popupHeightDp)) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                expanded = false
-                            }
-                    )
-
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { expanded = false },
+                    contentAlignment = Alignment.TopCenter
+                ) {
                     val scrollState = rememberScrollState()
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        tonalElevation = 2.dp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .heightIn(max = maxListHeight)
-                            .align(Alignment.TopCenter)
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
                     ) {
-                        Column(
+                        Surface(
+                            shape = MaterialTheme.shapes.large,
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 6.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .verticalScroll(scrollState)
+                                .padding(8.dp)
+                                .heightIn(max = maxListHeight)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { }
                         ) {
-                            otherTrainings.forEach { training ->
-                                TrainingListItem(
-                                    training = training,
-                                    onClick = {
-                                        onTrainingSelect(training)
-                                        expanded = false
-                                    }
-                                )
-                            }
-
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    .padding(vertical = 12.dp)
+                                    .verticalScroll(scrollState),
                             ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        expanded = false
-                                        onAddIndividualClick()
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = null
+                                if (hasBoth && individuals.isNotEmpty()) {
+                                    Text(
+                                        text = "Пилоты",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(
+                                            horizontal = 20.dp,
+                                            vertical = 8.dp
+                                        )
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Пилот")
                                 }
-                                OutlinedButton(
-                                    onClick = {
-                                        expanded = false
-                                        onAddTeamClick()
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = null
+                                individuals.forEach { training ->
+                                    TrainingListItem(
+                                        training = training,
+                                        isSelected = training.id == selectedTraining.id,
+                                        onClick = {
+                                            onTrainingSelect(training)
+                                            expanded = false
+                                        }
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Команда")
+                                }
+                                if (hasBoth && teams.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Команды",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(
+                                            horizontal = 20.dp,
+                                            vertical = 8.dp
+                                        )
+                                    )
+                                }
+                                teams.forEach { training ->
+                                    TrainingListItem(
+                                        training = training,
+                                        isSelected = training.id == selectedTraining.id,
+                                        onClick = {
+                                            onTrainingSelect(training)
+                                            expanded = false
+                                        }
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            expanded = false
+                                            onAddIndividualClick()
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Пилот")
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            expanded = false
+                                            onAddTeamClick()
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Команда")
+                                    }
                                 }
                             }
                         }
@@ -399,6 +427,7 @@ private fun PilotNameDisplay(
 @Composable
 private fun TrainingListItem(
     training: Training,
+    isSelected: Boolean,
     onClick: () -> Unit
 ) {
     val channel = when (training) {
@@ -410,59 +439,35 @@ private fun TrainingListItem(
         is Training.Team -> training.pilot
     }
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        ChannelBadge(
-            channelLetter = channel.letter,
-            channelNumber = channel.number,
-            channelColor = channel.color,
-            fontSize = 16.sp,
-            modifier = Modifier.fillMaxHeight()
-        )
-
-        Column(
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .padding(vertical = 3.dp)
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            when (pilot) {
-                is Pilot.Individual -> {
-                    if (pilot.name.isBlank()) {
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                                    append("Laps")
-                                }
-                                withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
-                                    append(".Trainer")
-                                }
-                            },
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    } else {
-                        Text(
-                            text = pilot.name,
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
+            ChannelBadge(
+                channelLetter = channel.letter,
+                channelNumber = channel.number,
+                channelColor = channel.color,
+                fontSize = 16.sp,
+                modifier = Modifier.fillMaxHeight()
+            )
 
-                is Pilot.Team -> {
-                    val n1Blank = pilot.name1.isBlank()
-                    val n2Blank = pilot.name2.isBlank()
-                    when {
-                        n1Blank && n2Blank -> {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 3.dp)
+            ) {
+                when (pilot) {
+                    is Pilot.Individual -> {
+                        if (pilot.name.isBlank()) {
                             Text(
                                 text = buildAnnotatedString {
                                     withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
@@ -475,38 +480,9 @@ private fun TrainingListItem(
                                 fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                        }
-
-                        n1Blank -> {
+                        } else {
                             Text(
-                                text = pilot.name2,
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        n2Blank -> {
-                            Text(
-                                text = pilot.name1,
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        else -> {
-                            Text(
-                                text = pilot.name1,
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = pilot.name2,
+                                text = pilot.name,
                                 fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
@@ -514,6 +490,76 @@ private fun TrainingListItem(
                             )
                         }
                     }
+
+                    is Pilot.Team -> {
+                        val n1Blank = pilot.name1.isBlank()
+                        val n2Blank = pilot.name2.isBlank()
+                        when {
+                            n1Blank && n2Blank -> {
+                                Text(
+                                    text = buildAnnotatedString {
+                                        withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
+                                            append("Laps")
+                                        }
+                                        withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
+                                            append(".Trainer")
+                                        }
+                                    },
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            n1Blank -> {
+                                Text(
+                                    text = pilot.name2,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            n2Blank -> {
+                                Text(
+                                    text = pilot.name1,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            else -> {
+                                Text(
+                                    text = pilot.name1,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = pilot.name2,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            if (isSelected) {
+                Box(
+                    modifier = Modifier.fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }

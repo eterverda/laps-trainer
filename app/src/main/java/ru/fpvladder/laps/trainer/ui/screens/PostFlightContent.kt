@@ -4,7 +4,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -123,7 +122,9 @@ fun PostFlightContent(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         ScreenTitle(
                             stringResource(R.string.flight_laps_header),
-                            Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)
+                            Modifier
+                                .padding(horizontal = 24.dp)
+                                .padding(bottom = 16.dp)
                         )
                         LapList(
                             laps = laps,
@@ -131,7 +132,6 @@ fun PostFlightContent(
                             currentLapTime = currentLapTime,
                             timerPrecision = timerPrecision,
                             isPostFlight = true,
-                            isStarted = false,
                             pilot = pilot,
                             pilotSwapIndex = pilotSwapIndex,
                             pilotOrderSwapped = pilotOrderSwapped,
@@ -154,15 +154,22 @@ fun PostFlightContent(
                                 }
                             }
                             StopReason.MAX_LAPS -> {
-                                val lapsStr = context.resources.getQuantityString(R.plurals.laps, maxLaps, maxLaps)
+                                val lapsStr = context.resources.getQuantityString(
+                                    R.plurals.laps,
+                                    maxLaps,
+                                    maxLaps
+                                )
                                 stringResource(R.string.flight_completed_laps, lapsStr)
                             }
+
                             else -> stringResource(R.string.flight_completed_manual)
                         }
                         Text(
                             text = completedText,
                             fontSize = 16.sp,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                            modifier = Modifier
+                                .padding(horizontal = 24.dp)
+                                .padding(top = if (laps.isNotEmpty()) 16.dp else 0.dp, bottom = 16.dp)
                         )
                         if (isTeam) {
                             val teamRecords = computeTeamFlightRecords(
@@ -231,7 +238,10 @@ fun PostFlightContent(
                                 role = Role.Checkbox
                             )
                             .padding(vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            8.dp,
+                            Alignment.CenterHorizontally
+                        ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
@@ -254,7 +264,10 @@ fun PostFlightContent(
                                     role = Role.Checkbox
                                 )
                                 .padding(vertical = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                8.dp,
+                                Alignment.CenterHorizontally
+                            ),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
