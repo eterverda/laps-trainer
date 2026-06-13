@@ -64,6 +64,7 @@ fun SettingsScreen(
     colorCount: ColorCount,
     isMuted: Boolean,
     isUsbKeyboardEnabled: Boolean,
+    isUsbFeatureEnabled: Boolean = false,
     useLapButton: Boolean,
     useErrorFixButtons: Boolean,
     appTheme: AppTheme,
@@ -113,17 +114,19 @@ fun SettingsScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            ListItem(
-                headlineContent = { Text("Поддержка USB-клавиатуры") },
-                trailingContent = {
-                    CompactSwitch(
-                        checked = isUsbKeyboardEnabled,
-                        onCheckedChange = onUsbKeyboardChange
-                    )
-                }
-            )
+            if (isUsbFeatureEnabled) {
+                ListItem(
+                    headlineContent = { Text("Поддержка USB-клавиатуры") },
+                    trailingContent = {
+                        CompactSwitch(
+                            checked = isUsbKeyboardEnabled,
+                            onCheckedChange = onUsbKeyboardChange
+                        )
+                    }
+                )
 
-            SectionDivider()
+                SectionDivider()
+            }
 
             ListItem(
                 headlineContent = { Text("Беззвучный режим") },

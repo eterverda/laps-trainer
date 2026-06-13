@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.settings.SettingsDataStore
@@ -14,6 +15,7 @@ import ru.fpvladder.laps.trainer.settings.ChannelGrid
 import ru.fpvladder.laps.trainer.settings.ColorCount
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.settings.USB_ENABLED
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -30,6 +32,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     val isUsbKeyboardEnabled: StateFlow<Boolean> = dataStore.isUsbKeyboardEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val effectiveUsbKeyboardEnabled: StateFlow<Boolean> = isUsbKeyboardEnabled
+        .map { it && USB_ENABLED }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), USB_ENABLED)
 
     val appTheme: StateFlow<AppTheme> = dataStore.appTheme
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppTheme.SYSTEM)

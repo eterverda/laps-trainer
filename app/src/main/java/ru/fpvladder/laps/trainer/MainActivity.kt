@@ -62,6 +62,7 @@ import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.settings.StartSignal
+import ru.fpvladder.laps.trainer.settings.USB_ENABLED
 import ru.fpvladder.laps.trainer.settings.WIGGLE_ONCE_ENABLED
 import ru.fpvladder.laps.trainer.settings.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.model.Flight
@@ -122,6 +123,7 @@ fun AppRoot(
     val colorCount by settingsViewModel.colorCount.collectAsState()
     val isMuted by settingsViewModel.isMuted.collectAsState()
     val isUsbKeyboardEnabled by settingsViewModel.isUsbKeyboardEnabled.collectAsState()
+    val effectiveUsbKeyboardEnabled by settingsViewModel.effectiveUsbKeyboardEnabled.collectAsState()
     val appTheme by settingsViewModel.appTheme.collectAsState()
     val timerPrecision by settingsViewModel.timerPrecision.collectAsState()
     val effectiveStartSignal by settingsViewModel.effectiveStartSignal.collectAsState()
@@ -267,6 +269,7 @@ fun AppRoot(
                         colorCount = colorCount,
                         isMuted = isMuted,
                         isUsbKeyboardEnabled = isUsbKeyboardEnabled,
+                        isUsbFeatureEnabled = USB_ENABLED,
                         useLapButton = useLapButton,
                         useErrorFixButtons = useErrorFixButtons,
                         appTheme = appTheme,
@@ -367,7 +370,7 @@ fun AppRoot(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         AnimatedVisibility(
-                            visible = isUsbKeyboardEnabled && currentScreen != AppScreen.Flight,
+                            visible = effectiveUsbKeyboardEnabled && currentScreen != AppScreen.Flight,
                             enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
                             exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
                         ) {
