@@ -42,13 +42,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Record
+import ru.fpvladder.laps.trainer.model.Results
 import ru.fpvladder.laps.trainer.model.Rules
-import ru.fpvladder.laps.trainer.model.SwapMode
-import ru.fpvladder.laps.trainer.model.IndividualRulePresets
-import ru.fpvladder.laps.trainer.model.Kind
-import ru.fpvladder.laps.trainer.model.TeamRulePresets
-import ru.fpvladder.laps.trainer.model.TEAM_HOLESHOT_ENABLED
-import ru.fpvladder.laps.trainer.model.formatCalculations
+import ru.fpvladder.laps.trainer.settings.IndividualRulePresets
+import ru.fpvladder.laps.trainer.settings.TeamRulePresets
+import ru.fpvladder.laps.trainer.settings.TEAM_HOLESHOT_ENABLED
+import ru.fpvladder.laps.trainer.ui.helpers.formatCalculations
 import java.util.EnumSet
 
 @Composable
@@ -86,14 +85,14 @@ fun RulesEditorContent(
     var selectedLaps by rememberSaveable { mutableStateOf(currentRules.maxLaps) }
     var holeshot by rememberSaveable {
         mutableStateOf(
-            when (currentRules.kind) {
-                Kind.TEAM -> currentRules.holeshotEnabled && TEAM_HOLESHOT_ENABLED
+            when (currentRules) {
+                is Rules.Team -> currentRules.holeshotEnabled && TEAM_HOLESHOT_ENABLED
                 else -> currentRules.holeshotEnabled
             }
         )
     }
     var swapMode by remember {
-        mutableStateOf((currentRules as? Rules.Team)?.swapMode ?: SwapMode.TIME)
+        mutableStateOf((currentRules as? Rules.Team)?.swapMode ?: Rules.Team.SwapMode.TIME)
     }
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     var countsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -115,13 +114,13 @@ fun RulesEditorContent(
     var rememberedMost by rememberSaveable { mutableStateOf(if (wasTimeLimited) initialMost else true) }
     var prevSelectedTime by remember { mutableStateOf<Int?>(null) }
 
-    val timeOptions = when (currentRules.kind) {
-        Kind.INDIVIDUAL -> IndividualRulePresets.timeOptions
-        else -> TeamRulePresets.timeOptions
+    val timeOptions = when (currentRules) {
+        is Rules.Individual -> IndividualRulePresets.timeOptions
+        is Rules.Team -> TeamRulePresets.timeOptions
     }
-    val lapOptions = when (currentRules.kind) {
-        Kind.INDIVIDUAL -> IndividualRulePresets.lapOptions
-        else -> TeamRulePresets.lapOptions
+    val lapOptions = when (currentRules) {
+        is Rules.Individual -> IndividualRulePresets.lapOptions
+        is Rules.Team -> TeamRulePresets.lapOptions
     }
 
     val timeOrLapsSet = selectedTime != Int.MAX_VALUE || selectedLaps != Int.MAX_VALUE
@@ -132,7 +131,7 @@ fun RulesEditorContent(
     var prevTime by remember { mutableStateOf(selectedTime) }
     var prevLaps by remember { mutableStateOf(selectedLaps) }
 
-    if (currentRules.kind == Kind.INDIVIDUAL) {
+    if (currentRules is Rules.Individual) {
         LaunchedEffect(selectedTime) {
             val prev = prevSelectedTime
             prevSelectedTime = selectedTime
@@ -154,13 +153,14 @@ fun RulesEditorContent(
                     prevTime != Int.MAX_VALUE && prevLaps == Int.MAX_VALUE -> {
                         selectedLaps = 50
                     }
+
                     prevLaps != Int.MAX_VALUE && prevTime == Int.MAX_VALUE -> {
                         selectedTime = 1200
                     }
                 }
             }
-            if (timeOnly) swapMode = SwapMode.TIME
-            if (lapsOnly) swapMode = SwapMode.LAPS
+            if (timeOnly) swapMode = Rules.Team.SwapMode.TIME
+            if (lapsOnly) swapMode = Rules.Team.SwapMode.LAPS
             prevTime = selectedTime
             prevLaps = selectedLaps
         }
@@ -213,7 +213,7 @@ fun RulesEditorContent(
         AnimatedVisibility(visible = countsExpanded) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                if (currentRules.kind == Kind.INDIVIDUAL) {
+                if (currentRules is Rules.Individual) {
                     val mostAvailable = selectedTime != Int.MAX_VALUE
                     RecordKindGrid(
                         enabledKinds = enabledKinds,
@@ -270,9 +270,9 @@ fun RulesEditorContent(
 
         AnimatedVisibility(visible = optionsExpanded) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                val holeshotEditable = when (currentRules.kind) {
-                    Kind.INDIVIDUAL -> true
-                    Kind.TEAM -> TEAM_HOLESHOT_ENABLED
+                val holeshotEditable = when (currentRules) {
+                    is Rules.Individual -> true
+                    is Rules.Team -> TEAM_HOLESHOT_ENABLED
                 }
                 if (holeshotEditable) {
                     Row(
@@ -303,7 +303,7 @@ fun RulesEditorContent(
                     )
                 }
 
-                if (currentRules.kind == Kind.TEAM) {
+                if (currentRules is Rules.Team) {
                     Spacer(modifier = Modifier.height(8.dp))
                     val swapAlpha = if (bothSet) 1f else 0.38f
                     Row(
@@ -312,8 +312,10 @@ fun RulesEditorContent(
                     ) {
                         Box(modifier = Modifier.offset(x = (-8).dp)) {
                             Checkbox(
-                                checked = swapMode == SwapMode.TIME,
-                                onCheckedChange = { swapMode = if (it) SwapMode.TIME else SwapMode.LAPS },
+                                checked = swapMode == Rules.Team.SwapMode.TIME,
+                                onCheckedChange = {
+                                    swapMode = if (it) Rules.Team.SwapMode.TIME else Rules.Team.SwapMode.LAPS
+                                },
                                 enabled = bothSet
                             )
                         }
@@ -327,15 +329,27 @@ fun RulesEditorContent(
                     val timeVal = selectedTime
                     val lapsVal = selectedLaps
                     val swapHint = when {
-                        swapMode == SwapMode.TIME && timeVal != Int.MAX_VALUE -> {
+                        swapMode == Rules.Team.SwapMode.TIME && timeVal != Int.MAX_VALUE -> {
                             val half = timeVal / 2.0 / 60
-                            val minsStr = if (half == half.toInt().toDouble()) "${half.toInt()}" else String.format("%.1f", half).replace('.', ',')
-                            "${stringResource(R.string.team_pilot_1)} летит $minsStr минут, затем летит ${stringResource(R.string.team_pilot_2).lowercase()}"
+                            val minsStr = if (half == half.toInt()
+                                    .toDouble()
+                            ) "${half.toInt()}" else String.format("%.1f", half).replace('.', ',')
+                            "${stringResource(R.string.team_pilot_1)} летит $minsStr минут, затем летит ${
+                                stringResource(
+                                    R.string.team_pilot_2
+                                ).lowercase()
+                            }"
                         }
-                        swapMode == SwapMode.LAPS && lapsVal != Int.MAX_VALUE -> {
+
+                        swapMode == Rules.Team.SwapMode.LAPS && lapsVal != Int.MAX_VALUE -> {
                             val laps = lapsVal / 2
-                            "${stringResource(R.string.team_pilot_1)} летит $laps кругов, затем ${stringResource(R.string.team_pilot_2).lowercase()} летит $laps кругов"
+                            "${stringResource(R.string.team_pilot_1)} летит $laps кругов, затем ${
+                                stringResource(
+                                    R.string.team_pilot_2
+                                ).lowercase()
+                            } летит $laps кругов"
                         }
+
                         else -> ""
                     }
                     if (swapHint.isNotBlank()) {
@@ -343,7 +357,9 @@ fun RulesEditorContent(
                             text = swapHint,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 44.dp).alpha(swapAlpha)
+                            modifier = Modifier
+                                .padding(start = 44.dp)
+                                .alpha(swapAlpha)
                         )
                     }
                 }
@@ -370,6 +386,7 @@ fun RulesEditorContent(
                             holeshotEnabled = holeshot,
                             enabledRecordKinds = EnumSet.copyOf(enabledKinds)
                         )
+
                         is Rules.Team -> Rules.Team(
                             maxLaps = selectedLaps,
                             timeLimitSeconds = selectedTime,
@@ -380,9 +397,9 @@ fun RulesEditorContent(
                     }
                     onConfirm(newRules)
                 },
-                enabled = when (currentRules.kind) {
-                    Kind.INDIVIDUAL -> true
-                    Kind.TEAM -> timeOrLapsSet
+                enabled = when (currentRules) {
+                    is Rules.Individual -> true
+                    is Rules.Team -> timeOrLapsSet
                 }
             ) {
                 Text("OK")

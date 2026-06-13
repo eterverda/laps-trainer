@@ -6,7 +6,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,8 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -50,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.channels.ChannelResult
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
 import ru.fpvladder.laps.trainer.ui.components.IndividualNameDialog
@@ -63,16 +61,15 @@ import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
-import ru.fpvladder.laps.trainer.model.StartSignal
-import ru.fpvladder.laps.trainer.model.SwapMode
-import ru.fpvladder.laps.trainer.model.WIGGLE_ONCE_ENABLED
-import ru.fpvladder.laps.trainer.model.IMMEDIATE_START_ENABLED
+import ru.fpvladder.laps.trainer.settings.StartSignal
+import ru.fpvladder.laps.trainer.settings.WIGGLE_ONCE_ENABLED
+import ru.fpvladder.laps.trainer.settings.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.mergeFlightRecords
 import ru.fpvladder.laps.trainer.model.mergeTeamFlight
 import ru.fpvladder.laps.trainer.model.Training
-import ru.fpvladder.laps.trainer.model.description
+import ru.fpvladder.laps.trainer.ui.helpers.description
 import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.audio.STAGE_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
@@ -148,6 +145,7 @@ fun AppRoot(
     val stopReason by flightViewModel.stopReason.collectAsState()
     val preStartCountdownMs by flightViewModel.preStartCountdownMs.collectAsState()
     val flightPilotSwapIndex by flightViewModel.pilotSwapIndex.collectAsState()
+    val teamFlight by flightViewModel.teamFlight.collectAsState()
     val shouldSaveResult by flightViewModel.shouldSaveResult.collectAsState()
     val swapPilotsForNextFlight by flightViewModel.swapPilotsForNextFlight.collectAsState()
 
@@ -166,13 +164,8 @@ fun AppRoot(
     var nameEditorIsNew by remember { mutableStateOf(false) }
     var showRulesEditor by remember { mutableStateOf(false) }
 
-    val currentPilot = when (selectedTraining) {
-        is Training.Individual -> (selectedTraining as Training.Individual).pilot
-        is Training.Team -> (selectedTraining as Training.Team).pilot
-    }
-
     val swapRemainingMs = when (val r = selectedTraining.rules) {
-        is Rules.Team -> if (r.swapMode == SwapMode.TIME) {
+        is Rules.Team -> if (r.swapMode == Rules.Team.SwapMode.TIME) {
             (r.timeLimitSeconds * 1000L / 2 - elapsedMs).coerceAtLeast(0)
         } else null
         else -> null
@@ -180,22 +173,20 @@ fun AppRoot(
 
     val finishFlight: (Boolean, Boolean) -> Unit = { shouldSave, navigateToTraining ->
         if (shouldSave) {
-            val flight = flightViewModel.buildFlight(selectedTraining)
+            val flight = flightViewModel.buildFlight()
             val currentStats = selectedTraining.stats
             when {
                 currentStats is Stats.Individual && flight is Flight.Individual -> {
-                    val updatedStats = currentStats.mergeFlightRecords(
-                        flight.records,
-                        flight.counters
-                    )
+                    val updatedStats = currentStats.mergeFlightRecords(flight.result)
                     trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
                 }
                 currentStats is Stats.Team && flight is Flight.Team -> {
+                    val teamRules = (selectedTraining as? Training.Team)?.rules
                     val updatedStats = currentStats.mergeTeamFlight(
                         common = flight.common,
                         head = flight.head,
                         tail = flight.tail,
-                        pilotOrderSwapped = flight.rules.pilotOrderSwapped
+                        pilotOrderSwapped = teamRules?.pilotOrderSwapped ?: false
                     )
                     trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
                 }
@@ -343,11 +334,7 @@ fun AppRoot(
                                     timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
                                     maxLaps = selectedTraining.rules.maxLaps,
                                     stopReason = stopReason,
-                                    enabledRecordKinds = when (val r = selectedTraining.rules) {
-                                        is Rules.Individual -> r.enabledRecordKinds
-                                        is Rules.Team -> r.enabledRecordKinds
-                                        else -> emptySet()
-                                    },
+                                    enabledRecordKinds = selectedTraining.rules.enabledRecordKinds,
                                     holeshotEnabled = selectedTraining.rules.holeshotEnabled,
                                     shouldSaveResult = shouldSaveResult,
                                     onShouldSaveResultChange = { flightViewModel.setShouldSaveResult(it) },
@@ -363,6 +350,7 @@ fun AppRoot(
                                     timerPrecision = timerPrecision,
                                     pilot = selectedTraining.pilot,
                                     pilotSwapIndex = flightPilotSwapIndex,
+                                    teamFlight = teamFlight,
                                     pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
                                     swapRemainingMs = swapRemainingMs,
                                     hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
@@ -524,7 +512,7 @@ fun AppRoot(
 
     if (showChannelDialog) {
         ChannelDialog(
-            currentChannel = currentPilot.channel,
+            currentChannel = selectedTraining.pilot.channel,
             channelGrid = channelGrid,
             colorCount = colorCount,
             showApplyToAll = trainings.size > 1,
@@ -554,11 +542,7 @@ fun AppRoot(
                     finishFlight(shouldSaveResult, false)
                 }
                 if (nameEditorIsNew) {
-                    val defaultChannel = when (val last = trainings.lastOrNull()) {
-                        is Training.Individual -> last.pilot.channel
-                        is Training.Team -> last.pilot.channel
-                        null -> Channel()
-                    }
+                    val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel()
                     val newPilot = Pilot.Individual(name = name, channel = defaultChannel)
                     val newTraining = Training.Individual(pilot = newPilot)
                     trainingViewModel.addTraining(newTraining)
@@ -595,11 +579,7 @@ fun AppRoot(
                     finishFlight(shouldSaveResult, false)
                 }
                 if (nameEditorIsNew) {
-                    val defaultChannel = when (val last = trainings.lastOrNull()) {
-                        is Training.Individual -> last.pilot.channel
-                        is Training.Team -> last.pilot.channel
-                        null -> Channel()
-                    }
+                    val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel()
                     val newPilot = Pilot.Team(name1 = n1, name2 = n2, channel = defaultChannel)
                     val newTraining = Training.Team(pilot = newPilot)
                     trainingViewModel.addTraining(newTraining)

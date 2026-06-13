@@ -27,9 +27,9 @@ import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
-import ru.fpvladder.laps.trainer.model.TimerPrecision
-import ru.fpvladder.laps.trainer.model.displayName1
-import ru.fpvladder.laps.trainer.model.displayName2
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.ui.helpers.displayName1
+import ru.fpvladder.laps.trainer.ui.helpers.displayName2
 
 @Composable
 internal fun LapList(

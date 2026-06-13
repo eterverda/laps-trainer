@@ -9,7 +9,6 @@ import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
-import ru.fpvladder.laps.trainer.model.SwapMode
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.Training
 
@@ -17,9 +16,6 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     private val _trainings = MutableStateFlow<List<Training>>(emptyList())
     val trainings: StateFlow<List<Training>> = _trainings.asStateFlow()
-
-    private val _archivedTrainings = MutableStateFlow<List<Training>>(emptyList())
-    val archivedTrainings: StateFlow<List<Training>> = _archivedTrainings.asStateFlow()
 
     private val _hasPagerWiggled = MutableStateFlow(false)
     val hasPagerWiggled: StateFlow<Boolean> = _hasPagerWiggled.asStateFlow()
@@ -56,15 +52,6 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun archiveTraining(training: Training) {
-        val updated = _trainings.value.filter { it.id != training.id }
-        _archivedTrainings.value = _archivedTrainings.value + training.withArchived(true)
-        _trainings.value = updated
-        if (_selectedTraining.value.id == training.id) {
-            _selectedTraining.value = updated.lastOrNull() ?: _selectedTraining.value
-        }
-    }
-
     fun updateTrainingRules(training: Training, newRules: Rules) {
         val updatedTraining = when (training) {
             is Training.Individual -> training.copy(rules = newRules as Rules.Individual)
@@ -95,7 +82,9 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun applyChannelToAll(channel: Channel) {
-        val updated = _trainings.value.map { training ->
+        val previous = _trainings.value
+        if (previous.isEmpty()) return
+        val updated = previous.map { training ->
             when (training) {
                 is Training.Individual -> training.copy(
                     pilot = training.pilot.copy(channel = channel)
@@ -106,51 +95,8 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             }
         }
         _trainings.value = updated
-        val selectedId = _selectedTraining.value.id
-        _selectedTraining.value = updated.find { it.id == selectedId } ?: updated.last()
-    }
-
-    fun updatePilot(pilot: Pilot) {
-        val training = _selectedTraining.value
-        val rules = training.rules
-        val updatedTraining = when (training) {
-            is Training.Individual -> {
-                when (pilot) {
-                    is Pilot.Individual -> training.copy(pilot = pilot)
-                    is Pilot.Team -> Training.Team(
-                        id = training.id,
-                        pilot = pilot,
-                        rules = Rules.Team(
-                            maxLaps = rules.maxLaps,
-                            timeLimitSeconds = rules.timeLimitSeconds,
-                            holeshotEnabled = rules.holeshotEnabled,
-                            swapMode = SwapMode.TIME
-                        ),
-                        stats = Stats.Team(),
-                        createdAt = training.createdAt,
-                        isArchived = training.isArchived
-                    )
-                }
-            }
-            is Training.Team -> {
-                when (pilot) {
-                    is Pilot.Individual -> Training.Individual(
-                        id = training.id,
-                        pilot = pilot,
-                        rules = Rules.Individual(
-                            maxLaps = rules.maxLaps,
-                            timeLimitSeconds = rules.timeLimitSeconds,
-                            holeshotEnabled = rules.holeshotEnabled
-                        ),
-                        stats = Stats.Individual(),
-                        createdAt = training.createdAt,
-                        isArchived = training.isArchived
-                    )
-                    is Pilot.Team -> training.copy(pilot = pilot)
-                }
-            }
-        }
-        updateTrainingInList(updatedTraining)
+        val selectedIndex = previous.indexOfFirst { it.id == _selectedTraining.value.id }
+        _selectedTraining.value = if (selectedIndex >= 0) updated[selectedIndex] else updated.last()
     }
 
     fun updateCurrentPilotChannel(channel: Channel) {

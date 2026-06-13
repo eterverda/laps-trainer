@@ -20,8 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.fpvladder.laps.trainer.model.StartSignal
-import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.settings.StartSignal
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.screens.formatCountdown
 import ru.fpvladder.laps.trainer.ui.screens.formatTime
 

@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
-import ru.fpvladder.laps.trainer.model.StartSignal
-import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.settings.StartSignal
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.components.Hint
 import ru.fpvladder.laps.trainer.ui.components.LapList
 

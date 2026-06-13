@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.trainer.model
+package ru.fpvladder.laps.trainer.settings
 
 enum class TimerPrecision(val displayName: String, val fractionDigits: Int, val tickMs: Long) {
     SECONDS("1 секунда", 0, 1000L),

@@ -1,4 +1,6 @@
-package ru.fpvladder.laps.trainer.model
+package ru.fpvladder.laps.trainer.settings
+
+import ru.fpvladder.laps.trainer.ui.helpers.ChannelColor
 
 enum class ChannelGrid(val displayName: String) {
     HDZERO("HDZero"),
@@ -45,7 +47,4 @@ object ChannelConfig {
         return number in availableNumbers(grid, letter)
     }
 
-    fun isValidColor(colorCount: ColorCount, color: ChannelColor): Boolean {
-        return color in availableColors(colorCount)
-    }
 }

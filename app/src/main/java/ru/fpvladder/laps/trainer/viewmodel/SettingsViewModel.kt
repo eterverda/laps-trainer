@@ -8,12 +8,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import ru.fpvladder.laps.trainer.data.SettingsDataStore
-import ru.fpvladder.laps.trainer.model.AppTheme
-import ru.fpvladder.laps.trainer.model.ChannelGrid
-import ru.fpvladder.laps.trainer.model.ColorCount
-import ru.fpvladder.laps.trainer.model.StartSignal
-import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.settings.SettingsDataStore
+import ru.fpvladder.laps.trainer.settings.AppTheme
+import ru.fpvladder.laps.trainer.settings.ChannelGrid
+import ru.fpvladder.laps.trainer.settings.ColorCount
+import ru.fpvladder.laps.trainer.settings.StartSignal
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 

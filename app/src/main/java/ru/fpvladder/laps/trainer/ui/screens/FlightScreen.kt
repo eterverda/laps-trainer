@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,13 +39,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.R
+import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Record
+import ru.fpvladder.laps.trainer.model.Results
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
-import ru.fpvladder.laps.trainer.model.StartSignal
+import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
-import ru.fpvladder.laps.trainer.model.TimerPrecision
-import ru.fpvladder.laps.trainer.model.AppTheme
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.settings.AppTheme
 import ru.fpvladder.laps.trainer.ui.components.FlightTimer
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
 
@@ -81,6 +82,7 @@ fun FlightScreen(
     holeshotEnabled: Boolean = false,
     pilot: Pilot? = null,
     pilotSwapIndex: Int? = null,
+    teamFlight: Flight.Team? = null,
     pilotOrderSwapped: Boolean = false,
     swapRemainingMs: Long? = null,
     hasPagerWiggled: Boolean = false,
@@ -197,6 +199,7 @@ fun FlightScreen(
                     enabledRecordKinds = enabledRecordKinds,
                     pilot = pilot,
                     pilotSwapIndex = pilotSwapIndex,
+                    teamFlight = teamFlight,
                     pilotOrderSwapped = pilotOrderSwapped,
                     shouldSaveResult = shouldSaveResult,
                     onShouldSaveResultChange = onShouldSaveResultChange,

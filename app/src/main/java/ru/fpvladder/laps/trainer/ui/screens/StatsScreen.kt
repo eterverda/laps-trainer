@@ -46,13 +46,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.R
-import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Record
+import ru.fpvladder.laps.trainer.model.Results
 import ru.fpvladder.laps.trainer.model.Stats
-import ru.fpvladder.laps.trainer.model.TimerPrecision
-import ru.fpvladder.laps.trainer.model.displayName1
-import ru.fpvladder.laps.trainer.model.displayName2
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.ui.helpers.displayName1
+import ru.fpvladder.laps.trainer.ui.helpers.displayName2
+import ru.fpvladder.laps.trainer.ui.helpers.timeMs
 import ru.fpvladder.laps.trainer.ui.components.BulletText
 import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
@@ -161,8 +163,8 @@ fun StatsScreen(
 
             Spacer(modifier = Modifier.height(if (pilot is Pilot.Team) 16.dp else 40.dp))
 
-            val flightCount = stats.counters
-                .find { it.kind == Counter.Kind.FLIGHT }?.count ?: 0
+            val flightCount = stats.result.counters
+                .find { it.kind == Counter.Builtin.Kind.FLIGHT }?.count ?: 0
             val hasResults = flightCount > 0
 
             if (hasResults) {
@@ -180,12 +182,12 @@ fun StatsScreen(
                     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                         ScreenTitle("Результаты")
                         Spacer(modifier = Modifier.height(8.dp))
-                        val visibleRecords = stats.records.filter { it.kind in enabledRecordKinds }
+                        val visibleRecords = stats.result.records.filter { it.kind in enabledRecordKinds }
                         if (visibleRecords.isNotEmpty()) {
                             RecordsInset(visibleRecords.distinctBy { it.count }, timerPrecision)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                        CountersSummary(stats.counters)
+                        CountersSummary(stats.result.counters)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
@@ -214,12 +216,12 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты")
                 Spacer(modifier = Modifier.height(8.dp))
-                val commonVisibleRecords = stats.records.filter { it.kind in enabledRecordKinds }
+                val commonVisibleRecords = stats.result.records.filter { it.kind in enabledRecordKinds }
                 if (commonVisibleRecords.isNotEmpty()) {
                     RecordsInset(commonVisibleRecords.distinctBy { it.count }, timerPrecision)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-                CountersSummary(stats.counters)
+                CountersSummary(stats.result.counters)
                 Spacer(modifier = Modifier.height(8.dp))
             }
         },
@@ -231,9 +233,9 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты: $pilot1Name")
                 Spacer(modifier = Modifier.height(8.dp))
-                val firstRecords = stats.first.records.filter { it.kind in enabledRecordKinds }
-                val firstRecordsBeingHead = stats.first.recordsBeingHead.filter { it.kind in enabledRecordKinds }
-                val firstRecordsBeingTail = stats.first.recordsBeingTail.filter { it.kind in enabledRecordKinds }
+                val firstRecords = stats.first.total.records.filter { it.kind in enabledRecordKinds }
+                val firstRecordsBeingHead = stats.first.head.records.filter { it.kind in enabledRecordKinds }
+                val firstRecordsBeingTail = stats.first.tail.records.filter { it.kind in enabledRecordKinds }
                 val firstHasRecords = firstRecords.isNotEmpty() ||
                     firstRecordsBeingHead.isNotEmpty() ||
                     firstRecordsBeingTail.isNotEmpty()
@@ -246,7 +248,7 @@ private fun TeamStatsContent(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-                CountersSummary(stats.first.counters)
+                CountersSummary(stats.first.total.counters)
                 Spacer(modifier = Modifier.height(8.dp))
             }
         },
@@ -258,9 +260,9 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты: $pilot2Name")
                 Spacer(modifier = Modifier.height(8.dp))
-                val secondRecords = stats.second.records.filter { it.kind in enabledRecordKinds }
-                val secondRecordsBeingHead = stats.second.recordsBeingHead.filter { it.kind in enabledRecordKinds }
-                val secondRecordsBeingTail = stats.second.recordsBeingTail.filter { it.kind in enabledRecordKinds }
+                val secondRecords = stats.second.total.records.filter { it.kind in enabledRecordKinds }
+                val secondRecordsBeingHead = stats.second.head.records.filter { it.kind in enabledRecordKinds }
+                val secondRecordsBeingTail = stats.second.tail.records.filter { it.kind in enabledRecordKinds }
                 val secondHasRecords = secondRecords.isNotEmpty() ||
                     secondRecordsBeingHead.isNotEmpty() ||
                     secondRecordsBeingTail.isNotEmpty()
@@ -273,7 +275,7 @@ private fun TeamStatsContent(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-                CountersSummary(stats.second.counters)
+                CountersSummary(stats.second.total.counters)
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
@@ -394,9 +396,9 @@ fun CountersSummary(counters: List<Counter>) {
     Column(modifier = Modifier.fillMaxWidth()) {
         counters.forEach { counter ->
             val text = when (val kind = counter.kind) {
-                Counter.Kind.FLIGHT ->
+                Counter.Builtin.Kind.FLIGHT ->
                     context.resources.getQuantityString(R.plurals.flights, counter.count, counter.count)
-                Counter.Kind.LAP ->
+                Counter.Builtin.Kind.LAP ->
                     context.resources.getQuantityString(R.plurals.laps, counter.count, counter.count)
                 null ->
                     context.getString(R.string.counter_custom, counter.count, (counter as Counter.Custom).text)

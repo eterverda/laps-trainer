@@ -44,18 +44,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import ru.fpvladder.laps.trainer.model.AppTheme
-import ru.fpvladder.laps.trainer.model.ChannelGrid
-import ru.fpvladder.laps.trainer.model.ColorCount
-import ru.fpvladder.laps.trainer.model.StartSignal
-import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.settings.AppTheme
+import ru.fpvladder.laps.trainer.settings.ChannelGrid
+import ru.fpvladder.laps.trainer.settings.ColorCount
+import ru.fpvladder.laps.trainer.settings.StartSignal
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 

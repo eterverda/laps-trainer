@@ -2,6 +2,8 @@ package ru.fpvladder.laps.trainer.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.ui.helpers.timeMs
 
 class TimeIntervalAndRecordTest {
 
@@ -24,7 +26,7 @@ class TimeIntervalAndRecordTest {
     }
 
     @Test
-    fun `Record rawTimeMs sums interval durations`() {
+    fun `Results Record rawTimeMs sums interval durations`() {
         val record = Record(
             count = 2,
             kind = Record.Kind.BEST_2,
@@ -37,7 +39,7 @@ class TimeIntervalAndRecordTest {
     }
 
     @Test
-    fun `Record timeMs rounds marks not intervals`() {
+    fun `Results Record timeMs rounds marks not intervals`() {
         // Duration-based rounding would round (end-start) of each lap.
         // Mark-based rounding rounds start and end first, then subtracts.
         // These can differ when the interval straddles a rounding boundary.
@@ -56,7 +58,7 @@ class TimeIntervalAndRecordTest {
     }
 
     @Test
-    fun `Record timeMs with multiple intervals is stable`() {
+    fun `Results Record timeMs with multiple intervals is stable`() {
         val record = Record(
             count = 3,
             kind = Record.Kind.MOST,
@@ -75,13 +77,14 @@ class TimeIntervalAndRecordTest {
     }
 
     @Test
-    fun `computeFlightRecords builds records from intervals`() {
+    fun `computeIndividualFlight builds records from intervals`() {
         val laps = listOf(
             Lap("1)", TimeInterval(0L, 12340L)),
             Lap("2)", TimeInterval(12340L, 24680L)),
             Lap("3)", TimeInterval(24680L, 37030L))
         )
-        val records = computeFlightRecords(laps)
+        val result = computeIndividualFlight(laps, StopReason.MANUAL).result
+        val records = result.records
 
         val best1 = records.first { it.kind == Record.Kind.BEST_1 }
         assertEquals(1, best1.count)
@@ -92,6 +95,10 @@ class TimeIntervalAndRecordTest {
         assertEquals(3, most.count)
         assertEquals(3, most.intervals.size)
         assertEquals(37030L, most.rawTimeMs())
+
+        val lapCounter = result.counters.single()
+        assertEquals(Counter.Builtin.Kind.LAP, lapCounter.kind)
+        assertEquals(3, lapCounter.count)
     }
 
     @Test
@@ -102,14 +109,14 @@ class TimeIntervalAndRecordTest {
             Lap("2)", TimeInterval(12000L, 25000L), Lap.Status.FAIL),
             Lap("3)", TimeInterval(25000L, 37000L), Lap.Status.SUCCESS)
         )
-        val records = computeFlightRecords(laps)
+        val records = computeIndividualFlight(laps, StopReason.MANUAL).result.records
         val most = records.single { it.kind == Record.Kind.MOST }
         assertEquals(3, most.count)
         assertEquals(listOf(12000L, 13000L, 12000L), most.intervals.map { it.durationMs })
     }
 
     @Test
-    fun `Record isBetterThan uses rawTimeMs`() {
+    fun `Results Record isBetterThan uses rawTimeMs`() {
         val a = Record(
             count = 2,
             kind = Record.Kind.BEST_2,

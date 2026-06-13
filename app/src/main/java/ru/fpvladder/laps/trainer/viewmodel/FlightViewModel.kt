@@ -15,16 +15,11 @@ import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Rules
-import ru.fpvladder.laps.trainer.model.StartSignal
+import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimeInterval
-import ru.fpvladder.laps.trainer.model.SwapMode
-import ru.fpvladder.laps.trainer.model.Training
-import ru.fpvladder.laps.trainer.model.TeamCounterScope
-import ru.fpvladder.laps.trainer.model.computeFlightCounters
-import ru.fpvladder.laps.trainer.model.computeFlightRecords
-import ru.fpvladder.laps.trainer.model.computeTeamFlightCounters
-import ru.fpvladder.laps.trainer.model.computeTeamFlightRecords
+import ru.fpvladder.laps.trainer.model.computeIndividualFlight
+import ru.fpvladder.laps.trainer.model.computeTeamFlight
 import kotlin.random.Random
 
 class FlightViewModel : ViewModel() {
@@ -78,6 +73,9 @@ class FlightViewModel : ViewModel() {
     private val _pilotSwapIndex = MutableStateFlow<Int?>(null)
     val pilotSwapIndex: StateFlow<Int?> = _pilotSwapIndex.asStateFlow()
 
+    private val _teamFlight = MutableStateFlow<Flight.Team?>(null)
+    val teamFlight: StateFlow<Flight.Team?> = _teamFlight.asStateFlow()
+
     private var pendingPilotSwap = false
     private var swapPointLap = 0
     private var swapPointTimeMs = 0L
@@ -85,8 +83,8 @@ class FlightViewModel : ViewModel() {
     fun setRules(newRules: Rules) {
         rules = newRules
         if (newRules is Rules.Team) {
-            swapPointLap = if (newRules.swapMode == SwapMode.LAPS) (newRules.maxLaps / 2).coerceAtLeast(0) else 0
-            swapPointTimeMs = if (newRules.swapMode == SwapMode.TIME) (newRules.timeLimitSeconds * 1000L / 2).coerceAtLeast(0L) else 0L
+            swapPointLap = if (newRules.swapMode == Rules.Team.SwapMode.LAPS) (newRules.maxLaps / 2).coerceAtLeast(0) else 0
+            swapPointTimeMs = if (newRules.swapMode == Rules.Team.SwapMode.TIME) (newRules.timeLimitSeconds * 1000L / 2).coerceAtLeast(0L) else 0L
         } else {
             swapPointLap = 0
             swapPointTimeMs = 0L
@@ -169,11 +167,17 @@ class FlightViewModel : ViewModel() {
             val hasSuccessLap = _laps.value.any { it.status == Lap.Status.SUCCESS }
             _shouldSaveResult.value = hasSuccessLap
             _swapPilotsForNextFlight.value = hasSuccessLap && rules is Rules.Team
+            if (rules is Rules.Team) {
+                _teamFlight.value = computeTeamFlight(
+                    _laps.value,
+                    reason,
+                    _pilotSwapIndex.value
+                )
+            }
         }
     }
 
     fun addLap() {
-        val lapTime = _elapsedMs.value - lastLapElapsedMs
         val current = _currentLap.value ?: return
         Log.d("FlightVM", "addLap: currentLabel=${current.label}, nextLapNumber=$nextLapNumber, swapPointLap=$swapPointLap, pendingPilotSwap=$pendingPilotSwap, lapsSize=${_laps.value.size}")
         val completed = current.copy(interval = TimeInterval(current.startMs, _elapsedMs.value))
@@ -187,7 +191,7 @@ class FlightViewModel : ViewModel() {
 
         val teamRules = rules as? Rules.Team
         if (teamRules != null) {
-            if (teamRules.swapMode == SwapMode.LAPS && !pendingPilotSwap && nextLapNumber - 1 == swapPointLap) {
+            if (teamRules.swapMode == Rules.Team.SwapMode.LAPS && !pendingPilotSwap && nextLapNumber - 1 == swapPointLap) {
                 pendingPilotSwap = true
                 Log.d("FlightVM", "Triggering pilot swap at lap ${nextLapNumber - 1}")
                 if (!raceIsMuted) SoundManager.playBuzzer()
@@ -268,48 +272,16 @@ class FlightViewModel : ViewModel() {
         pendingPilotSwap = false
         _shouldSaveResult.value = false
         _swapPilotsForNextFlight.value = false
+        _teamFlight.value = null
     }
 
-    fun buildFlight(training: Training): Flight {
-        val completedAt = System.currentTimeMillis()
+    fun buildFlight(): Flight {
         val stopReason = _stopReason.value ?: StopReason.MANUAL
-        return when (training) {
-            is Training.Individual -> Flight.Individual(
-                trainingId = training.id,
-                pilot = training.pilot,
-                rules = training.rules,
-                laps = _laps.value,
-                stopReason = stopReason,
-                records = computeFlightRecords(_laps.value),
-                counters = computeFlightCounters(_laps.value),
-                completedAt = completedAt
-            )
-            is Training.Team -> {
-                val teamRecords = computeTeamFlightRecords(
-                    _laps.value,
-                    _pilotSwapIndex.value
-                )
-                Flight.Team(
-                    trainingId = training.id,
-                    pilot = training.pilot,
-                    rules = training.rules,
-                    laps = _laps.value,
-                    stopReason = stopReason,
-                    pilotSwapIndex = _pilotSwapIndex.value,
-                    common = Flight.Team.Item(
-                        counters = computeTeamFlightCounters(_laps.value, TeamCounterScope.COMMON, _pilotSwapIndex.value),
-                        records = teamRecords.common
-                    ),
-                    head = Flight.Team.Item(
-                        counters = computeTeamFlightCounters(_laps.value, TeamCounterScope.HEAD, _pilotSwapIndex.value),
-                        records = teamRecords.head
-                    ),
-                    tail = Flight.Team.Item(
-                        counters = computeTeamFlightCounters(_laps.value, TeamCounterScope.TAIL, _pilotSwapIndex.value),
-                        records = teamRecords.tail
-                    ),
-                    completedAt = completedAt
-                )
+        return when (rules) {
+            is Rules.Individual -> computeIndividualFlight(_laps.value, stopReason)
+            is Rules.Team -> {
+                _teamFlight.value
+                    ?: computeTeamFlight(_laps.value, stopReason, _pilotSwapIndex.value)
             }
         }
     }
@@ -337,7 +309,7 @@ class FlightViewModel : ViewModel() {
                 _currentLapTime.value = elapsed - lastLapElapsedMs
 
                 val localRules = rules
-                if (localRules is Rules.Team && localRules.swapMode == SwapMode.TIME && !swapBuzzerPlayed && elapsed >= swapPointTimeMs) {
+                if (localRules is Rules.Team && localRules.swapMode == Rules.Team.SwapMode.TIME && !swapBuzzerPlayed && elapsed >= swapPointTimeMs) {
                     swapBuzzerPlayed = true
                     if (!isMuted) SoundManager.playBuzzer()
                     pendingPilotSwap = true

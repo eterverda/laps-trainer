@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.trainer.model
+package ru.fpvladder.laps.trainer.ui.helpers
 
 import android.content.Context
 import androidx.compose.ui.text.AnnotatedString
@@ -8,6 +8,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import ru.fpvladder.laps.trainer.R
+import ru.fpvladder.laps.trainer.model.Pilot
 
 fun Pilot.Team.displayName1(context: Context): String {
     return when {

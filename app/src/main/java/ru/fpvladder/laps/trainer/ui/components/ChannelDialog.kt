@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,7 +26,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -35,10 +33,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.model.Channel
-import ru.fpvladder.laps.trainer.model.ChannelColor
-import ru.fpvladder.laps.trainer.model.ChannelConfig
-import ru.fpvladder.laps.trainer.model.ChannelGrid
-import ru.fpvladder.laps.trainer.model.ColorCount
+import ru.fpvladder.laps.trainer.settings.ChannelConfig
+import ru.fpvladder.laps.trainer.ui.helpers.ChannelColor
+import ru.fpvladder.laps.trainer.ui.helpers.toComposeColor
+import ru.fpvladder.laps.trainer.settings.ChannelGrid
+import ru.fpvladder.laps.trainer.settings.ColorCount
 
 @Composable
 fun ChannelDialog(
@@ -89,6 +88,9 @@ fun ChannelEditorContent(
     var selectedLetter by rememberSaveable { mutableStateOf(currentChannel.letter) }
     var selectedNumber by rememberSaveable { mutableStateOf(currentChannel.number) }
     var selectedColor by rememberSaveable { mutableStateOf(currentChannel.color) }
+    var selectedPreset by rememberSaveable {
+        mutableStateOf(ChannelColor.entries.find { it.color == currentChannel.color })
+    }
 
     val isAnalog = channelGrid == ChannelGrid.ANALOG
     val allChannels = if (!isAnalog) {
@@ -99,8 +101,7 @@ fun ChannelEditorContent(
         }
     } else emptyList()
 
-    val isValid = ChannelConfig.isValidChannel(channelGrid, selectedLetter, selectedNumber) &&
-            ChannelConfig.isValidColor(colorCount, selectedColor)
+    val isValid = ChannelConfig.isValidChannel(channelGrid, selectedLetter, selectedNumber)
 
     Column(
         modifier = modifier
@@ -147,9 +148,11 @@ fun ChannelEditorContent(
         SectionTitle("Цвет")
         ColorGrid(
             selected = selectedColor,
+            selectedPreset = selectedPreset,
             colorCount = colorCount,
-            onSelect = {
-                selectedColor = it
+            onSelect = { color, preset ->
+                selectedColor = color
+                selectedPreset = preset
                 onValuesChange?.invoke(Channel(selectedLetter, selectedNumber, selectedColor))
             }
         )
@@ -298,9 +301,10 @@ private fun ChannelGrid(
 
 @Composable
 private fun ColorGrid(
-    selected: ChannelColor,
+    selected: Int,
+    selectedPreset: ChannelColor?,
     colorCount: ColorCount,
-    onSelect: (ChannelColor) -> Unit
+    onSelect: (Int, ChannelColor?) -> Unit
 ) {
     val colors = ChannelConfig.availableColors(colorCount)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -309,11 +313,11 @@ private fun ColorGrid(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                row.forEach { color ->
+                row.forEach { preset ->
                     ColorItem(
-                        color = color,
-                        selected = color == selected,
-                        onClick = { onSelect(color) },
+                        color = preset,
+                        selected = preset == selectedPreset,
+                        onClick = { onSelect(preset.color, preset) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -360,11 +364,11 @@ private fun ColorItem(
     val hasOutline = color.outlineColor != null
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = color.color,
+        color = color.color.toComposeColor(),
         border = BorderStroke(
             width = if (selected) 3.dp else if (hasOutline) 2.dp else 1.dp,
             color = if (selected) MaterialTheme.colorScheme.primary
-            else color.outlineColor ?: MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            else color.outlineColor?.toComposeColor() ?: MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
         ),
         modifier = modifier
             .height(48.dp)

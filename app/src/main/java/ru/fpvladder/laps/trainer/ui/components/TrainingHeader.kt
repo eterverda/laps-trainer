@@ -55,12 +55,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import ru.fpvladder.laps.trainer.model.ChannelColor
+import ru.fpvladder.laps.trainer.ui.helpers.ChannelColor
+import ru.fpvladder.laps.trainer.ui.helpers.toComposeColor
+import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Training
-import ru.fpvladder.laps.trainer.model.label
-import ru.fpvladder.laps.trainer.model.label1
-import ru.fpvladder.laps.trainer.model.label2
+import ru.fpvladder.laps.trainer.ui.helpers.label
+import ru.fpvladder.laps.trainer.ui.helpers.label1
+import ru.fpvladder.laps.trainer.ui.helpers.label2
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -109,9 +111,7 @@ fun TrainingHeader(
             verticalAlignment = Alignment.Top
         ) {
             ChannelBadge(
-                channelLetter = channel.letter,
-                channelNumber = channel.number,
-                channelColor = channel.color,
+                channel = channel,
                 fontSize = 24.sp,
                 modifier = Modifier
                     .fillMaxHeight()
@@ -294,19 +294,18 @@ fun TrainingHeader(
 
 @Composable
 private fun ChannelBadge(
-    channelLetter: String,
-    channelNumber: Int,
-    channelColor: ChannelColor,
+    channel: Channel,
     fontSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier
 ) {
-    val hasOutline = channelColor.outlineColor != null
+    val preset = remember(channel.color) { ChannelColor.entries.find { it.color == channel.color } }
+    val hasOutline = preset?.outlineColor != null
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = channelColor.color,
+        color = channel.color.toComposeColor(),
         border = if (hasOutline) BorderStroke(
             if (fontSize.value >= 20) 2.dp else 1.5.dp,
-            channelColor.outlineColor!!
+            preset!!.outlineColor!!.toComposeColor()
         ) else null,
         modifier = modifier
     ) {
@@ -318,11 +317,11 @@ private fun ChannelBadge(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "$channelLetter$channelNumber",
+                text = "${channel.letter}${channel.number}",
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = FontFamily.Monospace,
-                color = if (channelColor == ChannelColor.WHITE) Color.Black else Color.White
+                color = if (preset == ChannelColor.WHITE) Color.Black else Color.White
             )
         }
     }
@@ -399,9 +398,7 @@ private fun TrainingListItem(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ChannelBadge(
-                channelLetter = channel.letter,
-                channelNumber = channel.number,
-                channelColor = channel.color,
+                channel = channel,
                 fontSize = 16.sp,
                 modifier = Modifier.fillMaxHeight()
             )

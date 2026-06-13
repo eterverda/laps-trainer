@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.trainer.model
+package ru.fpvladder.laps.trainer.settings
 
 /**
  * Feature flags for gradually rolling out or hiding functionality.

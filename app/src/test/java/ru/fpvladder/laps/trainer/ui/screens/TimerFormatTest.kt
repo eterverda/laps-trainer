@@ -2,7 +2,7 @@ package ru.fpvladder.laps.trainer.ui.screens
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
 
 class TimerFormatTest {
 

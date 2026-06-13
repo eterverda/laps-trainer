@@ -42,20 +42,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.R
-import ru.fpvladder.laps.trainer.model.Counter
-import ru.fpvladder.laps.trainer.model.IMMEDIATE_START_ENABLED
+import ru.fpvladder.laps.trainer.settings.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Record
+import ru.fpvladder.laps.trainer.model.Results
+import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.StopReason
-import ru.fpvladder.laps.trainer.model.TeamCounterScope
-import ru.fpvladder.laps.trainer.model.TimerPrecision
-import ru.fpvladder.laps.trainer.model.computeFlightCounters
-import ru.fpvladder.laps.trainer.model.computeFlightRecords
-import ru.fpvladder.laps.trainer.model.computeTeamFlightCounters
-import ru.fpvladder.laps.trainer.model.computeTeamFlightRecords
-import ru.fpvladder.laps.trainer.model.displayName1
-import ru.fpvladder.laps.trainer.model.displayName2
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.model.computeIndividualFlight
+import ru.fpvladder.laps.trainer.model.computeTeamFlight
+import ru.fpvladder.laps.trainer.ui.helpers.displayName1
+import ru.fpvladder.laps.trainer.ui.helpers.displayName2
 import ru.fpvladder.laps.trainer.ui.components.LapList
 import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
@@ -74,6 +73,7 @@ fun PostFlightContent(
     enabledRecordKinds: Set<Record.Kind>,
     pilot: Pilot?,
     pilotSwapIndex: Int?,
+    teamFlight: Flight.Team? = null,
     pilotOrderSwapped: Boolean,
     shouldSaveResult: Boolean,
     onShouldSaveResultChange: (Boolean) -> Unit,
@@ -167,27 +167,19 @@ fun PostFlightContent(
                                 .padding(top = if (laps.isNotEmpty()) 16.dp else 0.dp, bottom = 16.dp)
                         )
                         if (pilot is Pilot.Team) {
-                            val teamRecords = computeTeamFlightRecords(
-                                laps = laps,
-                                pilotSwapIndex = pilotSwapIndex
-                            )
+                            val teamResults = teamFlight
+                                ?: computeTeamFlight(laps, stopReason ?: StopReason.MANUAL, pilotSwapIndex)
                             val name1 = pilot.displayName1(context)
                             val name2 = pilot.displayName2(context)
                             val headPilot = if (pilotOrderSwapped) name2 else name1
                             val tailPilot = if (pilotOrderSwapped) name1 else name2
                             TeamFlightPostResults(
-                                commonRecords = teamRecords.common.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
-                                headRecords = teamRecords.head.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
-                                tailRecords = teamRecords.tail.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
-                                commonCounters = computeTeamFlightCounters(
-                                    laps, TeamCounterScope.COMMON, pilotSwapIndex
-                                ),
-                                headCounters = computeTeamFlightCounters(
-                                    laps, TeamCounterScope.HEAD, pilotSwapIndex
-                                ),
-                                tailCounters = computeTeamFlightCounters(
-                                    laps, TeamCounterScope.TAIL, pilotSwapIndex
-                                ),
+                                commonRecords = teamResults.common.records.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
+                                headRecords = teamResults.head.records.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
+                                tailRecords = teamResults.tail.records.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
+                                commonCounters = teamResults.common.counters,
+                                headCounters = teamResults.head.counters,
+                                tailCounters = teamResults.tail.counters,
                                 headPilotName = headPilot,
                                 tailPilotName = tailPilot,
                                 timerPrecision = timerPrecision,
@@ -198,7 +190,8 @@ fun PostFlightContent(
                             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                                 ScreenTitle("Результаты")
                                 Spacer(modifier = Modifier.height(8.dp))
-                                val flightRecords = computeFlightRecords(laps).filter { it.kind in enabledRecordKinds }
+                                val result = computeIndividualFlight(laps, stopReason ?: StopReason.MANUAL).result
+                                val flightRecords = result.records.filter { it.kind in enabledRecordKinds }
                                 RecordsInset(
                                     records = flightRecords.distinctBy { it.count },
                                     timerPrecision = timerPrecision
@@ -206,7 +199,7 @@ fun PostFlightContent(
                                 if (flightRecords.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
-                                CountersSummary(counters = computeFlightCounters(laps))
+                                CountersSummary(counters = result.counters)
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
                         }

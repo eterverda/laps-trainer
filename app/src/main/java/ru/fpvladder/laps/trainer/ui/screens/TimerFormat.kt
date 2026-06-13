@@ -1,6 +1,6 @@
 package ru.fpvladder.laps.trainer.ui.screens
 
-import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.settings.TimerPrecision
 
 fun formatTime(elapsedMs: Long, timerPrecision: TimerPrecision, timeLimitSeconds: Int = 0): String {
     val rounded = timerPrecision.roundMs(elapsedMs)

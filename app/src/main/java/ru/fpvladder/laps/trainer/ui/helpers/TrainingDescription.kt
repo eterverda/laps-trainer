@@ -1,9 +1,12 @@
-package ru.fpvladder.laps.trainer.model
+package ru.fpvladder.laps.trainer.ui.helpers
 
 import android.content.Context
 import androidx.compose.ui.text.AnnotatedString
 import ru.fpvladder.laps.trainer.R
-import java.util.EnumSet
+import ru.fpvladder.laps.trainer.model.Record
+import ru.fpvladder.laps.trainer.model.Results
+import ru.fpvladder.laps.trainer.model.Rules
+import ru.fpvladder.laps.trainer.model.Training
 
 fun Training.description(context: Context): AnnotatedString {
     return when (this) {
@@ -128,14 +131,14 @@ private fun formatTeamPart(context: Context, training: Training.Team): String {
     val p2 = if (rules.pilotOrderSwapped) rawP1 else rawP2
 
     val base = when {
-        rules.swapMode == SwapMode.TIME && halfTimeMins != null -> {
+        rules.swapMode == Rules.Team.SwapMode.TIME && halfTimeMins != null -> {
             val text = context.getString(R.string.team_swap_time, p1, halfTimeMins, p2)
             if (hasLaps) {
                 val lapsStr = context.resources.getQuantityString(R.plurals.laps, rules.maxLaps, rules.maxLaps)
                 context.getString(R.string.team_swap_time_with_laps, p1, halfTimeMins, p2, lapsStr)
             } else text
         }
-        rules.swapMode == SwapMode.LAPS && halfLaps != null -> {
+        rules.swapMode == Rules.Team.SwapMode.LAPS && halfLaps != null -> {
             val halfLapsStr = context.resources.getQuantityString(R.plurals.laps, halfLaps, halfLaps)
             val text = context.getString(R.string.team_swap_laps, p1, halfLapsStr, p2, halfLapsStr)
             if (hasTime) {

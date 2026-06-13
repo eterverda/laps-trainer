@@ -1,4 +1,4 @@
-package ru.fpvladder.laps.trainer.model
+package ru.fpvladder.laps.trainer.settings
 
 enum class StartSignal(val displayName: String) {
     FIXED("Фиксированный"),
