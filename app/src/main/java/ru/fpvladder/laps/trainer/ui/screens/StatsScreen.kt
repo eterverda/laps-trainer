@@ -47,9 +47,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Counter
+import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.model.displayName1
+import ru.fpvladder.laps.trainer.model.displayName2
 import ru.fpvladder.laps.trainer.ui.components.BulletText
 import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
@@ -61,19 +64,13 @@ fun StatsScreen(
     stats: Stats = Stats.Individual(),
     enabledRecordKinds: Set<Record.Kind> = emptySet(),
     timerPrecision: TimerPrecision = TimerPrecision.MILLISECONDS,
-    isTeam: Boolean = false,
-    pilot1Name: String = "",
-    pilot2Name: String = "",
-    pilotOrderSwapped: Boolean = false,
+    pilot: Pilot,
     onSwapPilots: () -> Unit = {},
     hasPagerWiggled: Boolean = false,
     onPagerWiggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val p1Raw = pilot1Name.takeIf { it.isNotBlank() } ?: "Первый пилот"
-    val p2Raw = pilot2Name.takeIf { it.isNotBlank() } ?: "Второй пилот"
-    val p1 = if (pilotOrderSwapped) p2Raw else p1Raw
-    val p2 = if (pilotOrderSwapped) p1Raw else p2Raw
+    val context = LocalContext.current
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -87,114 +84,114 @@ fun StatsScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-        Spacer(modifier = Modifier.height(20.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .padding(horizontal = 24.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                ScreenTitle("Правила")
-                val paragraphs = remember(description) {
-                    buildList {
-                        val text = description.text
-                        var start = 0
-                        while (true) {
-                            val idx = text.indexOf('\n', start)
-                            if (idx < 0) {
-                                add(description.subSequence(start, text.length))
-                                break
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min)
+                    .padding(horizontal = 24.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                    ScreenTitle("Правила")
+                    val paragraphs = remember(description) {
+                        buildList {
+                            val text = description.text
+                            var start = 0
+                            while (true) {
+                                val idx = text.indexOf('\n', start)
+                                if (idx < 0) {
+                                    add(description.subSequence(start, text.length))
+                                    break
+                                }
+                                add(description.subSequence(start, idx))
+                                start = idx + 1
                             }
-                            add(description.subSequence(start, idx))
-                            start = idx + 1
+                        }
+                    }
+                    Column(modifier = Modifier.padding(top = 16.dp)) {
+                        paragraphs.forEachIndexed { index, paragraph ->
+                            if (index > 0) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                            }
+                            Text(
+                                text = paragraph,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
-                Column(modifier = Modifier.padding(top = 16.dp)) {
-                    paragraphs.forEachIndexed { index, paragraph ->
-                        if (index > 0) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                        }
-                        Text(
-                            text = paragraph,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-            Box(modifier = Modifier.fillMaxHeight()) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .clip(CircleShape)
-                        .clickable(onClick = onEditRulesClick)
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Редактировать правила",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                if (isTeam) {
+                Box(modifier = Modifier.fillMaxHeight()) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
+                            .align(Alignment.TopCenter)
                             .clip(CircleShape)
-                            .clickable(onClick = onSwapPilots)
+                            .clickable(onClick = onEditRulesClick)
                             .padding(8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.SwapHoriz,
-                            contentDescription = "Поменять местами",
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Редактировать правила",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
+                    if (pilot is Pilot.Team) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .clip(CircleShape)
+                                .clickable(onClick = onSwapPilots)
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SwapHoriz,
+                                contentDescription = "Поменять местами",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(if (isTeam) 16.dp else 40.dp))
+            Spacer(modifier = Modifier.height(if (pilot is Pilot.Team) 16.dp else 40.dp))
 
-        val flightCount = stats.counters
-            .find { it.kind == Counter.Kind.FLIGHT }?.count ?: 0
-        val hasResults = flightCount > 0
+            val flightCount = stats.counters
+                .find { it.kind == Counter.Kind.FLIGHT }?.count ?: 0
+            val hasResults = flightCount > 0
 
-        if (hasResults) {
-            if (isTeam && stats is Stats.Team) {
-                TeamStatsContent(
-                    stats = stats,
-                    timerPrecision = timerPrecision,
-                    enabledRecordKinds = enabledRecordKinds,
-                    pilot1Name = pilot1Name,
-                    pilot2Name = pilot2Name,
-                    hasPagerWiggled = hasPagerWiggled,
-                    onPagerWiggleComplete = onPagerWiggleComplete
-                )
-            } else if (stats is Stats.Individual) {
-                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    ScreenTitle("Результаты")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val visibleRecords = stats.records.filter { it.kind in enabledRecordKinds }
-                    if (visibleRecords.isNotEmpty()) {
-                        RecordsInset(visibleRecords.distinctBy { it.count }, timerPrecision)
+            if (hasResults) {
+                if (pilot is Pilot.Team && stats is Stats.Team) {
+                    TeamStatsContent(
+                        stats = stats,
+                        timerPrecision = timerPrecision,
+                        enabledRecordKinds = enabledRecordKinds,
+                        pilot1Name = pilot.displayName1(context),
+                        pilot2Name = pilot.displayName2(context),
+                        hasPagerWiggled = hasPagerWiggled,
+                        onPagerWiggleComplete = onPagerWiggleComplete
+                    )
+                } else if (stats is Stats.Individual) {
+                    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                        ScreenTitle("Результаты")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val visibleRecords = stats.records.filter { it.kind in enabledRecordKinds }
+                        if (visibleRecords.isNotEmpty()) {
+                            RecordsInset(visibleRecords.distinctBy { it.count }, timerPrecision)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        CountersSummary(stats.counters)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
-                    CountersSummary(stats.counters)
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
     }
-}
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -208,9 +205,6 @@ private fun TeamStatsContent(
     hasPagerWiggled: Boolean = false,
     onPagerWiggleComplete: () -> Unit = {}
 ) {
-    val name1 = pilot1Name.takeIf { it.isNotBlank() } ?: "Пилот 1"
-    val name2 = pilot2Name.takeIf { it.isNotBlank() } ?: "Пилот 2"
-
     val pages: List<Pair<String, @Composable () -> Unit>> = listOf(
         "Результаты" to @Composable {
             Column(
@@ -229,13 +223,13 @@ private fun TeamStatsContent(
                 Spacer(modifier = Modifier.height(8.dp))
             }
         },
-        name1 to @Composable {
+        pilot1Name to @Composable {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
             ) {
-                ScreenTitle("Результаты: $name1")
+                ScreenTitle("Результаты: $pilot1Name")
                 Spacer(modifier = Modifier.height(8.dp))
                 val firstRecords = stats.first.records.filter { it.kind in enabledRecordKinds }
                 val firstRecordsBeingHead = stats.first.recordsBeingHead.filter { it.kind in enabledRecordKinds }
@@ -256,13 +250,13 @@ private fun TeamStatsContent(
                 Spacer(modifier = Modifier.height(8.dp))
             }
         },
-        name2 to @Composable {
+        pilot2Name to @Composable {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
             ) {
-                ScreenTitle("Результаты: $name2")
+                ScreenTitle("Результаты: $pilot2Name")
                 Spacer(modifier = Modifier.height(8.dp))
                 val secondRecords = stats.second.records.filter { it.kind in enabledRecordKinds }
                 val secondRecordsBeingHead = stats.second.recordsBeingHead.filter { it.kind in enabledRecordKinds }

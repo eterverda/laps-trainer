@@ -54,6 +54,8 @@ import ru.fpvladder.laps.trainer.model.computeFlightCounters
 import ru.fpvladder.laps.trainer.model.computeFlightRecords
 import ru.fpvladder.laps.trainer.model.computeTeamFlightCounters
 import ru.fpvladder.laps.trainer.model.computeTeamFlightRecords
+import ru.fpvladder.laps.trainer.model.displayName1
+import ru.fpvladder.laps.trainer.model.displayName2
 import ru.fpvladder.laps.trainer.ui.components.LapList
 import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
@@ -83,13 +85,6 @@ fun PostFlightContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val isTeam = pilot is Pilot.Team
-    val (rawName1, rawName2) = when (pilot) {
-        is Pilot.Team -> pilot.name1 to pilot.name2
-        else -> "" to ""
-    }
-    val headPilot = if (pilotOrderSwapped) rawName2 else rawName1
-    val tailPilot = if (pilotOrderSwapped) rawName1 else rawName2
 
     val scrollState = rememberScrollState()
     LaunchedEffect(laps.size) {
@@ -171,11 +166,15 @@ fun PostFlightContent(
                                 .padding(horizontal = 24.dp)
                                 .padding(top = if (laps.isNotEmpty()) 16.dp else 0.dp, bottom = 16.dp)
                         )
-                        if (isTeam) {
+                        if (pilot is Pilot.Team) {
                             val teamRecords = computeTeamFlightRecords(
                                 laps = laps,
                                 pilotSwapIndex = pilotSwapIndex
                             )
+                            val name1 = pilot.displayName1(context)
+                            val name2 = pilot.displayName2(context)
+                            val headPilot = if (pilotOrderSwapped) name2 else name1
+                            val tailPilot = if (pilotOrderSwapped) name1 else name2
                             TeamFlightPostResults(
                                 commonRecords = teamRecords.common.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
                                 headRecords = teamRecords.head.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
@@ -251,7 +250,7 @@ fun PostFlightContent(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    if (isTeam) {
+                    if (pilot is Pilot.Team) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

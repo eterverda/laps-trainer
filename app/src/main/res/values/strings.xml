@@ -32,6 +32,11 @@
         <item quantity="many">минут</item>
     </plurals>
 
+    <string name="individual_pilot">Пилот</string>
+    <string name="team_pilot_1">Первый пилот</string>
+    <string name="team_pilot_2">Второй пилот</string>
+    <string name="team_competition">Командный зачет</string>
+
     <string name="flight_unlimited">Летаем без ограничений</string>
     <string name="flight_time_and_laps">%1$s, %2$s</string>
     <string name="flight_time_only">%1$s</string>

@@ -47,13 +47,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -61,6 +58,9 @@ import androidx.compose.ui.window.DialogProperties
 import ru.fpvladder.laps.trainer.model.ChannelColor
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Training
+import ru.fpvladder.laps.trainer.model.label
+import ru.fpvladder.laps.trainer.model.label1
+import ru.fpvladder.laps.trainer.model.label2
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -334,91 +334,36 @@ private fun PilotNameDisplay(
     fontSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     when (pilot) {
         is Pilot.Individual -> {
-            if (pilot.name.isBlank()) {
+            Text(
+                text = pilot.label(context),
+                fontSize = fontSize,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = modifier
+            )
+        }
+
+        is Pilot.Team -> {
+            Column(modifier = modifier) {
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                            append("Laps")
-                        }
-                        withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
-                            append(".Trainer")
-                        }
-                    },
+                    text = pilot.label1(context),
                     fontSize = fontSize,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = modifier
+                    overflow = TextOverflow.Ellipsis
                 )
-            } else {
                 Text(
-                    text = pilot.name,
+                    text = pilot.label2(context),
                     fontSize = fontSize,
                     fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = modifier
+                    overflow = TextOverflow.Ellipsis
                 )
-            }
-        }
-
-        is Pilot.Team -> {
-            val hasName1 = pilot.name1.isNotBlank()
-            val hasName2 = pilot.name2.isNotBlank()
-            when {
-                !hasName1 && !hasName2 -> {
-                    Text(
-                        text = buildAnnotatedString {
-                            withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                                append("Laps")
-                            }
-                            withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
-                                append(".Trainer")
-                            }
-                        },
-                        fontSize = fontSize,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = modifier
-                    )
-                }
-
-                hasName1 && hasName2 -> {
-                    Column(modifier = modifier) {
-                        Text(
-                            text = pilot.name1,
-                            fontSize = fontSize,
-                            fontWeight = FontWeight.Normal,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = pilot.name2,
-                            fontSize = fontSize,
-                            fontWeight = FontWeight.Normal,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                else -> {
-                    Text(
-                        text = if (hasName1) pilot.name1 else pilot.name2,
-                        fontSize = fontSize,
-                        fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = modifier
-                    )
-                }
             }
         }
     }
@@ -430,6 +375,7 @@ private fun TrainingListItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val channel = when (training) {
         is Training.Individual -> training.pilot.channel
         is Training.Team -> training.pilot.channel
@@ -467,85 +413,32 @@ private fun TrainingListItem(
             ) {
                 when (pilot) {
                     is Pilot.Individual -> {
-                        if (pilot.name.isBlank()) {
+                        Text(
+                            text = pilot.label(context),
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    is Pilot.Team -> {
+                        Column {
                             Text(
-                                text = buildAnnotatedString {
-                                    withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                                        append("Laps")
-                                    }
-                                    withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
-                                        append(".Trainer")
-                                    }
-                                },
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        } else {
-                            Text(
-                                text = pilot.name,
+                                text = pilot.label1(context),
                                 fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                        }
-                    }
-
-                    is Pilot.Team -> {
-                        val n1Blank = pilot.name1.isBlank()
-                        val n2Blank = pilot.name2.isBlank()
-                        when {
-                            n1Blank && n2Blank -> {
-                                Text(
-                                    text = buildAnnotatedString {
-                                        withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                                            append("Laps")
-                                        }
-                                        withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
-                                            append(".Trainer")
-                                        }
-                                    },
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-
-                            n1Blank -> {
-                                Text(
-                                    text = pilot.name2,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            n2Blank -> {
-                                Text(
-                                    text = pilot.name1,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            else -> {
-                                Text(
-                                    text = pilot.name1,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = pilot.name2,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                            Text(
+                                text = pilot.label2(context),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }

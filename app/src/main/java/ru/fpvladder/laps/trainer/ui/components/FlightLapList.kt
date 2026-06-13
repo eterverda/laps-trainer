@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -27,6 +28,8 @@ import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.TimerPrecision
+import ru.fpvladder.laps.trainer.model.displayName1
+import ru.fpvladder.laps.trainer.model.displayName2
 
 @Composable
 internal fun LapList(
@@ -40,14 +43,8 @@ internal fun LapList(
     pilotOrderSwapped: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val isTeam = pilot is Pilot.Team
-    val (rawName1, rawName2) = when (pilot) {
-        is Pilot.Team -> pilot.name1 to pilot.name2
-        is Pilot.Individual -> pilot.name to ""
-        else -> "" to ""
-    }
-    val headPilot = if (pilotOrderSwapped) rawName2 else rawName1
-    val tailPilot = if (pilotOrderSwapped) rawName1 else rawName2
+    val context = LocalContext.current
+
     @Composable
     fun LapRow(
         label: String,
@@ -97,8 +94,11 @@ internal fun LapList(
         modifier = modifier.width(IntrinsicSize.Max),
         horizontalAlignment = Alignment.End
     ) {
-        if (isTeam) {
-            val startingPilot = headPilot
+        if (pilot is Pilot.Team) {
+            val startingPilot = when {
+                pilotOrderSwapped -> pilot.displayName2(context)
+                else -> pilot.displayName1(context)
+            }
             if (startingPilot.isNotBlank()) {
                 Text(
                     text = "Стартует $startingPilot",
@@ -119,18 +119,19 @@ internal fun LapList(
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
             )
-            if (isTeam && pilotSwapIndex != null && index == pilotSwapIndex) {
-                val nextPilot = tailPilot
-                if (nextPilot.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Смена пилота. Стартует $nextPilot",
-                        fontSize = 16.sp,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Start
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+            if (pilot is Pilot.Team && pilotSwapIndex != null && index == pilotSwapIndex) {
+                val nextPilot = when {
+                    pilotOrderSwapped -> pilot.displayName1(context)
+                    else -> pilot.displayName2(context)
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Смена пилота. Стартует $nextPilot",
+                    fontSize = 16.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Start
+                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
         currentVisible?.let { lap ->
@@ -144,18 +145,19 @@ internal fun LapList(
                 maxTimeLen = maxTimeLen
             )
         }
-        if (isTeam && pilotSwapIndex != null && pilotSwapIndex == laps.size) {
-            val nextPilot = tailPilot
-            if (nextPilot.isNotBlank()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Смена пилота. Стартует $nextPilot",
-                    fontSize = 16.sp,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Start
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+        if (pilot is Pilot.Team && pilotSwapIndex != null && pilotSwapIndex == laps.size) {
+            val nextPilot = when {
+                pilotOrderSwapped -> pilot.displayName1(context)
+                else -> pilot.displayName2(context)
             }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Смена пилота. Стартует $nextPilot",
+                fontSize = 16.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Start
+            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

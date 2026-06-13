@@ -38,7 +38,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -374,18 +373,13 @@ fun AppRoot(
                                 )
 
                                 AppScreen.Training -> {
-                                    val isTeam = selectedTraining is Training.Team
                                     StatsScreen(
                                         description = selectedTraining.description(LocalContext.current),
                                         onEditRulesClick = { showRulesEditor = true },
                                         stats = selectedTraining.stats,
                                         enabledRecordKinds = selectedTraining.rules.enabledRecordKinds,
                                         timerPrecision = timerPrecision,
-                                        isTeam = isTeam,
-                                        pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",
-                                        pilot2Name = (selectedTraining as? Training.Team)?.pilot?.name2 ?: "",
-                                        pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped
-                                            ?: false,
+                                        pilot = selectedTraining.pilot,
                                         onSwapPilots = { trainingViewModel.swapPilotOrder() },
                                         hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
                                         onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },

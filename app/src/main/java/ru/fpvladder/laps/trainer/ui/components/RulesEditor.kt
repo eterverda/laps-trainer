@@ -34,11 +34,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.SwapMode
@@ -328,11 +330,11 @@ fun RulesEditorContent(
                         swapMode == SwapMode.TIME && timeVal != Int.MAX_VALUE -> {
                             val half = timeVal / 2.0 / 60
                             val minsStr = if (half == half.toInt().toDouble()) "${half.toInt()}" else String.format("%.1f", half).replace('.', ',')
-                            "Первый пилот летит $minsStr минут, затем летит второй пилот"
+                            "${stringResource(R.string.team_pilot_1)} летит $minsStr минут, затем летит ${stringResource(R.string.team_pilot_2).lowercase()}"
                         }
                         swapMode == SwapMode.LAPS && lapsVal != Int.MAX_VALUE -> {
                             val laps = lapsVal / 2
-                            "Первый пилот летит $laps кругов, затем второй пилот летит $laps кругов"
+                            "${stringResource(R.string.team_pilot_1)} летит $laps кругов, затем ${stringResource(R.string.team_pilot_2).lowercase()} летит $laps кругов"
                         }
                         else -> ""
                     }

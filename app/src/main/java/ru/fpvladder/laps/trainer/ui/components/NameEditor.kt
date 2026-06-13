@@ -24,11 +24,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import ru.fpvladder.laps.trainer.R
 
 @Composable
 fun IndividualNameDialog(
@@ -53,7 +55,7 @@ fun IndividualNameDialog(
                 val focusRequester = remember { FocusRequester() }
 
                 Text(
-                    text = "Пилот",
+                    text = stringResource(R.string.individual_pilot),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -91,7 +93,7 @@ fun IndividualNameDialog(
                     }
                     Button(
                         onClick = { onConfirm(name.trim()) },
-                        enabled = name.isNotBlank()
+                        enabled = true
                     ) {
                         Text("OK")
                     }
@@ -130,7 +132,7 @@ fun TeamNameDialog(
                 val focusRequester = remember { FocusRequester() }
 
                 Text(
-                    text = "Первый пилот",
+                    text = stringResource(R.string.team_pilot_1),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -155,7 +157,7 @@ fun TeamNameDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Второй пилот",
+                    text = stringResource(R.string.team_pilot_2),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -191,7 +193,7 @@ fun TeamNameDialog(
                     }
                     Button(
                         onClick = { onConfirm(n1.trim(), n2.trim()) },
-                        enabled = n1.isNotBlank() && n2.isNotBlank()
+                        enabled = n1.isNotBlank() == n2.isNotBlank()
                     ) {
                         Text("OK")
                     }
