@@ -82,7 +82,7 @@ fun RulesEditorContent(
     modifier: Modifier = Modifier
 ) {
     var selectedTime by rememberSaveable { mutableStateOf(currentRules.timeLimitSeconds) }
-    var selectedLaps by rememberSaveable { mutableStateOf(currentRules.maxLaps) }
+    var selectedLaps by rememberSaveable { mutableStateOf(currentRules.lapsLimit) }
     var holeshot by rememberSaveable {
         mutableStateOf(
             when (currentRules) {
@@ -381,14 +381,14 @@ fun RulesEditorContent(
                 onClick = {
                     val newRules = when (currentRules) {
                         is Rules.Individual -> Rules.Individual(
-                            maxLaps = selectedLaps,
+                            lapsLimit = selectedLaps,
                             timeLimitSeconds = selectedTime,
                             holeshotEnabled = holeshot,
                             enabledRecordKinds = EnumSet.copyOf(enabledKinds)
                         )
 
                         is Rules.Team -> Rules.Team(
-                            maxLaps = selectedLaps,
+                            lapsLimit = selectedLaps,
                             timeLimitSeconds = selectedTime,
                             holeshotEnabled = holeshot && TEAM_HOLESHOT_ENABLED,
                             swapMode = swapMode,

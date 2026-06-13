@@ -30,6 +30,8 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.helpers.displayName1
 import ru.fpvladder.laps.trainer.ui.helpers.displayName2
+import ru.fpvladder.laps.trainer.ui.helpers.label
+import ru.fpvladder.laps.trainer.ui.helpers.runningLabel
 
 @Composable
 internal fun LapList(
@@ -79,13 +81,13 @@ internal fun LapList(
     val currentVisible = currentLap.takeIf { !isPostFlight }
 
     val maxLabelLen = remember(laps, currentVisible) {
-        val candidates = laps.map { if (it.status == Lap.Status.FAIL) "" else it.label } +
-                listOfNotNull(currentVisible?.let { if (it.status == Lap.Status.FAIL) "" else it.label })
+        val candidates = laps.map { it.label } +
+                listOfNotNull(currentVisible?.runningLabel)
         candidates.maxOfOrNull { it.length } ?: 0
     }
 
     val allTimes = remember(laps, currentVisible, currentLapTime, timerPrecision) {
-        laps.map { formatTimeDynamic(it.timeMs, timerPrecision) } +
+        laps.map { formatTimeDynamic(it.durationMs, timerPrecision) } +
                 listOfNotNull(currentVisible?.let { formatTimeDynamic(currentLapTime, timerPrecision) })
     }
     val maxTimeLen = allTimes.maxOfOrNull { it.length } ?: 0
@@ -110,11 +112,10 @@ internal fun LapList(
             }
         }
         laps.forEachIndexed { index, lap ->
-            val isFailed = lap.status == Lap.Status.FAIL
             LapRow(
-                label = if (isFailed) "" else lap.label,
-                time = formatTimeDynamic(lap.timeMs, timerPrecision),
-                isFailed = isFailed,
+                label = lap.label,
+                time = formatTimeDynamic(lap.durationMs, timerPrecision),
+                isFailed = !lap.success,
                 isCurrentFail = false,
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
@@ -135,9 +136,9 @@ internal fun LapList(
             }
         }
         currentVisible?.let { lap ->
-            val isCurrentFail = lap.status == Lap.Status.FAIL
+            val isCurrentFail = !lap.success
             LapRow(
-                label = lap.label,
+                label = lap.runningLabel,
                 time = formatTimeDynamic(currentLapTime, timerPrecision),
                 isFailed = false,
                 isCurrentFail = isCurrentFail,

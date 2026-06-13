@@ -20,6 +20,7 @@ import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimeInterval
 import ru.fpvladder.laps.trainer.model.computeIndividualFlight
 import ru.fpvladder.laps.trainer.model.computeTeamFlight
+import ru.fpvladder.laps.trainer.ui.helpers.label
 import kotlin.random.Random
 
 class FlightViewModel : ViewModel() {
@@ -83,7 +84,7 @@ class FlightViewModel : ViewModel() {
     fun setRules(newRules: Rules) {
         rules = newRules
         if (newRules is Rules.Team) {
-            swapPointLap = if (newRules.swapMode == Rules.Team.SwapMode.LAPS) (newRules.maxLaps / 2).coerceAtLeast(0) else 0
+            swapPointLap = if (newRules.swapMode == Rules.Team.SwapMode.LAPS) (newRules.lapsLimit / 2).coerceAtLeast(0) else 0
             swapPointTimeMs = if (newRules.swapMode == Rules.Team.SwapMode.TIME) (newRules.timeLimitSeconds * 1000L / 2).coerceAtLeast(0L) else 0L
         } else {
             swapPointLap = 0
@@ -164,7 +165,7 @@ class FlightViewModel : ViewModel() {
 
             _isPostFlight.value = true
             _isStopping.value = false
-            val hasSuccessLap = _laps.value.any { it.status == Lap.Status.SUCCESS }
+            val hasSuccessLap = _laps.value.any { it.success && it.number > 0 }
             _shouldSaveResult.value = hasSuccessLap
             _swapPilotsForNextFlight.value = hasSuccessLap && rules is Rules.Team
             if (rules is Rules.Team) {
@@ -183,7 +184,7 @@ class FlightViewModel : ViewModel() {
         val completed = current.copy(interval = TimeInterval(current.startMs, _elapsedMs.value))
         _laps.value = _laps.value + completed
 
-        if (current.status != Lap.Status.FAIL) {
+        if (current.success) {
             nextLapNumber++
         }
         lastLapElapsedMs = _elapsedMs.value
@@ -202,17 +203,16 @@ class FlightViewModel : ViewModel() {
                     _pilotSwapIndex.value = (_laps.value.size - 1).coerceAtLeast(0)
                 }
                 pendingPilotSwap = false
-                val newLabel = if (nextLapNumber == 0) "HS" else "$nextLapNumber)"
                 _currentLap.value = Lap(
-                    label = newLabel,
+                    number = nextLapNumber,
                     interval = TimeInterval(lastLapElapsedMs, lastLapElapsedMs),
-                    status = if (nextLapNumber == 0) Lap.Status.HS else Lap.Status.SUCCESS
+                    success = true,
                 )
                 return
             }
         }
 
-        if (current.status == Lap.Status.SUCCESS && nextLapNumber - 1 >= rules.maxLaps) {
+        if (current.success && current.number > 0 && nextLapNumber - 1 >= rules.lapsLimit) {
             performStop(
                 skipBuzzer = false,
                 isMuted = raceIsMuted,
@@ -222,26 +222,24 @@ class FlightViewModel : ViewModel() {
             return
         }
 
-        val newLabel = if (nextLapNumber == 0) "HS" else "$nextLapNumber)"
         _currentLap.value = Lap(
-            label = newLabel,
+            number = nextLapNumber,
             interval = TimeInterval(lastLapElapsedMs, lastLapElapsedMs),
-            status = if (nextLapNumber == 0) Lap.Status.HS else Lap.Status.SUCCESS
+            success = true,
         )
-        Log.d("FlightVM", "addLap finished: newLabel=$newLabel, pilotSwapIndex=${_pilotSwapIndex.value}")
+        Log.d("FlightVM", "addLap finished: number=${_currentLap.value?.number}, pilotSwapIndex=${_pilotSwapIndex.value}")
     }
 
     fun addErrorToLastLap() {
         val current = _currentLap.value ?: return
-        if (current.status == Lap.Status.FAIL) return
-        _currentLap.value = current.copy(status = Lap.Status.FAIL)
+        if (!current.success) return
+        _currentLap.value = current.copy(success = false)
     }
 
     fun addFixToLastLap() {
         val current = _currentLap.value ?: return
-        if (current.status != Lap.Status.FAIL) return
-        val restoredStatus = if (current.label == "HS") Lap.Status.HS else Lap.Status.SUCCESS
-        _currentLap.value = current.copy(status = restoredStatus)
+        if (current.success) return
+        _currentLap.value = current.copy(success = true)
     }
 
     fun setShouldSaveResult(value: Boolean) {
@@ -293,9 +291,9 @@ class FlightViewModel : ViewModel() {
         nextLapNumber = if (rules.holeshotEnabled) 0 else 1
         _laps.value = emptyList()
         _currentLap.value = Lap(
-            label = if (rules.holeshotEnabled) "HS" else "1)",
+            number = if (rules.holeshotEnabled) 0 else 1,
             interval = TimeInterval(lastLapElapsedMs, lastLapElapsedMs),
-            status = if (rules.holeshotEnabled) Lap.Status.HS else Lap.Status.SUCCESS
+            success = true,
         )
         val startTime = SystemClock.elapsedRealtime()
         val limitMs = rules.timeLimitSeconds * 1000L

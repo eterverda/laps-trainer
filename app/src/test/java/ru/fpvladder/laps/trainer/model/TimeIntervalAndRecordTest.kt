@@ -16,13 +16,13 @@ class TimeIntervalAndRecordTest {
     @Test
     fun `Lap exposes derived start end and time`() {
         val lap = Lap(
-            label = "1)",
+            number = 1,
             interval = TimeInterval(startMs = 1000L, endMs = 12450L),
-            status = Lap.Status.SUCCESS
+            success = true
         )
         assertEquals(1000L, lap.startMs)
         assertEquals(12450L, lap.endMs)
-        assertEquals(11450L, lap.timeMs)
+        assertEquals(11450L, lap.durationMs)
     }
 
     @Test
@@ -79,9 +79,9 @@ class TimeIntervalAndRecordTest {
     @Test
     fun `computeIndividualFlight builds records from intervals`() {
         val laps = listOf(
-            Lap("1)", TimeInterval(0L, 12340L)),
-            Lap("2)", TimeInterval(12340L, 24680L)),
-            Lap("3)", TimeInterval(24680L, 37030L))
+            Lap(1, TimeInterval(0L, 12340L), success = true),
+            Lap(2, TimeInterval(12340L, 24680L), success = true),
+            Lap(3, TimeInterval(24680L, 37030L), success = true)
         )
         val result = computeIndividualFlight(laps, StopReason.MANUAL).result
         val records = result.records
@@ -102,16 +102,16 @@ class TimeIntervalAndRecordTest {
     }
 
     @Test
-    fun `MOST includes completed laps not only successful`() {
+    fun `MOST intervals include failed laps but count only successful ones`() {
         val laps = listOf(
-            Lap("HS", TimeInterval(0L, 0L), Lap.Status.HS),
-            Lap("1)", TimeInterval(0L, 12000L), Lap.Status.SUCCESS),
-            Lap("2)", TimeInterval(12000L, 25000L), Lap.Status.FAIL),
-            Lap("3)", TimeInterval(25000L, 37000L), Lap.Status.SUCCESS)
+            Lap(0, TimeInterval(0L, 0L), success = true),
+            Lap(1, TimeInterval(0L, 12000L), success = true),
+            Lap(2, TimeInterval(12000L, 25000L), success = false),
+            Lap(3, TimeInterval(25000L, 37000L), success = true)
         )
         val records = computeIndividualFlight(laps, StopReason.MANUAL).result.records
         val most = records.single { it.kind == Record.Kind.MOST }
-        assertEquals(3, most.count)
+        assertEquals(2, most.count)
         assertEquals(listOf(12000L, 13000L, 12000L), most.intervals.map { it.durationMs })
     }
 

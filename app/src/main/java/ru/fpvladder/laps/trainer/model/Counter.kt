@@ -1,10 +1,17 @@
 package ru.fpvladder.laps.trainer.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import ru.fpvladder.laps.trainer.model.serialization.CounterSerializer
+
+@Serializable(CounterSerializer::class)
 sealed class Counter {
     abstract val count: Int
     abstract val kind: Builtin.Kind?
     abstract fun withAddedCount(other: Counter): Counter
 
+    @Serializable
+    @SerialName("builtin")
     data class Builtin(
         override val count: Int = 1,
         override val kind: Kind
@@ -14,9 +21,12 @@ sealed class Counter {
             return copy(count = count + other.count)
         }
 
+        @Serializable
         enum class Kind { FLIGHT, LAP }
     }
 
+    @Serializable
+    @SerialName("custom")
     data class Custom(
         override val count: Int = 1,
         val text: String

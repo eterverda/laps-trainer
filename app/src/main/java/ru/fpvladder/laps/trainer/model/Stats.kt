@@ -1,12 +1,20 @@
 package ru.fpvladder.laps.trainer.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 sealed class Stats {
     abstract val result: Results
 
+    @Serializable
+    @SerialName("individual")
     data class Individual(
         override val result: Results = Results()
     ) : Stats()
 
+    @Serializable
+    @SerialName("team")
     data class Team(
         val common: Results = Results(),
         val first: Member = Member(),
@@ -15,6 +23,8 @@ sealed class Stats {
         override val result: Results
             get() = common
 
+        @Serializable
+        @SerialName("member")
         data class Member(
             val total: Results = Results(),
             val head: Results = Results(),

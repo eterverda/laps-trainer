@@ -23,12 +23,12 @@ private fun formatIndividualAnnotated(context: Context, training: Training.Indiv
 private fun formatIndividualFirst(context: Context, training: Training.Individual): String {
     val rules = training.rules
     val hasTime = rules.timeLimitSeconds != Int.MAX_VALUE
-    val hasLaps = rules.maxLaps != Int.MAX_VALUE
+    val hasLaps = rules.lapsLimit != Int.MAX_VALUE
 
     return when {
         hasTime && hasLaps -> {
             val mins = formatMinutesString(context, rules.timeLimitSeconds / 60.0)
-            val lapsUpTo = context.resources.getQuantityString(R.plurals.laps_up_to, rules.maxLaps, rules.maxLaps)
+            val lapsUpTo = context.resources.getQuantityString(R.plurals.laps_up_to, rules.lapsLimit, rules.lapsLimit)
             "Летаем $mins и $lapsUpTo"
         }
         hasTime -> {
@@ -36,7 +36,7 @@ private fun formatIndividualFirst(context: Context, training: Training.Individua
             context.getString(R.string.flight_time_only, timePart)
         }
         hasLaps -> {
-            val lapsStr = context.resources.getQuantityString(R.plurals.laps, rules.maxLaps, rules.maxLaps)
+            val lapsStr = context.resources.getQuantityString(R.plurals.laps, rules.lapsLimit, rules.lapsLimit)
             "Летаем $lapsStr"
         }
         else -> context.getString(R.string.flight_unlimited)
@@ -72,8 +72,8 @@ private fun formatBase(context: Context, rules: Rules): String {
         formatTimePart(context, rules.timeLimitSeconds)
     } else null
 
-    val lapsPart = if (rules.maxLaps != Int.MAX_VALUE) {
-        context.resources.getQuantityString(R.plurals.laps, rules.maxLaps, rules.maxLaps)
+    val lapsPart = if (rules.lapsLimit != Int.MAX_VALUE) {
+        context.resources.getQuantityString(R.plurals.laps, rules.lapsLimit, rules.lapsLimit)
     } else null
 
     return when {
@@ -122,9 +122,9 @@ fun pluralMinutes(context: Context, minutes: Double): String {
 private fun formatTeamPart(context: Context, training: Training.Team): String {
     val rules = training.rules
     val hasTime = rules.timeLimitSeconds != Int.MAX_VALUE
-    val hasLaps = rules.maxLaps != Int.MAX_VALUE
+    val hasLaps = rules.lapsLimit != Int.MAX_VALUE
     val halfTimeMins = if (hasTime) formatHalfMinutes(context, rules.timeLimitSeconds) else null
-    val halfLaps = if (hasLaps) rules.maxLaps / 2 else null
+    val halfLaps = if (hasLaps) rules.lapsLimit / 2 else null
     val rawP1 = training.pilot.name1.takeIf { it.isNotBlank() } ?: "Первый пилот"
     val rawP2 = training.pilot.name2.takeIf { it.isNotBlank() } ?: "Второй пилот"
     val p1 = if (rules.pilotOrderSwapped) rawP2 else rawP1
@@ -134,7 +134,7 @@ private fun formatTeamPart(context: Context, training: Training.Team): String {
         rules.swapMode == Rules.Team.SwapMode.TIME && halfTimeMins != null -> {
             val text = context.getString(R.string.team_swap_time, p1, halfTimeMins, p2)
             if (hasLaps) {
-                val lapsStr = context.resources.getQuantityString(R.plurals.laps, rules.maxLaps, rules.maxLaps)
+                val lapsStr = context.resources.getQuantityString(R.plurals.laps, rules.lapsLimit, rules.lapsLimit)
                 context.getString(R.string.team_swap_time_with_laps, p1, halfTimeMins, p2, lapsStr)
             } else text
         }

@@ -332,7 +332,7 @@ fun AppRoot(
                                     preStartCountdownMs = preStartCountdownMs,
                                     isPreBlinking = isPreBlinking,
                                     timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
-                                    maxLaps = selectedTraining.rules.maxLaps,
+                                    maxLaps = selectedTraining.rules.lapsLimit,
                                     stopReason = stopReason,
                                     enabledRecordKinds = selectedTraining.rules.enabledRecordKinds,
                                     holeshotEnabled = selectedTraining.rules.holeshotEnabled,

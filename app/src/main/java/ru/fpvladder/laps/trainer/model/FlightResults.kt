@@ -17,8 +17,8 @@ fun computeIndividualFlight(
 private fun computeFlightRecords(
     laps: List<Lap>
 ): List<Record> {
-    val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
-    val completedLaps = laps.filter { it.status != Lap.Status.HS }
+    val validLaps = laps.filter { it.success && it.number > 0 }
+    val completedLaps = laps.filter { it.number > 0 }
 
     if (validLaps.isEmpty() && completedLaps.isEmpty()) {
         return emptyList()
@@ -27,7 +27,7 @@ private fun computeFlightRecords(
     val records = mutableListOf<Record>()
 
     if (validLaps.isNotEmpty()) {
-        val best1 = validLaps.minByOrNull { it.timeMs }!!
+        val best1 = validLaps.minByOrNull { it.durationMs }!!
         records.add(
             Record(
                 count = 1,
@@ -64,7 +64,7 @@ private fun computeFlightRecords(
     if (completedLaps.isNotEmpty()) {
         records.add(
             Record(
-                count = completedLaps.size,
+                count = validLaps.size,
                 kind = Record.Kind.MOST,
                 intervals = completedLaps.map { it.interval }
             )
@@ -75,7 +75,7 @@ private fun computeFlightRecords(
 }
 
 private fun computeFlightCounters(laps: List<Lap>): List<Counter> {
-    val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
+    val validLaps = laps.filter { it.success && it.number > 0 }
     return listOf(
         Counter.Builtin(
             count = validLaps.size,
@@ -89,17 +89,17 @@ fun computeTeamFlight(
     stopReason: StopReason,
     pilotSwapIndex: Int?
 ): Flight.Team {
-    val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
-    val completedLaps = laps.filter { it.status != Lap.Status.HS }
+    val validLaps = laps.filter { it.success && it.number > 0 }
+    val completedLaps = laps.filter { it.number > 0 }
 
     val headPilotRaw = if (pilotSwapIndex != null) laps.take(pilotSwapIndex + 1) else laps
     val tailPilotRaw = if (pilotSwapIndex != null) laps.drop(pilotSwapIndex + 1) else emptyList()
 
-    val headPilotSuccessLaps = headPilotRaw.filter { it.status == Lap.Status.SUCCESS }
-    val tailPilotSuccessLaps = tailPilotRaw.filter { it.status == Lap.Status.SUCCESS }
+    val headPilotSuccessLaps = headPilotRaw.filter { it.success && it.number > 0 }
+    val tailPilotSuccessLaps = tailPilotRaw.filter { it.success && it.number > 0 }
 
-    val headPilotCompletedLaps = headPilotRaw.filter { it.status != Lap.Status.HS }
-    val tailPilotCompletedLaps = tailPilotRaw.filter { it.status != Lap.Status.HS }
+    val headPilotCompletedLaps = headPilotRaw.filter { it.number > 0 }
+    val tailPilotCompletedLaps = tailPilotRaw.filter { it.number > 0 }
 
     val commonRecords = mutableListOf<Record>()
     val headRecords = mutableListOf<Record>()
@@ -133,7 +133,7 @@ fun computeTeamFlight(
         )
     }
     if (headPilotSuccessLaps.isNotEmpty()) {
-        headPilotSuccessLaps.minByOrNull { it.timeMs }?.let {
+        headPilotSuccessLaps.minByOrNull { it.durationMs }?.let {
             headRecords.add(
                 Record(
                     count = 1,
@@ -144,7 +144,7 @@ fun computeTeamFlight(
         }
     }
     if (tailPilotSuccessLaps.isNotEmpty()) {
-        tailPilotSuccessLaps.minByOrNull { it.timeMs }?.let {
+        tailPilotSuccessLaps.minByOrNull { it.durationMs }?.let {
             tailRecords.add(
                 Record(
                     count = 1,
@@ -205,7 +205,7 @@ private fun minWindowLaps(
     for (i in 0..laps.size - size) {
         var sum = 0L
         for (j in 0 until size) {
-            sum += laps[i + j].timeMs
+            sum += laps[i + j].durationMs
         }
         if (sum < minSum) {
             minSum = sum

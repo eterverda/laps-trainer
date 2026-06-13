@@ -1,17 +1,14 @@
 package ru.fpvladder.laps.trainer.model
 
-data class Lap(
-    val label: String,
-    val interval: TimeInterval,
-    val status: Status = Status.SUCCESS
-) {
-    enum class Status {
-        HS,
-        FAIL,
-        SUCCESS
-    }
+import kotlinx.serialization.Serializable
 
+@Serializable
+data class Lap(
+    val number: Int,
+    val interval: TimeInterval,
+    val success: Boolean,
+) {
     val startMs: Long get() = interval.startMs
     val endMs: Long get() = interval.endMs
-    val timeMs: Long get() = interval.durationMs
+    val durationMs: Long get() = interval.durationMs
 }
