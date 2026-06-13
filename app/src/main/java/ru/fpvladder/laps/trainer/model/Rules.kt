@@ -11,7 +11,7 @@ sealed class Rules {
     abstract val lapsLimit: Int
     abstract val timeLimitSeconds: Int
     abstract val holeshotEnabled: Boolean
-    abstract val enabledRecordKinds: Set<Record.Kind>
+    abstract val showRecordKinds: Set<Record.Kind>
 
     @Serializable
     @SerialName("individual")
@@ -21,7 +21,7 @@ sealed class Rules {
         @Serializable(MinMaxIntSerializer::class)
         override val timeLimitSeconds: Int = 180,
         override val holeshotEnabled: Boolean = true,
-        override val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
+        override val showRecordKinds: Set<Record.Kind> = EnumSet.of(
             Record.Kind.BEST_1,
             Record.Kind.BEST_3
         ).apply { if (timeLimitSeconds != Int.MAX_VALUE) add(Record.Kind.MOST) }
@@ -35,16 +35,27 @@ sealed class Rules {
         @Serializable(MinMaxIntSerializer::class)
         override val timeLimitSeconds: Int = 1800,
         override val holeshotEnabled: Boolean = TEAM_HOLESHOT_ENABLED,
-        val swapMode: SwapMode = SwapMode.LAPS,
-        val pilotOrderSwapped: Boolean = false,
-        override val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
+        val changeMode: ChangeMode = ChangeMode.LAPS,
+        val swapMode: SwapMode = SwapMode.STRAIGHT,
+        override val showRecordKinds: Set<Record.Kind> = EnumSet.of(
             Record.Kind.BEST_1, Record.Kind.MOST,
         )
     ) : Rules() {
         @Serializable
-        enum class SwapMode {
+        enum class ChangeMode {
             TIME,
             LAPS
+        }
+
+        @Serializable
+        enum class SwapMode {
+            STRAIGHT,
+            SWAPPED;
+
+            fun rotate(): SwapMode = when (this) {
+                STRAIGHT -> SWAPPED
+                SWAPPED -> STRAIGHT
+            }
         }
     }
 }

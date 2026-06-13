@@ -9,6 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.Rules
 
 fun Pilot.Team.displayName1(context: Context): String {
     return when {
@@ -21,6 +22,20 @@ fun Pilot.Team.displayName2(context: Context): String {
     return when {
         name2.isNotBlank() -> name2
         else -> context.getString(R.string.team_pilot_2)
+    }
+}
+
+fun Pilot.Team.displayNameHead(swapMode: Rules.Team.SwapMode, context: Context): String {
+    return when (swapMode) {
+        Rules.Team.SwapMode.SWAPPED -> displayName2(context)
+        Rules.Team.SwapMode.STRAIGHT -> displayName1(context)
+    }
+}
+
+fun Pilot.Team.displayNameTail(swapMode: Rules.Team.SwapMode, context: Context): String {
+    return when (swapMode) {
+        Rules.Team.SwapMode.SWAPPED -> displayName1(context)
+        Rules.Team.SwapMode.STRAIGHT -> displayName2(context)
     }
 }
 

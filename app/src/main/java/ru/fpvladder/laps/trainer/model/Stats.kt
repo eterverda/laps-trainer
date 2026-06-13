@@ -1,30 +1,20 @@
 package ru.fpvladder.laps.trainer.model
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
-@Serializable
 sealed class Stats {
-    abstract val result: Results
+    abstract val results: Results
 
-    @Serializable
-    @SerialName("individual")
     data class Individual(
-        override val result: Results = Results()
+        override val results: Results = Results()
     ) : Stats()
 
-    @Serializable
-    @SerialName("team")
     data class Team(
         val common: Results = Results(),
         val first: Member = Member(),
         val second: Member = Member()
     ) : Stats() {
-        override val result: Results
+        override val results: Results
             get() = common
 
-        @Serializable
-        @SerialName("member")
         data class Member(
             val total: Results = Results(),
             val head: Results = Results(),
@@ -33,87 +23,109 @@ sealed class Stats {
     }
 }
 
-fun Stats.Team.mergeTeamFlight(
-    common: Results,
-    head: Results,
-    tail: Results,
-    pilotOrderSwapped: Boolean
+fun computeTrainingStats(training: Training): Stats = when (training) {
+    is Training.Individual -> computeIndividualStats(training.flights)
+    is Training.Team -> computeTeamStats(training.flights)
+}
+
+private fun computeIndividualStats(flights: List<Flight.Individual>): Stats.Individual {
+    if (flights.isEmpty()) return Stats.Individual(Results())
+
+    val records = flights
+        .map { it.results.records }
+        .reduce { acc, list -> mergeRecordLists(acc, list) }
+
+    val counters = flights
+        .map { flight -> flight.results.counters + Counter.SINGLE_FLIGHT }
+        .reduce { acc, list -> mergeCounterLists(acc, list) }
+
+    return Stats.Individual(Results(records, counters))
+}
+
+private fun computeTeamStats(
+    flights: List<Flight.Team>
 ): Stats.Team {
-    val mergedCommonRecords = mergeRecordLists(this.common.records, common.records)
-    val mergedCommonCounters = mergeCounterLists(
-        this.common.counters,
-        common.counters + Counter.SINGLE_FLIGHT
-    )
-
-    val (headBest1, headMost) = head.records.partition { it.kind == Record.Kind.BEST_1 }
-    val (tailBest1, tailMost) = tail.records.partition { it.kind == Record.Kind.BEST_1 }
-
-    fun List<Counter>.withFlightIfMissing(): List<Counter> {
-        if (isEmpty()) return this
-        val hasFlight = any { it.kind == Counter.Builtin.Kind.FLIGHT }
-        return if (hasFlight) this else this + Counter.SINGLE_FLIGHT
-    }
-
-    fun mergeMember(
-        existing: Stats.Team.Member,
-        commonRecords: List<Record>,
-        headRecords: List<Record>,
-        tailRecords: List<Record>,
-        counters: List<Counter>
-    ) = existing.copy(
-        total = Results(
-            records = mergeRecordLists(existing.total.records, commonRecords),
-            counters = mergeCounterLists(
-                existing.total.counters,
-                counters.withFlightIfMissing()
-            )
-        ),
-        head = Results(
-            records = mergeRecordLists(existing.head.records, headRecords)
-        ),
-        tail = Results(
-            records = mergeRecordLists(existing.tail.records, tailRecords)
+    if (flights.isEmpty()) {
+        return Stats.Team(
+            common = Results(),
+            first = Stats.Team.Member(Results(), Results(), Results()),
+            second = Stats.Team.Member(Results(), Results(), Results())
         )
-    )
-
-    val (firstMember, secondMember) = if (pilotOrderSwapped) {
-        // name2 flew head, name1 flew tail.
-        mergeMember(this.first, tailBest1, emptyList(), tailMost, tail.counters) to
-        mergeMember(this.second, headBest1, headMost, emptyList(), head.counters)
-    } else {
-        // name1 flew head, name2 flew tail.
-        mergeMember(this.first, headBest1, headMost, emptyList(), head.counters) to
-        mergeMember(this.second, tailBest1, emptyList(), tailMost, tail.counters)
     }
 
-    return copy(
-        common = Results(
-            records = mergedCommonRecords,
-            counters = mergedCommonCounters
+    val commonRecords = flights
+        .map { it.results.records }
+        .reduce { acc, list -> mergeRecordLists(acc, list) }
+    val commonCounters = flights
+        .map { flight -> flight.results.counters + Counter.SINGLE_FLIGHT }
+        .reduce { acc, list -> mergeCounterLists(acc, list) }
+
+    data class Accumulator(
+        val totalRecords: List<Record> = emptyList(),
+        val headRecords: List<Record> = emptyList(),
+        val tailRecords: List<Record> = emptyList(),
+        val totalCounters: List<Counter> = emptyList()
+    )
+
+    fun mergeAccumulator(acc: Accumulator, records: Results, head: Results, tail: Results): Accumulator {
+        val (best1, most) = records.records.partition { it.kind == Record.Kind.BEST_1 }
+        return Accumulator(
+            totalRecords = mergeRecordLists(acc.totalRecords, best1),
+            headRecords = mergeRecordLists(acc.headRecords, most),
+            tailRecords = acc.tailRecords,
+            totalCounters = mergeCounterLists(
+                acc.totalCounters,
+                records.counters.withFlightIfMissing()
+            )
+        )
+    }
+
+    fun mergeAccumulatorSwapped(acc: Accumulator, records: Results, head: Results, tail: Results): Accumulator {
+        val (best1, most) = records.records.partition { it.kind == Record.Kind.BEST_1 }
+        return Accumulator(
+            totalRecords = mergeRecordLists(acc.totalRecords, best1),
+            headRecords = acc.headRecords,
+            tailRecords = mergeRecordLists(acc.tailRecords, most),
+            totalCounters = mergeCounterLists(
+                acc.totalCounters,
+                records.counters.withFlightIfMissing()
+            )
+        )
+    }
+
+    val first = flights.fold(Accumulator()) { acc, flight ->
+        if (flight.swapMode == Rules.Team.SwapMode.SWAPPED) {
+            mergeAccumulatorSwapped(acc, flight.tailResults, flight.headResults, flight.tailResults)
+        } else {
+            mergeAccumulator(acc, flight.headResults, flight.headResults, flight.tailResults)
+        }
+    }
+
+    val second = flights.fold(Accumulator()) { acc, flight ->
+        if (flight.swapMode == Rules.Team.SwapMode.SWAPPED) {
+            mergeAccumulator(acc, flight.headResults, flight.headResults, flight.tailResults)
+        } else {
+            mergeAccumulatorSwapped(acc, flight.tailResults, flight.headResults, flight.tailResults)
+        }
+    }
+
+    return Stats.Team(
+        common = Results(commonRecords, commonCounters),
+        first = Stats.Team.Member(
+            total = Results(first.totalRecords, first.totalCounters),
+            head = Results(first.headRecords),
+            tail = Results(first.tailRecords)
         ),
-        first = firstMember,
-        second = secondMember
+        second = Stats.Team.Member(
+            total = Results(second.totalRecords, second.totalCounters),
+            head = Results(second.headRecords),
+            tail = Results(second.tailRecords)
+        )
     )
 }
 
-fun Stats.Individual.mergeFlightRecords(
-    flightResult: Results
-): Stats.Individual {
-    val newRecords = mergeRecordLists(emptyList(), flightResult.records)
-
-    val mergedCounters = buildList {
-        addAll(result.counters)
-        for (it in flightResult.counters) {
-            mergeIn(it)
-        }
-        mergeIn(Counter.SINGLE_FLIGHT)
-        sortWith(Counter.SortComparator)
-    }
-
-    return copy(
-        result = Results(
-            records = newRecords,
-            counters = mergedCounters
-        )
-    )
+private fun List<Counter>.withFlightIfMissing(): List<Counter> {
+    if (isEmpty()) return this
+    val hasFlight = any { it.kind == Counter.Builtin.Kind.FLIGHT }
+    return if (hasFlight) this else this + Counter.SINGLE_FLIGHT
 }

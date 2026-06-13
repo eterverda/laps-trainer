@@ -9,7 +9,6 @@ import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
-import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.Training
 
 class TrainingViewModel(application: Application) : AndroidViewModel(application) {
@@ -60,14 +59,6 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         updateTrainingInList(updatedTraining)
     }
 
-    fun updateTrainingStats(training: Training, stats: Stats) {
-        val updatedTraining = when (training) {
-            is Training.Individual -> training.copy(stats = stats as Stats.Individual)
-            is Training.Team -> training.copy(stats = stats as Stats.Team)
-        }
-        updateTrainingInList(updatedTraining)
-    }
-
     fun addFlight(training: Training, flight: Flight) {
         val current = _trainings.value.find { it.id == training.id } ?: training
         val updatedTraining = when (current) {
@@ -112,11 +103,11 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         updateTrainingInList(updatedTraining)
     }
 
-    fun swapPilotOrder() {
+    fun rotatePilotOrder() {
         val training = _selectedTraining.value
         if (training is Training.Team) {
             val updated = training.copy(
-                rules = training.rules.copy(pilotOrderSwapped = !training.rules.pilotOrderSwapped)
+                rules = training.rules.copy(swapMode = training.rules.swapMode.rotate())
             )
             updateTrainingInList(updated)
         }

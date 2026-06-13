@@ -125,25 +125,23 @@ private fun formatTeamPart(context: Context, training: Training.Team): String {
     val hasLaps = rules.lapsLimit != Int.MAX_VALUE
     val halfTimeMins = if (hasTime) formatHalfMinutes(context, rules.timeLimitSeconds) else null
     val halfLaps = if (hasLaps) rules.lapsLimit / 2 else null
-    val rawP1 = training.pilot.name1.takeIf { it.isNotBlank() } ?: "Первый пилот"
-    val rawP2 = training.pilot.name2.takeIf { it.isNotBlank() } ?: "Второй пилот"
-    val p1 = if (rules.pilotOrderSwapped) rawP2 else rawP1
-    val p2 = if (rules.pilotOrderSwapped) rawP1 else rawP2
+    val headPilot = training.pilot.displayNameHead(rules.swapMode, context)
+    val tailPilot = training.pilot.displayNameTail(rules.swapMode, context)
 
     val base = when {
-        rules.swapMode == Rules.Team.SwapMode.TIME && halfTimeMins != null -> {
-            val text = context.getString(R.string.team_swap_time, p1, halfTimeMins, p2)
+        rules.changeMode == Rules.Team.ChangeMode.TIME && halfTimeMins != null -> {
+            val text = context.getString(R.string.team_change_time, headPilot, halfTimeMins, tailPilot)
             if (hasLaps) {
                 val lapsStr = context.resources.getQuantityString(R.plurals.laps, rules.lapsLimit, rules.lapsLimit)
-                context.getString(R.string.team_swap_time_with_laps, p1, halfTimeMins, p2, lapsStr)
+                context.getString(R.string.team_change_time_with_laps, headPilot, halfTimeMins, tailPilot, lapsStr)
             } else text
         }
-        rules.swapMode == Rules.Team.SwapMode.LAPS && halfLaps != null -> {
+        rules.changeMode == Rules.Team.ChangeMode.LAPS && halfLaps != null -> {
             val halfLapsStr = context.resources.getQuantityString(R.plurals.laps, halfLaps, halfLaps)
-            val text = context.getString(R.string.team_swap_laps, p1, halfLapsStr, p2, halfLapsStr)
+            val text = context.getString(R.string.team_change_laps, headPilot, halfLapsStr, tailPilot, halfLapsStr)
             if (hasTime) {
                 val maxMins = formatMinutesString(context, rules.timeLimitSeconds / 60.0)
-                context.getString(R.string.team_swap_laps_with_time, p1, halfLapsStr, p2, halfLapsStr, maxMins)
+                context.getString(R.string.team_change_laps_with_time, headPilot, halfLapsStr, tailPilot, halfLapsStr, maxMins)
             } else text
         }
         else -> formatBase(context, rules)

@@ -47,14 +47,14 @@ import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Record
-import ru.fpvladder.laps.trainer.model.Results
 import ru.fpvladder.laps.trainer.model.Flight
+import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.model.computeIndividualFlight
 import ru.fpvladder.laps.trainer.model.computeTeamFlight
-import ru.fpvladder.laps.trainer.ui.helpers.displayName1
-import ru.fpvladder.laps.trainer.ui.helpers.displayName2
+import ru.fpvladder.laps.trainer.ui.helpers.displayNameHead
+import ru.fpvladder.laps.trainer.ui.helpers.displayNameTail
 import ru.fpvladder.laps.trainer.ui.components.LapList
 import ru.fpvladder.laps.trainer.ui.components.MeasuredHorizontalPager
 import ru.fpvladder.laps.trainer.ui.components.ScreenTitle
@@ -70,15 +70,15 @@ fun PostFlightContent(
     timeLimitSeconds: Int,
     maxLaps: Int,
     stopReason: StopReason?,
-    enabledRecordKinds: Set<Record.Kind>,
+    showRecordKinds: Set<Record.Kind>,
     pilot: Pilot?,
-    pilotSwapIndex: Int?,
+    pilotChangeIndex: Int?,
     teamFlight: Flight.Team? = null,
-    pilotOrderSwapped: Boolean,
+    swapMode: Rules.Team.SwapMode,
     shouldSaveResult: Boolean,
     onShouldSaveResultChange: (Boolean) -> Unit,
-    swapPilotsForNextFlight: Boolean,
-    onSwapPilotsForNextFlightChange: (Boolean) -> Unit,
+    rotatePilotsForNextFlight: Boolean,
+    onRotatePilotsForNextFlightChange: (Boolean) -> Unit,
     onBackClick: () -> Unit,
     hasPagerWiggled: Boolean,
     onPagerWiggleComplete: () -> Unit,
@@ -128,8 +128,8 @@ fun PostFlightContent(
                             timerPrecision = timerPrecision,
                             isPostFlight = true,
                             pilot = pilot,
-                            pilotSwapIndex = pilotSwapIndex,
-                            pilotOrderSwapped = pilotOrderSwapped,
+                            pilotChangeIndex = pilotChangeIndex,
+                            swapMode = swapMode,
                             modifier = Modifier.padding(horizontal = 24.dp)
                         )
                         val completedText = when (stopReason) {
@@ -148,7 +148,7 @@ fun PostFlightContent(
                                     )
                                 }
                             }
-                            StopReason.MAX_LAPS -> {
+                            StopReason.LAPS_LIMIT -> {
                                 val lapsStr = context.resources.getQuantityString(
                                     R.plurals.laps,
                                     maxLaps,
@@ -168,18 +168,21 @@ fun PostFlightContent(
                         )
                         if (pilot is Pilot.Team) {
                             val teamResults = teamFlight
-                                ?: computeTeamFlight(laps, stopReason ?: StopReason.MANUAL, pilotSwapIndex)
-                            val name1 = pilot.displayName1(context)
-                            val name2 = pilot.displayName2(context)
-                            val headPilot = if (pilotOrderSwapped) name2 else name1
-                            val tailPilot = if (pilotOrderSwapped) name1 else name2
+                                ?: computeTeamFlight(
+                                    laps,
+                                    stopReason ?: StopReason.MANUAL,
+                                    pilotChangeIndex,
+                                    swapMode
+                                )
+                            val headPilot = pilot.displayNameHead(swapMode, context)
+                            val tailPilot = pilot.displayNameTail(swapMode, context)
                             TeamFlightPostResults(
-                                commonRecords = teamResults.common.records.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
-                                headRecords = teamResults.head.records.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
-                                tailRecords = teamResults.tail.records.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
-                                commonCounters = teamResults.common.counters,
-                                headCounters = teamResults.head.counters,
-                                tailCounters = teamResults.tail.counters,
+                                commonRecords = teamResults.results.records.filter { it.kind in showRecordKinds }.distinctBy { it.count },
+                                headRecords = teamResults.headResults.records.filter { it.kind in showRecordKinds }.distinctBy { it.count },
+                                tailRecords = teamResults.tailResults.records.filter { it.kind in showRecordKinds }.distinctBy { it.count },
+                                commonCounters = teamResults.results.counters,
+                                headCounters = teamResults.headResults.counters,
+                                tailCounters = teamResults.tailResults.counters,
                                 headPilotName = headPilot,
                                 tailPilotName = tailPilot,
                                 timerPrecision = timerPrecision,
@@ -190,8 +193,8 @@ fun PostFlightContent(
                             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                                 ScreenTitle("Результаты")
                                 Spacer(modifier = Modifier.height(8.dp))
-                                val result = computeIndividualFlight(laps, stopReason ?: StopReason.MANUAL).result
-                                val flightRecords = result.records.filter { it.kind in enabledRecordKinds }
+                                val result = computeIndividualFlight(laps, stopReason ?: StopReason.MANUAL).results
+                                val flightRecords = result.records.filter { it.kind in showRecordKinds }
                                 RecordsInset(
                                     records = flightRecords.distinctBy { it.count },
                                     timerPrecision = timerPrecision
@@ -248,8 +251,8 @@ fun PostFlightContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .toggleable(
-                                    value = swapPilotsForNextFlight,
-                                    onValueChange = onSwapPilotsForNextFlightChange,
+                                    value = rotatePilotsForNextFlight,
+                                    onValueChange = onRotatePilotsForNextFlightChange,
                                     role = Role.Checkbox
                                 )
                                 .padding(vertical = 10.dp),
@@ -260,11 +263,11 @@ fun PostFlightContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = swapPilotsForNextFlight,
+                                checked = rotatePilotsForNextFlight,
                                 onCheckedChange = null
                             )
                             Text(
-                                text = stringResource(R.string.swap_pilots_for_next_flight),
+                                text = stringResource(R.string.rotate_pilots_for_next_flight),
                                 fontSize = 16.sp,
                                 color = MaterialTheme.colorScheme.primary
                             )

@@ -6,12 +6,61 @@ fun computeIndividualFlight(
 ): Flight.Individual {
     return Flight.Individual(
         laps = laps,
-        stopReason = stopReason,
-        result = Results(
-            records = computeFlightRecords(laps),
-            counters = computeFlightCounters(laps)
-        )
+        stopReason = stopReason
     )
+}
+
+fun computeTeamFlight(
+    laps: List<Lap>,
+    stopReason: StopReason,
+    pilotChangeIndex: Int?,
+    swapMode: Rules.Team.SwapMode = Rules.Team.SwapMode.STRAIGHT
+): Flight.Team {
+    val head = if (pilotChangeIndex != null) laps.take(pilotChangeIndex + 1) else laps
+    val tail = if (pilotChangeIndex != null) laps.drop(pilotChangeIndex + 1) else emptyList()
+    return Flight.Team(
+        headLaps = head,
+        tailLaps = tail,
+        stopReason = stopReason,
+        swapMode = swapMode
+    )
+}
+
+internal fun computeFlightResults(laps: List<Lap>): Results {
+    return Results(
+        records = computeFlightRecords(laps),
+        counters = computeFlightCounters(laps)
+    )
+}
+
+internal fun computeTeamCommonResults(laps: List<Lap>): Results {
+    val validLaps = laps.filter { it.success && it.number > 0 }
+    val completedLaps = laps.filter { it.number > 0 }
+
+    val records = if (completedLaps.isEmpty()) {
+        emptyList()
+    } else {
+        listOf(
+            Record(
+                count = validLaps.size,
+                kind = Record.Kind.MOST,
+                intervals = completedLaps.map { it.interval }
+            )
+        )
+    }
+
+    val counters = if (validLaps.isEmpty()) {
+        emptyList()
+    } else {
+        listOf(
+            Counter.Builtin(
+                count = validLaps.size,
+                kind = Counter.Builtin.Kind.LAP
+            )
+        )
+    }
+
+    return Results(records, counters)
 }
 
 private fun computeFlightRecords(
@@ -80,115 +129,6 @@ private fun computeFlightCounters(laps: List<Lap>): List<Counter> {
         Counter.Builtin(
             count = validLaps.size,
             kind = Counter.Builtin.Kind.LAP
-        )
-    )
-}
-
-fun computeTeamFlight(
-    laps: List<Lap>,
-    stopReason: StopReason,
-    pilotSwapIndex: Int?
-): Flight.Team {
-    val validLaps = laps.filter { it.success && it.number > 0 }
-    val completedLaps = laps.filter { it.number > 0 }
-
-    val headPilotRaw = if (pilotSwapIndex != null) laps.take(pilotSwapIndex + 1) else laps
-    val tailPilotRaw = if (pilotSwapIndex != null) laps.drop(pilotSwapIndex + 1) else emptyList()
-
-    val headPilotSuccessLaps = headPilotRaw.filter { it.success && it.number > 0 }
-    val tailPilotSuccessLaps = tailPilotRaw.filter { it.success && it.number > 0 }
-
-    val headPilotCompletedLaps = headPilotRaw.filter { it.number > 0 }
-    val tailPilotCompletedLaps = tailPilotRaw.filter { it.number > 0 }
-
-    val commonRecords = mutableListOf<Record>()
-    val headRecords = mutableListOf<Record>()
-    val tailRecords = mutableListOf<Record>()
-
-    if (completedLaps.isNotEmpty()) {
-        commonRecords.add(
-            Record(
-                count = validLaps.size,
-                kind = Record.Kind.MOST,
-                intervals = completedLaps.map { it.interval }
-            )
-        )
-    }
-    if (headPilotCompletedLaps.isNotEmpty()) {
-        headRecords.add(
-            Record(
-                count = headPilotSuccessLaps.size,
-                kind = Record.Kind.MOST,
-                intervals = headPilotCompletedLaps.map { it.interval }
-            )
-        )
-    }
-    if (tailPilotCompletedLaps.isNotEmpty()) {
-        tailRecords.add(
-            Record(
-                count = tailPilotSuccessLaps.size,
-                kind = Record.Kind.MOST,
-                intervals = tailPilotCompletedLaps.map { it.interval }
-            )
-        )
-    }
-    if (headPilotSuccessLaps.isNotEmpty()) {
-        headPilotSuccessLaps.minByOrNull { it.durationMs }?.let {
-            headRecords.add(
-                Record(
-                    count = 1,
-                    kind = Record.Kind.BEST_1,
-                    intervals = listOf(it.interval)
-                )
-            )
-        }
-    }
-    if (tailPilotSuccessLaps.isNotEmpty()) {
-        tailPilotSuccessLaps.minByOrNull { it.durationMs }?.let {
-            tailRecords.add(
-                Record(
-                    count = 1,
-                    kind = Record.Kind.BEST_1,
-                    intervals = listOf(it.interval)
-                )
-            )
-        }
-    }
-
-    return Flight.Team(
-        laps = laps,
-        stopReason = stopReason,
-        pilotSwapIndex = pilotSwapIndex,
-        common = Results(
-            records = commonRecords,
-            counters = listOf(
-                Counter.Builtin(
-                    count = validLaps.size,
-                    kind = Counter.Builtin.Kind.LAP
-                )
-            )
-        ),
-        head = Results(
-            records = headRecords,
-            counters = listOf(
-                Counter.Builtin(
-                    count = headPilotSuccessLaps.size,
-                    kind = Counter.Builtin.Kind.LAP
-                )
-            )
-        ),
-        tail = Results(
-            records = tailRecords,
-            counters = if (tailPilotSuccessLaps.isEmpty()) {
-                emptyList()
-            } else {
-                listOf(
-                    Counter.Builtin(
-                        count = tailPilotSuccessLaps.size,
-                        kind = Counter.Builtin.Kind.LAP
-                    )
-                )
-            }
         )
     )
 }

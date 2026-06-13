@@ -49,7 +49,6 @@ import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Record
-import ru.fpvladder.laps.trainer.model.Results
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.helpers.displayName1
@@ -64,10 +63,10 @@ fun StatsScreen(
     description: AnnotatedString,
     onEditRulesClick: () -> Unit,
     stats: Stats = Stats.Individual(),
-    enabledRecordKinds: Set<Record.Kind> = emptySet(),
+    showRecordKinds: Set<Record.Kind> = emptySet(),
     timerPrecision: TimerPrecision = TimerPrecision.MILLISECONDS,
     pilot: Pilot,
-    onSwapPilots: () -> Unit = {},
+    onRotatePilots: () -> Unit = {},
     hasPagerWiggled: Boolean = false,
     onPagerWiggleComplete: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -146,7 +145,7 @@ fun StatsScreen(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .clip(CircleShape)
-                                .clickable(onClick = onSwapPilots)
+                                .clickable(onClick = onRotatePilots)
                                 .padding(8.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -163,7 +162,7 @@ fun StatsScreen(
 
             Spacer(modifier = Modifier.height(if (pilot is Pilot.Team) 16.dp else 40.dp))
 
-            val flightCount = stats.result.counters
+            val flightCount = stats.results.counters
                 .find { it.kind == Counter.Builtin.Kind.FLIGHT }?.count ?: 0
             val hasResults = flightCount > 0
 
@@ -172,7 +171,7 @@ fun StatsScreen(
                     TeamStatsContent(
                         stats = stats,
                         timerPrecision = timerPrecision,
-                        enabledRecordKinds = enabledRecordKinds,
+                        showRecordKinds = showRecordKinds,
                         pilot1Name = pilot.displayName1(context),
                         pilot2Name = pilot.displayName2(context),
                         hasPagerWiggled = hasPagerWiggled,
@@ -182,12 +181,12 @@ fun StatsScreen(
                     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                         ScreenTitle("Результаты")
                         Spacer(modifier = Modifier.height(8.dp))
-                        val visibleRecords = stats.result.records.filter { it.kind in enabledRecordKinds }
+                        val visibleRecords = stats.results.records.filter { it.kind in showRecordKinds }
                         if (visibleRecords.isNotEmpty()) {
                             RecordsInset(visibleRecords.distinctBy { it.count }, timerPrecision)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                        CountersSummary(stats.result.counters)
+                        CountersSummary(stats.results.counters)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
@@ -200,7 +199,7 @@ fun StatsScreen(
 @Composable
 private fun TeamStatsContent(
     stats: Stats.Team,
-    enabledRecordKinds: Set<Record.Kind>,
+    showRecordKinds: Set<Record.Kind>,
     timerPrecision: TimerPrecision,
     pilot1Name: String,
     pilot2Name: String,
@@ -216,12 +215,12 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты")
                 Spacer(modifier = Modifier.height(8.dp))
-                val commonVisibleRecords = stats.result.records.filter { it.kind in enabledRecordKinds }
+                val commonVisibleRecords = stats.results.records.filter { it.kind in showRecordKinds }
                 if (commonVisibleRecords.isNotEmpty()) {
                     RecordsInset(commonVisibleRecords.distinctBy { it.count }, timerPrecision)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-                CountersSummary(stats.result.counters)
+                CountersSummary(stats.results.counters)
                 Spacer(modifier = Modifier.height(8.dp))
             }
         },
@@ -233,9 +232,9 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты: $pilot1Name")
                 Spacer(modifier = Modifier.height(8.dp))
-                val firstRecords = stats.first.total.records.filter { it.kind in enabledRecordKinds }
-                val firstRecordsBeingHead = stats.first.head.records.filter { it.kind in enabledRecordKinds }
-                val firstRecordsBeingTail = stats.first.tail.records.filter { it.kind in enabledRecordKinds }
+                val firstRecords = stats.first.total.records.filter { it.kind in showRecordKinds }
+                val firstRecordsBeingHead = stats.first.head.records.filter { it.kind in showRecordKinds }
+                val firstRecordsBeingTail = stats.first.tail.records.filter { it.kind in showRecordKinds }
                 val firstHasRecords = firstRecords.isNotEmpty() ||
                     firstRecordsBeingHead.isNotEmpty() ||
                     firstRecordsBeingTail.isNotEmpty()
@@ -260,9 +259,9 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты: $pilot2Name")
                 Spacer(modifier = Modifier.height(8.dp))
-                val secondRecords = stats.second.total.records.filter { it.kind in enabledRecordKinds }
-                val secondRecordsBeingHead = stats.second.head.records.filter { it.kind in enabledRecordKinds }
-                val secondRecordsBeingTail = stats.second.tail.records.filter { it.kind in enabledRecordKinds }
+                val secondRecords = stats.second.total.records.filter { it.kind in showRecordKinds }
+                val secondRecordsBeingHead = stats.second.head.records.filter { it.kind in showRecordKinds }
+                val secondRecordsBeingTail = stats.second.tail.records.filter { it.kind in showRecordKinds }
                 val secondHasRecords = secondRecords.isNotEmpty() ||
                     secondRecordsBeingHead.isNotEmpty() ||
                     secondRecordsBeingTail.isNotEmpty()

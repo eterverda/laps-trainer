@@ -65,9 +65,6 @@ import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.WIGGLE_ONCE_ENABLED
 import ru.fpvladder.laps.trainer.settings.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.model.Flight
-import ru.fpvladder.laps.trainer.model.Stats
-import ru.fpvladder.laps.trainer.model.mergeFlightRecords
-import ru.fpvladder.laps.trainer.model.mergeTeamFlight
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.ui.helpers.description
 import ru.fpvladder.laps.trainer.audio.SoundManager
@@ -144,10 +141,10 @@ fun AppRoot(
     val currentLapTime by flightViewModel.currentLapTime.collectAsState()
     val stopReason by flightViewModel.stopReason.collectAsState()
     val preStartCountdownMs by flightViewModel.preStartCountdownMs.collectAsState()
-    val flightPilotSwapIndex by flightViewModel.pilotSwapIndex.collectAsState()
+    val flightPilotChangeIndex by flightViewModel.pilotChangeIndex.collectAsState()
     val teamFlight by flightViewModel.teamFlight.collectAsState()
     val shouldSaveResult by flightViewModel.shouldSaveResult.collectAsState()
-    val swapPilotsForNextFlight by flightViewModel.swapPilotsForNextFlight.collectAsState()
+    val rotatePilotsForNextFlight by flightViewModel.rotatePilotsForNextFlight.collectAsState()
 
     LaunchedEffect(currentScreen) {
         if (currentScreen == AppScreen.Flight) {
@@ -164,8 +161,8 @@ fun AppRoot(
     var nameEditorIsNew by remember { mutableStateOf(false) }
     var showRulesEditor by remember { mutableStateOf(false) }
 
-    val swapRemainingMs = when (val r = selectedTraining.rules) {
-        is Rules.Team -> if (r.swapMode == Rules.Team.SwapMode.TIME) {
+    val changeRemainingMs = when (val r = selectedTraining.rules) {
+        is Rules.Team -> if (r.changeMode == Rules.Team.ChangeMode.TIME) {
             (r.timeLimitSeconds * 1000L / 2 - elapsedMs).coerceAtLeast(0)
         } else null
         else -> null
@@ -174,27 +171,10 @@ fun AppRoot(
     val finishFlight: (Boolean, Boolean) -> Unit = { shouldSave, navigateToTraining ->
         if (shouldSave) {
             val flight = flightViewModel.buildFlight()
-            val currentStats = selectedTraining.stats
-            when {
-                currentStats is Stats.Individual && flight is Flight.Individual -> {
-                    val updatedStats = currentStats.mergeFlightRecords(flight.result)
-                    trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
-                }
-                currentStats is Stats.Team && flight is Flight.Team -> {
-                    val teamRules = (selectedTraining as? Training.Team)?.rules
-                    val updatedStats = currentStats.mergeTeamFlight(
-                        common = flight.common,
-                        head = flight.head,
-                        tail = flight.tail,
-                        pilotOrderSwapped = teamRules?.pilotOrderSwapped ?: false
-                    )
-                    trainingViewModel.updateTrainingStats(selectedTraining, updatedStats)
-                }
-            }
             trainingViewModel.addFlight(selectedTraining, flight)
         }
-        if (selectedTraining is Training.Team && swapPilotsForNextFlight) {
-            trainingViewModel.swapPilotOrder()
+        if (selectedTraining is Training.Team && rotatePilotsForNextFlight) {
+            trainingViewModel.rotatePilotOrder()
         }
         if (navigateToTraining) {
             pilotViewModel.navigateTo(AppScreen.Training)
@@ -334,12 +314,12 @@ fun AppRoot(
                                     timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
                                     maxLaps = selectedTraining.rules.lapsLimit,
                                     stopReason = stopReason,
-                                    enabledRecordKinds = selectedTraining.rules.enabledRecordKinds,
+                                    showRecordKinds = selectedTraining.rules.showRecordKinds,
                                     holeshotEnabled = selectedTraining.rules.holeshotEnabled,
                                     shouldSaveResult = shouldSaveResult,
                                     onShouldSaveResultChange = { flightViewModel.setShouldSaveResult(it) },
-                                    swapPilotsForNextFlight = swapPilotsForNextFlight,
-                                    onSwapPilotsForNextFlightChange = { flightViewModel.setSwapPilotsForNextFlight(it) },
+                                    rotatePilotsForNextFlight = rotatePilotsForNextFlight,
+                                    onRotatePilotsForNextFlightChange = { flightViewModel.setRotatePilotsForNextFlight(it) },
                                     useLapButton = useLapButton,
                                     useErrorFixButtons = useErrorFixButtons,
                                     onLapClick = {
@@ -349,10 +329,10 @@ fun AppRoot(
                                     onFixClick = { flightViewModel.addFixToLastLap() },
                                     timerPrecision = timerPrecision,
                                     pilot = selectedTraining.pilot,
-                                    pilotSwapIndex = flightPilotSwapIndex,
+                                    pilotChangeIndex = flightPilotChangeIndex,
                                     teamFlight = teamFlight,
-                                    pilotOrderSwapped = (selectedTraining as? Training.Team)?.rules?.pilotOrderSwapped ?: false,
-                                    swapRemainingMs = swapRemainingMs,
+                                    swapMode = (selectedTraining as? Training.Team)?.rules?.swapMode ?: Rules.Team.SwapMode.STRAIGHT,
+                                    changeRemainingMs = changeRemainingMs,
                                     hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
                                     onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
                                     onBackClick = { finishFlight(shouldSaveResult, true) },
@@ -365,10 +345,10 @@ fun AppRoot(
                                         description = selectedTraining.description(LocalContext.current),
                                         onEditRulesClick = { showRulesEditor = true },
                                         stats = selectedTraining.stats,
-                                        enabledRecordKinds = selectedTraining.rules.enabledRecordKinds,
+                                        showRecordKinds = selectedTraining.rules.showRecordKinds,
                                         timerPrecision = timerPrecision,
                                         pilot = selectedTraining.pilot,
-                                        onSwapPilots = { trainingViewModel.swapPilotOrder() },
+                                        onRotatePilots = { trainingViewModel.rotatePilotOrder() },
                                         hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
                                         onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
                                         modifier = Modifier.fillMaxSize()

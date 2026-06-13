@@ -83,8 +83,8 @@ class TimeIntervalAndRecordTest {
             Lap(2, TimeInterval(12340L, 24680L), success = true),
             Lap(3, TimeInterval(24680L, 37030L), success = true)
         )
-        val result = computeIndividualFlight(laps, StopReason.MANUAL).result
-        val records = result.records
+        val results = computeIndividualFlight(laps, StopReason.MANUAL).results
+        val records = results.records
 
         val best1 = records.first { it.kind == Record.Kind.BEST_1 }
         assertEquals(1, best1.count)
@@ -96,7 +96,7 @@ class TimeIntervalAndRecordTest {
         assertEquals(3, most.intervals.size)
         assertEquals(37030L, most.rawTimeMs())
 
-        val lapCounter = result.counters.single()
+        val lapCounter = results.counters.single()
         assertEquals(Counter.Builtin.Kind.LAP, lapCounter.kind)
         assertEquals(3, lapCounter.count)
     }
@@ -109,7 +109,7 @@ class TimeIntervalAndRecordTest {
             Lap(2, TimeInterval(12000L, 25000L), success = false),
             Lap(3, TimeInterval(25000L, 37000L), success = true)
         )
-        val records = computeIndividualFlight(laps, StopReason.MANUAL).result.records
+        val records = computeIndividualFlight(laps, StopReason.MANUAL).results.records
         val most = records.single { it.kind == Record.Kind.MOST }
         assertEquals(2, most.count)
         assertEquals(listOf(12000L, 13000L, 12000L), most.intervals.map { it.durationMs })

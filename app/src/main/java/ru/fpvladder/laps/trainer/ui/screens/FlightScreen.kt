@@ -42,6 +42,7 @@ import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Results
+import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.settings.StartSignal
@@ -70,21 +71,21 @@ fun FlightScreen(
     stopReason: StopReason? = null,
     shouldSaveResult: Boolean = false,
     onShouldSaveResultChange: (Boolean) -> Unit = {},
-    swapPilotsForNextFlight: Boolean = false,
-    onSwapPilotsForNextFlightChange: (Boolean) -> Unit = {},
+    rotatePilotsForNextFlight: Boolean = false,
+    onRotatePilotsForNextFlightChange: (Boolean) -> Unit = {},
     useLapButton: Boolean = false,
     useErrorFixButtons: Boolean = false,
     onLapClick: () -> Unit = {},
     onErrorClick: () -> Unit = {},
     onFixClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
-    enabledRecordKinds: Set<Record.Kind> = emptySet(),
+    showRecordKinds: Set<Record.Kind> = emptySet(),
     holeshotEnabled: Boolean = false,
     pilot: Pilot? = null,
-    pilotSwapIndex: Int? = null,
+    pilotChangeIndex: Int? = null,
     teamFlight: Flight.Team? = null,
-    pilotOrderSwapped: Boolean = false,
-    swapRemainingMs: Long? = null,
+    swapMode: Rules.Team.SwapMode = Rules.Team.SwapMode.STRAIGHT,
+    changeRemainingMs: Long? = null,
     hasPagerWiggled: Boolean = false,
     onPagerWiggleComplete: () -> Unit = {},
     onBackClick: () -> Unit = {},
@@ -158,7 +159,7 @@ fun FlightScreen(
                             isPreBlinking = isPreBlinking,
                             timerPrecision = timerPrecision,
                             timeLimitSeconds = timeLimitSeconds,
-                            swapRemainingMs = swapRemainingMs
+                            changeRemainingMs = changeRemainingMs
                         )
                     }
                 }
@@ -184,8 +185,8 @@ fun FlightScreen(
                     useLapButton = useLapButton,
                     onLapClick = onLapClick,
                     pilot = pilot,
-                    pilotSwapIndex = pilotSwapIndex,
-                    pilotOrderSwapped = pilotOrderSwapped
+                    pilotChangeIndex = pilotChangeIndex,
+                    swapMode = swapMode
                 )
             } else {
                 PostFlightContent(
@@ -196,15 +197,15 @@ fun FlightScreen(
                     timeLimitSeconds = timeLimitSeconds,
                     maxLaps = maxLaps,
                     stopReason = stopReason,
-                    enabledRecordKinds = enabledRecordKinds,
+                    showRecordKinds = showRecordKinds,
                     pilot = pilot,
-                    pilotSwapIndex = pilotSwapIndex,
+                    pilotChangeIndex = pilotChangeIndex,
                     teamFlight = teamFlight,
-                    pilotOrderSwapped = pilotOrderSwapped,
+                    swapMode = swapMode,
                     shouldSaveResult = shouldSaveResult,
                     onShouldSaveResultChange = onShouldSaveResultChange,
-                    swapPilotsForNextFlight = swapPilotsForNextFlight,
-                    onSwapPilotsForNextFlightChange = onSwapPilotsForNextFlightChange,
+                    rotatePilotsForNextFlight = rotatePilotsForNextFlight,
+                    onRotatePilotsForNextFlightChange = onRotatePilotsForNextFlightChange,
                     onBackClick = onBackClick,
                     hasPagerWiggled = hasPagerWiggled,
                     onPagerWiggleComplete = onPagerWiggleComplete

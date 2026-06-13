@@ -6,12 +6,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import ru.fpvladder.laps.trainer.model.Channel
-import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Record
-import ru.fpvladder.laps.trainer.model.Results
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimeInterval
@@ -38,11 +36,7 @@ class TrainingStorageTest {
                             success = true
                         )
                     ),
-                    stopReason = StopReason.MANUAL,
-                    result = Results(
-                        records = listOf(Record(count = 1, kind = Record.Kind.BEST_1, intervals = listOf(TimeInterval(1000, 15000)))),
-                        counters = listOf(Counter.Builtin(count = 1, kind = Counter.Builtin.Kind.LAP))
-                    )
+                    stopReason = StopReason.MANUAL
                 )
             )
         )
@@ -63,17 +57,19 @@ class TrainingStorageTest {
         ).copy(
             rules = Rules.Team(
                 lapsLimit = 50,
-                swapMode = Rules.Team.SwapMode.TIME,
-                enabledRecordKinds = EnumSet.of(Record.Kind.BEST_1, Record.Kind.MOST)
+                changeMode = Rules.Team.ChangeMode.TIME,
+                showRecordKinds = EnumSet.of(Record.Kind.BEST_1, Record.Kind.MOST)
             ),
             flights = listOf(
                 Flight.Team(
-                    laps = emptyList(),
-                    stopReason = StopReason.TIME_LIMIT,
-                    pilotSwapIndex = 3,
-                    common = Results(counters = listOf(Counter.Builtin(count = 1, kind = Counter.Builtin.Kind.FLIGHT))),
-                    head = Results(),
-                    tail = Results()
+                    headLaps = listOf(
+                        Lap(0, TimeInterval(0, 0), success = true),
+                        Lap(1, TimeInterval(0, 12000), success = true)
+                    ),
+                    tailLaps = listOf(
+                        Lap(2, TimeInterval(12000, 26000), success = true)
+                    ),
+                    stopReason = StopReason.TIME_LIMIT
                 )
             )
         )

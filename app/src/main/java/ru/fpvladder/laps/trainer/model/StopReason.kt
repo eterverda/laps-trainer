@@ -5,6 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class StopReason {
     TIME_LIMIT,
-    MAX_LAPS,
+    LAPS_LIMIT,
     MANUAL
 }

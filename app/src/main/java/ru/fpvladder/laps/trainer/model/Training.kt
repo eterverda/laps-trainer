@@ -13,8 +13,9 @@ sealed class Training {
     abstract val date: LocalDate
     abstract val pilot: Pilot
     abstract val rules: Rules
-    abstract val stats: Stats
     abstract val flights: List<Flight>
+
+    val stats: Stats by lazy { computeTrainingStats(this) }
 
     @Serializable
     @SerialName("individual")
@@ -24,7 +25,6 @@ sealed class Training {
         override val date: LocalDate,
         override val pilot: Pilot.Individual,
         override val rules: Rules.Individual,
-        override val stats: Stats.Individual,
         override val flights: List<Flight.Individual>,
     ) : Training() {
 
@@ -36,14 +36,12 @@ sealed class Training {
             date = date,
             pilot = pilot,
             rules = Rules.Individual(),
-            stats = Stats.Individual(),
             flights = emptyList(),
         )
 
         fun copy(
             pilot: Pilot.Individual = this.pilot,
             rules: Rules.Individual = this.rules,
-            stats: Stats.Individual = this.stats,
             flights: List<Flight.Individual> = this.flights,
             date: LocalDate = this.date,
         ) = Individual(
@@ -51,7 +49,6 @@ sealed class Training {
             date = date,
             pilot = pilot,
             rules = rules,
-            stats = stats,
             flights = flights
         )
     }
@@ -64,7 +61,6 @@ sealed class Training {
         override val date: LocalDate,
         override val pilot: Pilot.Team = Pilot.Team(),
         override val rules: Rules.Team = Rules.Team(),
-        override val stats: Stats.Team = Stats.Team(),
         override val flights: List<Flight.Team> = emptyList(),
     ) : Training() {
 
@@ -76,14 +72,12 @@ sealed class Training {
             date = date,
             pilot = pilot,
             rules = Rules.Team(),
-            stats = Stats.Team(),
             flights = emptyList(),
         )
 
         fun copy(
             pilot: Pilot.Team = this.pilot,
             rules: Rules.Team = this.rules,
-            stats: Stats.Team = this.stats,
             flights: List<Flight.Team> = this.flights,
             date: LocalDate = this.date,
         ) = Team(
@@ -91,7 +85,6 @@ sealed class Training {
             date = date,
             pilot = pilot,
             rules = rules,
-            stats = stats,
             flights = flights
         )
     }
@@ -103,12 +96,11 @@ sealed class Training {
                 date == other.date &&
                 pilot == other.pilot &&
                 rules == other.rules &&
-                stats == other.stats &&
                 flights == other.flights
     }
 
-    override fun hashCode(): Int = Objects.hash(id, date, pilot, rules, stats, flights)
+    override fun hashCode(): Int = Objects.hash(id, date, pilot, rules, flights)
 
     override fun toString(): String =
-        "${javaClass.simpleName}(id=$id, date=$date, pilot=$pilot, rules=$rules, stats=$stats, flights.size=${flights.size})"
+        "${javaClass.simpleName}(id=$id, date=$date, pilot=$pilot, rules=$rules, flights.size=${flights.size})"
 }

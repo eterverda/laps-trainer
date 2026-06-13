@@ -27,9 +27,12 @@ import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.helpers.displayName1
 import ru.fpvladder.laps.trainer.ui.helpers.displayName2
+import ru.fpvladder.laps.trainer.ui.helpers.displayNameHead
+import ru.fpvladder.laps.trainer.ui.helpers.displayNameTail
 import ru.fpvladder.laps.trainer.ui.helpers.label
 import ru.fpvladder.laps.trainer.ui.helpers.runningLabel
 
@@ -41,8 +44,8 @@ internal fun LapList(
     timerPrecision: TimerPrecision,
     isPostFlight: Boolean,
     pilot: Pilot? = null,
-    pilotSwapIndex: Int? = null,
-    pilotOrderSwapped: Boolean = false,
+    pilotChangeIndex: Int? = null,
+    swapMode: Rules.Team.SwapMode = Rules.Team.SwapMode.STRAIGHT,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -97,10 +100,7 @@ internal fun LapList(
         horizontalAlignment = Alignment.End
     ) {
         if (pilot is Pilot.Team) {
-            val startingPilot = when {
-                pilotOrderSwapped -> pilot.displayName2(context)
-                else -> pilot.displayName1(context)
-            }
+            val startingPilot = pilot.displayNameHead(swapMode, context)
             if (startingPilot.isNotBlank()) {
                 Text(
                     text = "Стартует $startingPilot",
@@ -120,11 +120,8 @@ internal fun LapList(
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
             )
-            if (pilot is Pilot.Team && pilotSwapIndex != null && index == pilotSwapIndex) {
-                val nextPilot = when {
-                    pilotOrderSwapped -> pilot.displayName1(context)
-                    else -> pilot.displayName2(context)
-                }
+            if (pilot is Pilot.Team && pilotChangeIndex != null && index == pilotChangeIndex) {
+                val nextPilot = pilot.displayNameTail(swapMode, context)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Смена пилота. Стартует $nextPilot",
@@ -146,11 +143,8 @@ internal fun LapList(
                 maxTimeLen = maxTimeLen
             )
         }
-        if (pilot is Pilot.Team && pilotSwapIndex != null && pilotSwapIndex == laps.size) {
-            val nextPilot = when {
-                pilotOrderSwapped -> pilot.displayName1(context)
-                else -> pilot.displayName2(context)
-            }
+        if (pilot is Pilot.Team && pilotChangeIndex != null && pilotChangeIndex == laps.size) {
+            val nextPilot = pilot.displayNameTail(swapMode, context)
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Смена пилота. Стартует $nextPilot",

@@ -1,10 +1,12 @@
 package ru.fpvladder.laps.trainer.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class Lap(
     val number: Int,
+    @SerialName("interval_ms")
     val interval: TimeInterval,
     val success: Boolean,
 ) {

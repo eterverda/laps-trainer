@@ -1,5 +1,8 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package ru.fpvladder.laps.trainer.model
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,6 +14,7 @@ sealed class Pilot {
     @Serializable
     @SerialName("individual")
     data class Individual(
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         override val name: String = "",
         override val channel: Channel = Channel()
     ) : Pilot()
@@ -18,7 +22,9 @@ sealed class Pilot {
     @Serializable
     @SerialName("team")
     data class Team(
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         val name1: String = "",
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         val name2: String = "",
         override val channel: Channel = Channel()
     ) : Pilot() {

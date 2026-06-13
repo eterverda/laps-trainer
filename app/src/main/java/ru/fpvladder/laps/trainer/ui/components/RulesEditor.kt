@@ -91,8 +91,8 @@ fun RulesEditorContent(
             }
         )
     }
-    var swapMode by remember {
-        mutableStateOf((currentRules as? Rules.Team)?.swapMode ?: Rules.Team.SwapMode.TIME)
+    var changeMode by remember {
+        mutableStateOf((currentRules as? Rules.Team)?.changeMode ?: Rules.Team.ChangeMode.TIME)
     }
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     var countsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -100,16 +100,16 @@ fun RulesEditorContent(
         mutableStateOf(
             EnumSet.copyOf(
                 when (currentRules) {
-                    is Rules.Individual -> currentRules.enabledRecordKinds
-                    is Rules.Team -> currentRules.enabledRecordKinds
+                    is Rules.Individual -> currentRules.showRecordKinds
+                    is Rules.Team -> currentRules.showRecordKinds
                 }
             )
         )
     }
     val wasTimeLimited = currentRules.timeLimitSeconds != Int.MAX_VALUE
     val initialMost = when (currentRules) {
-        is Rules.Individual -> Record.Kind.MOST in currentRules.enabledRecordKinds
-        is Rules.Team -> Record.Kind.MOST in currentRules.enabledRecordKinds
+        is Rules.Individual -> Record.Kind.MOST in currentRules.showRecordKinds
+        is Rules.Team -> Record.Kind.MOST in currentRules.showRecordKinds
     }
     var rememberedMost by rememberSaveable { mutableStateOf(if (wasTimeLimited) initialMost else true) }
     var prevSelectedTime by remember { mutableStateOf<Int?>(null) }
@@ -159,8 +159,8 @@ fun RulesEditorContent(
                     }
                 }
             }
-            if (timeOnly) swapMode = Rules.Team.SwapMode.TIME
-            if (lapsOnly) swapMode = Rules.Team.SwapMode.LAPS
+            if (timeOnly) changeMode = Rules.Team.ChangeMode.TIME
+            if (lapsOnly) changeMode = Rules.Team.ChangeMode.LAPS
             prevTime = selectedTime
             prevLaps = selectedLaps
         }
@@ -305,16 +305,16 @@ fun RulesEditorContent(
 
                 if (currentRules is Rules.Team) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    val swapAlpha = if (bothSet) 1f else 0.38f
+                    val changeAlpha = if (bothSet) 1f else 0.38f
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Box(modifier = Modifier.offset(x = (-8).dp)) {
                             Checkbox(
-                                checked = swapMode == Rules.Team.SwapMode.TIME,
+                                checked = changeMode == Rules.Team.ChangeMode.TIME,
                                 onCheckedChange = {
-                                    swapMode = if (it) Rules.Team.SwapMode.TIME else Rules.Team.SwapMode.LAPS
+                                    changeMode = if (it) Rules.Team.ChangeMode.TIME else Rules.Team.ChangeMode.LAPS
                                 },
                                 enabled = bothSet
                             )
@@ -323,13 +323,13 @@ fun RulesEditorContent(
                             text = "Смена по времени",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.alpha(swapAlpha)
+                            modifier = Modifier.alpha(changeAlpha)
                         )
                     }
                     val timeVal = selectedTime
                     val lapsVal = selectedLaps
-                    val swapHint = when {
-                        swapMode == Rules.Team.SwapMode.TIME && timeVal != Int.MAX_VALUE -> {
+                    val changeHint = when {
+                        changeMode == Rules.Team.ChangeMode.TIME && timeVal != Int.MAX_VALUE -> {
                             val half = timeVal / 2.0 / 60
                             val minsStr = if (half == half.toInt()
                                     .toDouble()
@@ -341,7 +341,7 @@ fun RulesEditorContent(
                             }"
                         }
 
-                        swapMode == Rules.Team.SwapMode.LAPS && lapsVal != Int.MAX_VALUE -> {
+                        changeMode == Rules.Team.ChangeMode.LAPS && lapsVal != Int.MAX_VALUE -> {
                             val laps = lapsVal / 2
                             "${stringResource(R.string.team_pilot_1)} летит $laps кругов, затем ${
                                 stringResource(
@@ -352,14 +352,14 @@ fun RulesEditorContent(
 
                         else -> ""
                     }
-                    if (swapHint.isNotBlank()) {
+                    if (changeHint.isNotBlank()) {
                         Text(
-                            text = swapHint,
+                            text = changeHint,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .padding(start = 44.dp)
-                                .alpha(swapAlpha)
+                                .alpha(changeAlpha)
                         )
                     }
                 }
@@ -384,15 +384,15 @@ fun RulesEditorContent(
                             lapsLimit = selectedLaps,
                             timeLimitSeconds = selectedTime,
                             holeshotEnabled = holeshot,
-                            enabledRecordKinds = EnumSet.copyOf(enabledKinds)
+                            showRecordKinds = EnumSet.copyOf(enabledKinds)
                         )
 
                         is Rules.Team -> Rules.Team(
                             lapsLimit = selectedLaps,
                             timeLimitSeconds = selectedTime,
                             holeshotEnabled = holeshot && TEAM_HOLESHOT_ENABLED,
-                            swapMode = swapMode,
-                            enabledRecordKinds = EnumSet.copyOf(enabledKinds)
+                            changeMode = changeMode,
+                            showRecordKinds = EnumSet.copyOf(enabledKinds)
                         )
                     }
                     onConfirm(newRules)

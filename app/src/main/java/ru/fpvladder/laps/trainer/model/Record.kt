@@ -2,12 +2,12 @@ package ru.fpvladder.laps.trainer.model
 
 import kotlinx.serialization.Serializable
 
-@Serializable
 data class Record(
     val count: Int,
     val kind: Kind,
     val intervals: List<TimeInterval> = emptyList()
 ) {
+    @Serializable
     enum class Kind { BEST_1, BEST_2, BEST_3, MOST }
 
     fun rawTimeMs(): Long = intervals.sumOf { it.durationMs }

@@ -34,7 +34,7 @@ internal fun FlightTimer(
     isPreBlinking: Boolean,
     timerPrecision: TimerPrecision,
     timeLimitSeconds: Int,
-    swapRemainingMs: Long? = null
+    changeRemainingMs: Long? = null
 ) {
     val isBlinking = !isStarted && isPreBlinking
     val alpha by animateFloatAsState(
@@ -53,20 +53,20 @@ internal fun FlightTimer(
         )
     }
 
-    val hasSwap = swapRemainingMs != null
+    val hasChange = changeRemainingMs != null
     val hasLimit = timeLimitSeconds != Int.MAX_VALUE
     val secondLine: AnnotatedString? = when {
-        hasSwap -> {
-            val remainingToSwap = swapRemainingMs!!
+        hasChange -> {
+            val remainingToChange = changeRemainingMs!!
             when {
-                remainingToSwap > 0 -> buildAnnotatedString {
+                remainingToChange > 0 -> buildAnnotatedString {
                     withStyle(
                         style = SpanStyle(
                             fontFamily = FontFamily.Monospace,
                             fontSize = 14.sp
                         )
                     ) {
-                        append(formatCountdown(remainingToSwap, timerPrecision))
+                        append(formatCountdown(remainingToChange, timerPrecision))
                     }
                     withStyle(style = SpanStyle(fontSize = 14.sp)) {
                         append(" до смены")

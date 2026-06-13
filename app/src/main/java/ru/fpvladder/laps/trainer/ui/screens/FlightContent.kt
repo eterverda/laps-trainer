@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.components.Hint
@@ -39,8 +40,8 @@ internal fun FlightContent(
     useLapButton: Boolean,
     onLapClick: () -> Unit = {},
     pilot: Pilot?,
-    pilotSwapIndex: Int?,
-    pilotOrderSwapped: Boolean,
+    pilotChangeIndex: Int?,
+    swapMode: Rules.Team.SwapMode,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -73,8 +74,8 @@ internal fun FlightContent(
                 timerPrecision = timerPrecision,
                 isPostFlight = false,
                 pilot = pilot,
-                pilotSwapIndex = pilotSwapIndex,
-                pilotOrderSwapped = pilotOrderSwapped,
+                pilotChangeIndex = pilotChangeIndex,
+                swapMode = swapMode,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
