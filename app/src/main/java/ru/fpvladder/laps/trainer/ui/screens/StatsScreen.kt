@@ -46,8 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.R
-import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Counter
+import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Stats
 import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.ui.components.BulletText
@@ -59,6 +59,7 @@ fun StatsScreen(
     description: AnnotatedString,
     onEditRulesClick: () -> Unit,
     stats: Stats = Stats.Individual(),
+    enabledRecordKinds: Set<Record.Kind> = emptySet(),
     timerPrecision: TimerPrecision = TimerPrecision.MILLISECONDS,
     isTeam: Boolean = false,
     pilot1Name: String = "",
@@ -172,6 +173,7 @@ fun StatsScreen(
                 TeamStatsContent(
                     stats = stats,
                     timerPrecision = timerPrecision,
+                    enabledRecordKinds = enabledRecordKinds,
                     pilot1Name = pilot1Name,
                     pilot2Name = pilot2Name,
                     hasPagerWiggled = hasPagerWiggled,
@@ -181,8 +183,9 @@ fun StatsScreen(
                 Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                     ScreenTitle("Результаты")
                     Spacer(modifier = Modifier.height(8.dp))
-                    if (stats.records.isNotEmpty()) {
-                        RecordsInset(stats.records.distinctBy { it.count }, timerPrecision)
+                    val visibleRecords = stats.records.filter { it.kind in enabledRecordKinds }
+                    if (visibleRecords.isNotEmpty()) {
+                        RecordsInset(visibleRecords.distinctBy { it.count }, timerPrecision)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     CountersSummary(stats.counters)
@@ -198,6 +201,7 @@ fun StatsScreen(
 @Composable
 private fun TeamStatsContent(
     stats: Stats.Team,
+    enabledRecordKinds: Set<Record.Kind>,
     timerPrecision: TimerPrecision,
     pilot1Name: String,
     pilot2Name: String,
@@ -216,8 +220,9 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты")
                 Spacer(modifier = Modifier.height(8.dp))
-                if (stats.records.isNotEmpty()) {
-                    RecordsInset(stats.records.distinctBy { it.count }, timerPrecision)
+                val commonVisibleRecords = stats.records.filter { it.kind in enabledRecordKinds }
+                if (commonVisibleRecords.isNotEmpty()) {
+                    RecordsInset(commonVisibleRecords.distinctBy { it.count }, timerPrecision)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 CountersSummary(stats.counters)
@@ -232,14 +237,17 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты: $name1")
                 Spacer(modifier = Modifier.height(8.dp))
-                val firstHasRecords = stats.first.records.isNotEmpty() ||
-                    stats.first.recordsBeingHead.isNotEmpty() ||
-                    stats.first.recordsBeingTail.isNotEmpty()
+                val firstRecords = stats.first.records.filter { it.kind in enabledRecordKinds }
+                val firstRecordsBeingHead = stats.first.recordsBeingHead.filter { it.kind in enabledRecordKinds }
+                val firstRecordsBeingTail = stats.first.recordsBeingTail.filter { it.kind in enabledRecordKinds }
+                val firstHasRecords = firstRecords.isNotEmpty() ||
+                    firstRecordsBeingHead.isNotEmpty() ||
+                    firstRecordsBeingTail.isNotEmpty()
                 if (firstHasRecords) {
                     PilotRecordsInset(
-                        records = stats.first.records.distinctBy { it.count },
-                        recordsBeingHead = stats.first.recordsBeingHead.distinctBy { it.count },
-                        recordsBeingTail = stats.first.recordsBeingTail.distinctBy { it.count },
+                        records = firstRecords.distinctBy { it.count },
+                        recordsBeingHead = firstRecordsBeingHead.distinctBy { it.count },
+                        recordsBeingTail = firstRecordsBeingTail.distinctBy { it.count },
                         timerPrecision = timerPrecision
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -256,14 +264,17 @@ private fun TeamStatsContent(
             ) {
                 ScreenTitle("Результаты: $name2")
                 Spacer(modifier = Modifier.height(8.dp))
-                val secondHasRecords = stats.second.records.isNotEmpty() ||
-                    stats.second.recordsBeingHead.isNotEmpty() ||
-                    stats.second.recordsBeingTail.isNotEmpty()
+                val secondRecords = stats.second.records.filter { it.kind in enabledRecordKinds }
+                val secondRecordsBeingHead = stats.second.recordsBeingHead.filter { it.kind in enabledRecordKinds }
+                val secondRecordsBeingTail = stats.second.recordsBeingTail.filter { it.kind in enabledRecordKinds }
+                val secondHasRecords = secondRecords.isNotEmpty() ||
+                    secondRecordsBeingHead.isNotEmpty() ||
+                    secondRecordsBeingTail.isNotEmpty()
                 if (secondHasRecords) {
                     PilotRecordsInset(
-                        records = stats.second.records.distinctBy { it.count },
-                        recordsBeingHead = stats.second.recordsBeingHead.distinctBy { it.count },
-                        recordsBeingTail = stats.second.recordsBeingTail.distinctBy { it.count },
+                        records = secondRecords.distinctBy { it.count },
+                        recordsBeingHead = secondRecordsBeingHead.distinctBy { it.count },
+                        recordsBeingTail = secondRecordsBeingTail.distinctBy { it.count },
                         timerPrecision = timerPrecision
                     )
                     Spacer(modifier = Modifier.height(8.dp))

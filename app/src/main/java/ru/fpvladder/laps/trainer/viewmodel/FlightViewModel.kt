@@ -19,7 +19,6 @@ import ru.fpvladder.laps.trainer.model.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimeInterval
 import ru.fpvladder.laps.trainer.model.SwapMode
-import ru.fpvladder.laps.trainer.model.TimerPrecision
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.TeamCounterScope
 import ru.fpvladder.laps.trainer.model.computeFlightCounters
@@ -281,17 +280,13 @@ class FlightViewModel : ViewModel() {
                 rules = training.rules,
                 laps = _laps.value,
                 stopReason = stopReason,
-                records = computeFlightRecords(
-                    _laps.value,
-                    training.rules.enabledRecordKinds
-                ),
+                records = computeFlightRecords(_laps.value),
                 counters = computeFlightCounters(_laps.value),
                 completedAt = completedAt
             )
             is Training.Team -> {
                 val teamRecords = computeTeamFlightRecords(
                     _laps.value,
-                    training.rules.enabledRecordKinds,
                     _pilotSwapIndex.value
                 )
                 Flight.Team(

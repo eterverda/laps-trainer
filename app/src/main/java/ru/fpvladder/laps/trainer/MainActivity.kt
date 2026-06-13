@@ -379,6 +379,7 @@ fun AppRoot(
                                         description = selectedTraining.description(LocalContext.current),
                                         onEditRulesClick = { showRulesEditor = true },
                                         stats = selectedTraining.stats,
+                                        enabledRecordKinds = selectedTraining.rules.enabledRecordKinds,
                                         timerPrecision = timerPrecision,
                                         isTeam = isTeam,
                                         pilot1Name = (selectedTraining as? Training.Team)?.pilot?.name1 ?: "",

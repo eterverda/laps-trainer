@@ -107,8 +107,7 @@ private fun MutableList<Counter>.mergeIn(counter: Counter) {
 }
 
 fun computeFlightRecords(
-    laps: List<Lap>,
-    enabledKinds: Set<Record.Kind>
+    laps: List<Lap>
 ): List<Record> {
     val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
     val completedLaps = laps.filter { it.status != Lap.Status.HS }
@@ -119,7 +118,7 @@ fun computeFlightRecords(
 
     val records = mutableListOf<Record>()
 
-    if (Record.Kind.BEST_1 in enabledKinds) {
+    if (validLaps.isNotEmpty()) {
         val best1 = validLaps.minByOrNull { it.timeMs }!!
         records.add(
             Record(
@@ -130,7 +129,7 @@ fun computeFlightRecords(
         )
     }
 
-    if (Record.Kind.BEST_2 in enabledKinds) {
+    if (validLaps.size >= 2) {
         val size = minOf(2, validLaps.size)
         val windowLaps = minWindowLaps(validLaps, size)
         records.add(
@@ -142,7 +141,7 @@ fun computeFlightRecords(
         )
     }
 
-    if (Record.Kind.BEST_3 in enabledKinds) {
+    if (validLaps.size >= 3) {
         val size = minOf(3, validLaps.size)
         val windowLaps = minWindowLaps(validLaps, size)
         records.add(
@@ -154,7 +153,7 @@ fun computeFlightRecords(
         )
     }
 
-    if (Record.Kind.MOST in enabledKinds && completedLaps.isNotEmpty()) {
+    if (completedLaps.isNotEmpty()) {
         records.add(
             Record(
                 count = completedLaps.size,
@@ -377,13 +376,8 @@ fun Stats.Individual.mergeFlightRecords(
 
 fun computeTeamFlightRecords(
     laps: List<Lap>,
-    enabledKinds: Set<Record.Kind>,
     pilotSwapIndex: Int?
 ): TeamFlightRecords {
-    if (enabledKinds.isEmpty()) {
-        return TeamFlightRecords(emptyList(), emptyList(), emptyList())
-    }
-
     val validLaps = laps.filter { it.status == Lap.Status.SUCCESS }
     val completedLaps = laps.filter { it.status != Lap.Status.HS }
 
@@ -400,7 +394,7 @@ fun computeTeamFlightRecords(
     val head = mutableListOf<Record>()
     val tail = mutableListOf<Record>()
 
-    if (Record.Kind.MOST in enabledKinds && completedLaps.isNotEmpty()) {
+    if (completedLaps.isNotEmpty()) {
         common.add(
             Record(
                 count = validLaps.size,
@@ -428,7 +422,7 @@ fun computeTeamFlightRecords(
         }
     }
 
-    if (Record.Kind.BEST_1 in enabledKinds && headPilotSuccessLaps.isNotEmpty()) {
+    if (headPilotSuccessLaps.isNotEmpty()) {
         headPilotSuccessLaps.minByOrNull { it.timeMs }?.let {
             head.add(
                 Record(
@@ -440,63 +434,13 @@ fun computeTeamFlightRecords(
         }
     }
 
-    if (Record.Kind.BEST_1 in enabledKinds && tailPilotSuccessLaps.isNotEmpty()) {
+    if (tailPilotSuccessLaps.isNotEmpty()) {
         tailPilotSuccessLaps.minByOrNull { it.timeMs }?.let {
             tail.add(
                 Record(
                     count = 1,
                     kind = Record.Kind.BEST_1,
                     intervals = listOf(it.interval)
-                )
-            )
-        }
-    }
-
-    if (Record.Kind.BEST_2 in enabledKinds) {
-        val size1 = minOf(2, headPilotSuccessLaps.size)
-        if (size1 > 0) {
-            val windowLaps = minWindowLaps(headPilotSuccessLaps, size1)
-            head.add(
-                Record(
-                    count = size1,
-                    kind = Record.Kind.BEST_2,
-                    intervals = windowLaps.map { it.interval }
-                )
-            )
-        }
-        val size2 = minOf(2, tailPilotSuccessLaps.size)
-        if (size2 > 0) {
-            val windowLaps = minWindowLaps(tailPilotSuccessLaps, size2)
-            tail.add(
-                Record(
-                    count = size2,
-                    kind = Record.Kind.BEST_2,
-                    intervals = windowLaps.map { it.interval }
-                )
-            )
-        }
-    }
-
-    if (Record.Kind.BEST_3 in enabledKinds) {
-        val size1 = minOf(3, headPilotSuccessLaps.size)
-        if (size1 > 0) {
-            val windowLaps = minWindowLaps(headPilotSuccessLaps, size1)
-            head.add(
-                Record(
-                    count = size1,
-                    kind = Record.Kind.BEST_3,
-                    intervals = windowLaps.map { it.interval }
-                )
-            )
-        }
-        val size2 = minOf(3, tailPilotSuccessLaps.size)
-        if (size2 > 0) {
-            val windowLaps = minWindowLaps(tailPilotSuccessLaps, size2)
-            tail.add(
-                Record(
-                    count = size2,
-                    kind = Record.Kind.BEST_3,
-                    intervals = windowLaps.map { it.interval }
                 )
             )
         }

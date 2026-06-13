@@ -7,12 +7,13 @@ sealed class Rules {
     abstract val maxLaps: Int
     abstract val timeLimitSeconds: Int
     abstract val holeshotEnabled: Boolean
+    abstract val enabledRecordKinds: Set<Record.Kind>
 
     class Individual(
         override val maxLaps: Int = Int.MAX_VALUE,
         override val timeLimitSeconds: Int = 180,
         override val holeshotEnabled: Boolean = true,
-        val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
+        override val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
             Record.Kind.BEST_1,
             Record.Kind.BEST_3
         ).apply { if (timeLimitSeconds != Int.MAX_VALUE) add(Record.Kind.MOST) }
@@ -34,7 +35,7 @@ sealed class Rules {
         override val holeshotEnabled: Boolean = TEAM_HOLESHOT_ENABLED,
         val swapMode: SwapMode = SwapMode.LAPS,
         val pilotOrderSwapped: Boolean = false,
-        val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
+        override val enabledRecordKinds: Set<Record.Kind> = EnumSet.of(
             Record.Kind.BEST_1, Record.Kind.MOST,
         )
     ) : Rules() {

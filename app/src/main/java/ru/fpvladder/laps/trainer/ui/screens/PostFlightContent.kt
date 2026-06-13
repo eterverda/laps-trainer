@@ -174,13 +174,12 @@ fun PostFlightContent(
                         if (isTeam) {
                             val teamRecords = computeTeamFlightRecords(
                                 laps = laps,
-                                enabledKinds = enabledRecordKinds,
                                 pilotSwapIndex = pilotSwapIndex
                             )
                             TeamFlightPostResults(
-                                commonRecords = teamRecords.common.distinctBy { it.count },
-                                headRecords = teamRecords.head.distinctBy { it.count },
-                                tailRecords = teamRecords.tail.distinctBy { it.count },
+                                commonRecords = teamRecords.common.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
+                                headRecords = teamRecords.head.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
+                                tailRecords = teamRecords.tail.filter { it.kind in enabledRecordKinds }.distinctBy { it.count },
                                 commonCounters = computeTeamFlightCounters(
                                     laps, TeamCounterScope.COMMON, pilotSwapIndex
                                 ),
@@ -200,9 +199,7 @@ fun PostFlightContent(
                             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                                 ScreenTitle("Результаты")
                                 Spacer(modifier = Modifier.height(8.dp))
-                                val flightRecords = if (enabledRecordKinds.isNotEmpty()) {
-                                    computeFlightRecords(laps, enabledRecordKinds)
-                                } else emptyList()
+                                val flightRecords = computeFlightRecords(laps).filter { it.kind in enabledRecordKinds }
                                 RecordsInset(
                                     records = flightRecords.distinctBy { it.count },
                                     timerPrecision = timerPrecision
