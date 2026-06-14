@@ -26,8 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.R
@@ -35,7 +37,9 @@ import ru.fpvladder.laps.trainer.R
 @Composable
 fun IndividualNameDialog(
     currentName: String,
+    isEmpty: Boolean,
     onConfirm: (String) -> Unit,
+    onRequestConfirm: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -51,7 +55,7 @@ fun IndividualNameDialog(
                 modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                var name by remember { mutableStateOf(currentName) }
+                var nameField by remember { mutableStateOf(TextFieldValue(currentName, selection = TextRange(0, currentName.length))) }
                 val focusRequester = remember { FocusRequester() }
 
                 Text(
@@ -64,8 +68,8 @@ fun IndividualNameDialog(
                 )
 
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it.take(24) },
+                    value = nameField,
+                    onValueChange = { nameField = it.copy(text = it.text.take(24)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
@@ -73,7 +77,7 @@ fun IndividualNameDialog(
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { onConfirm(name.trim()) }
+                        onDone = { onConfirm(nameField.text.trim()) }
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -92,7 +96,14 @@ fun IndividualNameDialog(
                         Text("Отмена")
                     }
                     Button(
-                        onClick = { onConfirm(name.trim()) },
+                        onClick = {
+                            val newName = nameField.text.trim()
+                            if (isEmpty || !isSignificantNameChange(currentName, newName)) {
+                                onConfirm(newName)
+                            } else {
+                                onRequestConfirm?.invoke(newName)
+                            }
+                        },
                         enabled = true
                     ) {
                         Text("OK")
@@ -107,11 +118,27 @@ fun IndividualNameDialog(
     }
 }
 
+private fun isSignificantNameChange(currentName: String, newName: String): Boolean {
+    return currentName.isNotBlank() && (newName.isBlank() || newName != currentName)
+}
+
+private fun isSignificantNameChange(
+    currentName1: String,
+    newName1: String,
+    currentName2: String,
+    newName2: String
+): Boolean {
+    return isSignificantNameChange(currentName1, newName1) ||
+            isSignificantNameChange(currentName2, newName2)
+}
+
 @Composable
 fun TeamNameDialog(
     name1: String,
     name2: String,
+    isEmpty: Boolean,
     onConfirm: (String, String) -> Unit,
+    onRequestConfirm: ((String, String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -127,9 +154,10 @@ fun TeamNameDialog(
                 modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                var n1 by remember { mutableStateOf(name1) }
-                var n2 by remember { mutableStateOf(name2) }
-                val focusRequester = remember { FocusRequester() }
+                var name1Field by remember { mutableStateOf(TextFieldValue(name1, selection = TextRange(0, name1.length))) }
+                var name2Field by remember { mutableStateOf(TextFieldValue(name2)) }
+                val focusRequester1 = remember { FocusRequester() }
+                val focusRequester2 = remember { FocusRequester() }
 
                 Text(
                     text = stringResource(R.string.team_pilot_1),
@@ -141,17 +169,23 @@ fun TeamNameDialog(
                 )
 
                 OutlinedTextField(
-                    value = n1,
-                    onValueChange = { n1 = it.take(24) },
+                    value = name1Field,
+                    onValueChange = { name1Field = it.copy(text = it.text.take(24)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
                         autoCorrectEnabled = false,
                         imeAction = ImeAction.Next
                     ),
+                    keyboardActions = KeyboardActions(
+                        onNext = {
+                            name2Field = name2Field.copy(selection = TextRange(0, name2Field.text.length))
+                            focusRequester2.requestFocus()
+                        }
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(focusRequester)
+                        .focusRequester(focusRequester1)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -166,8 +200,8 @@ fun TeamNameDialog(
                 )
 
                 OutlinedTextField(
-                    value = n2,
-                    onValueChange = { n2 = it.take(24) },
+                    value = name2Field,
+                    onValueChange = { name2Field = it.copy(text = it.text.take(24)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
@@ -175,9 +209,11 @@ fun TeamNameDialog(
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { onConfirm(n1.trim(), n2.trim()) }
+                        onDone = { onConfirm(name1Field.text.trim(), name2Field.text.trim()) }
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester2)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -192,15 +228,23 @@ fun TeamNameDialog(
                         Text("Отмена")
                     }
                     Button(
-                        onClick = { onConfirm(n1.trim(), n2.trim()) },
-                        enabled = n1.isNotBlank() == n2.isNotBlank()
+                        onClick = {
+                            val newName1 = name1Field.text.trim()
+                            val newName2 = name2Field.text.trim()
+                            if (isEmpty || !isSignificantNameChange(name1, newName1, name2, newName2)) {
+                                onConfirm(newName1, newName2)
+                            } else {
+                                onRequestConfirm?.invoke(newName1, newName2)
+                            }
+                        },
+                        enabled = name1Field.text.isNotBlank() == name2Field.text.isNotBlank()
                     ) {
                         Text("OK")
                     }
                 }
 
                 LaunchedEffect(Unit) {
-                    focusRequester.requestFocus()
+                    focusRequester1.requestFocus()
                 }
             }
         }

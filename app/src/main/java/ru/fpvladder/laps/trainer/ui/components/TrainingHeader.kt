@@ -7,7 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,7 +71,7 @@ fun TrainingHeader(
     selectedTraining: Training,
     enabled: Boolean = true,
     onChannelClick: () -> Unit = {},
-    onNameLongClick: () -> Unit = {},
+    onNameClick: () -> Unit = {},
     onAddIndividualClick: () -> Unit = {},
     onAddTeamClick: () -> Unit = {},
     onTrainingSelect: (Training) -> Unit = {},
@@ -126,10 +126,9 @@ fun TrainingHeader(
                     .padding(start = 6.dp)
                     .weight(1f)
                     .clip(RoundedCornerShape(8.dp))
-                    .combinedClickable(
+                    .clickable(
                         enabled = enabled,
-                        onLongClick = onNameLongClick,
-                        onClick = {}
+                        onClick = onNameClick
                     )
             ) {
                 PilotNameDisplay(
