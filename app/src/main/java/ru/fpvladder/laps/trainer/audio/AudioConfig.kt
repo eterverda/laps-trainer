@@ -13,3 +13,6 @@ const val STAGE_DELAY_MS = 457L
 
 /** Длительность buzzer.mp3 (сигнал старт/стоп), мс */
 const val BUZZER_DURATION_MS = 783L
+
+/** Длительность gate.mp3 (пролёт ворот), мс */
+const val GATE_DURATION_MS = 493L

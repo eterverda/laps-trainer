@@ -180,6 +180,10 @@ class FlightViewModel : ViewModel() {
     }
 
     fun addLap() {
+        if (!raceIsMuted) {
+            SoundManager.playGate()
+        }
+
         val current = _currentLap.value ?: return
         Log.d("FlightVM", "addLap: currentLabel=${current.label}, nextLapNumber=$nextLapNumber, changePointLap=$changePointLap, pendingPilotChange=$pendingPilotChange, lapsSize=${_laps.value.size}")
         val completed = current.copy(interval = TimeInterval(current.startMs, _elapsedMs.value))

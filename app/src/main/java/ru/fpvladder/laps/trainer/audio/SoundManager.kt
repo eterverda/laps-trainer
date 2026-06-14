@@ -12,6 +12,7 @@ object SoundManager {
     private var soundPool: SoundPool? = null
     private var stageId: Int = 0
     private var buzzerId: Int = 0
+    private var gateId: Int = 0
     private var isLoaded = false
 
     fun init(context: Context) {
@@ -22,6 +23,7 @@ object SoundManager {
         }
         stageId = pool.load(context.applicationContext, R.raw.stage, 1)
         buzzerId = pool.load(context.applicationContext, R.raw.buzzer, 1)
+        gateId = pool.load(context.applicationContext, R.raw.gate, 1)
         soundPool = pool
     }
 
@@ -31,6 +33,10 @@ object SoundManager {
 
     fun playBuzzer(volume: Float = 1f) {
         soundPool?.let { if (isLoaded) it.play(buzzerId, volume, volume, 0, 0, 1f) }
+    }
+
+    fun playGate(volume: Float = 1f) {
+        soundPool?.let { if (isLoaded) it.play(gateId, volume, volume, 0, 0, 1f) }
     }
 
     fun playStageSequence(scope: CoroutineScope, volume: Float = 1f): Job {
