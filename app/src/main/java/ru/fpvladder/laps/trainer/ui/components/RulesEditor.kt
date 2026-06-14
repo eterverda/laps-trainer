@@ -317,11 +317,13 @@ fun RulesEditorContent(
                                 onCheckedChange = { holeshot = it }
                             )
                         }
-                        Text(
-                            text = "Holeshot",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Box(modifier = Modifier.offset(x = (-8).dp)) {
+                            Text(
+                                text = "Holeshot",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                     Text(
                         text = if (holeshot) {
@@ -331,7 +333,7 @@ fun RulesEditorContent(
                         },
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 44.dp)
+                        modifier = Modifier.padding(start = 40.dp)
                     )
                 }
 
@@ -351,12 +353,17 @@ fun RulesEditorContent(
                                 enabled = bothSet
                             )
                         }
-                        Text(
-                            text = "Смена по времени",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.alpha(changeAlpha)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .offset(x = (-8).dp)
+                                .alpha(changeAlpha)
+                        ) {
+                            Text(
+                                text = "Смена по времени",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                     val timeVal = selectedTime
                     val lapsVal = selectedLaps
@@ -390,7 +397,7 @@ fun RulesEditorContent(
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
-                                .padding(start = 44.dp)
+                                .padding(start = 40.dp)
                                 .alpha(changeAlpha)
                         )
                     }

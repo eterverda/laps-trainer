@@ -1,8 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) load(file.inputStream())
 }
 
 android {
@@ -16,20 +23,53 @@ android {
         minSdk = 31
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.2"
+        versionName = "0.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file(keystoreProperties.getProperty("keystore.path"))
+            storePassword = keystoreProperties.getProperty("keystore.password")
+            keyAlias = keystoreProperties.getProperty("key.alias")
+            keyPassword = keystoreProperties.getProperty("key.password")
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
-            isMinifyEnabled = false
+            signingConfig = signingConfigs.named("release").get()
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("rustore") {
+            dimension = "distribution"
+            buildConfigField("String", "VIP_BADGE_TEXT", "\"\"")
+        }
+        create("vip") {
+            dimension = "distribution"
+            isDefault = true
+            val vipProperties = Properties().apply {
+                val file = rootProject.file("vip.properties")
+                if (file.exists()) load(file.inputStream())
+            }
+            val badgeText = vipProperties.getProperty("vip.badge.text").orEmpty()
+            buildConfigField("String", "VIP_BADGE_TEXT", "\"$badgeText\"")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -39,6 +79,16 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    applicationVariants.all {
+        val variant = this
+        outputs.configureEach {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val suffixPart = variant.buildType.applicationIdSuffix.orEmpty().replace(".", "-")
+            output.outputFileName = "LAPS.Trainer-v${variant.versionName}-${variant.flavorName}${suffixPart}.apk"
+        }
     }
 }
 

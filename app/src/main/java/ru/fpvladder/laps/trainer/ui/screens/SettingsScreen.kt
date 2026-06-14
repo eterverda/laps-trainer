@@ -35,11 +35,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -64,8 +67,9 @@ import ru.fpvladder.laps.trainer.settings.ChannelGrid
 import ru.fpvladder.laps.trainer.settings.ColorCount
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.BuildConfig
 import ru.fpvladder.laps.trainer.R
-import ru.fpvladder.laps.trainer.settings.VIP_BADGE_ENABLED
+import androidx.core.net.toUri
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -111,6 +115,7 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         topBar = {
             TopAppBar(
                 title = { Text("Настройки") },
@@ -118,246 +123,305 @@ fun SettingsScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = "Назад",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 scrollBehavior = scrollBehavior
             )
         }
     ) { padding ->
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .padding(padding),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Spacer(modifier = Modifier.height(8.dp))
 
-            if (isUsbFeatureEnabled) {
+                if (isUsbFeatureEnabled) {
+                    ListItem(
+                        headlineContent = { Text("Поддержка USB-клавиатуры") },
+                        trailingContent = {
+                            CompactSwitch(
+                                checked = isUsbKeyboardEnabled,
+                                onCheckedChange = onUsbKeyboardChange
+                            )
+                        }
+                    )
+
+                    SectionDivider()
+                }
+
                 ListItem(
-                    headlineContent = { Text("Поддержка USB-клавиатуры") },
+                    headlineContent = { Text("Беззвучный режим") },
                     trailingContent = {
                         CompactSwitch(
-                            checked = isUsbKeyboardEnabled,
-                            onCheckedChange = onUsbKeyboardChange
+                            checked = isMuted,
+                            onCheckedChange = onMutedChange
                         )
                     }
                 )
 
                 SectionDivider()
-            }
 
-            ListItem(
-                headlineContent = { Text("Беззвучный режим") },
-                trailingContent = {
-                    CompactSwitch(
-                        checked = isMuted,
-                        onCheckedChange = onMutedChange
-                    )
-                }
-            )
-
-            SectionDivider()
-
-            ListItem(
-                headlineContent = {
-                    FlowRow(
-                        verticalArrangement = Arrangement.Center,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text("Кнопка ", modifier = Modifier.align(Alignment.CenterVertically))
-                        InlineButton(
-                            text = "Круг",
-                            iconRes = R.drawable.ic_circle
-                        )
-                        Text(
-                            if (useLapButton) " видна" else " скрыта",
-                            modifier = Modifier.align(Alignment.CenterVertically)
+                ListItem(
+                    headlineContent = {
+                        FlowRow(
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("Кнопка ", modifier = Modifier.align(Alignment.CenterVertically))
+                            InlineButton(
+                                text = "Круг",
+                                iconRes = R.drawable.ic_circle
+                            )
+                            Text(
+                                if (useLapButton) " видна" else " скрыта",
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            )
+                        }
+                    },
+                    trailingContent = {
+                        CompactSwitch(
+                            checked = useLapButton,
+                            onCheckedChange = onUseLapButtonChange
                         )
                     }
-                },
-                trailingContent = {
-                    CompactSwitch(
-                        checked = useLapButton,
-                        onCheckedChange = onUseLapButtonChange
-                    )
-                }
-            )
-            AnimatedVisibility(visible = !useLapButton) {
-                Text(
-                    text = "Нажимайте на экран чтобы засчитать круг",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 12.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-
-            ListItem(
-                headlineContent = {
-                    FlowRow(
-                        verticalArrangement = Arrangement.Center,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text("Кнопки ", modifier = Modifier.align(Alignment.CenterVertically))
-                        InlineButton(
-                            text = "Ошибка",
-                            iconRes = R.drawable.ic_cross
-                        )
-                        Text(" и ", modifier = Modifier.align(Alignment.CenterVertically))
-                        InlineButton(
-                            text = "Исправил",
-                            iconRes = R.drawable.ic_square
-                        )
-                        Text(
-                            if (useErrorFixButtons) " видны" else " скрыты",
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
-                },
-                trailingContent = {
-                    CompactSwitch(
-                        checked = useErrorFixButtons,
-                        onCheckedChange = onUseErrorFixButtonsChange
-                    )
-                }
-            )
-            AnimatedVisibility(visible = useErrorFixButtons) {
-                Text(
-                    text = "Нажимайте Ошибка когда пилот сошел с траектории. Нажимайте Исправил, когда пилот вернулся на траекторию",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 12.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            SectionDivider()
-
-            ListItem(
-                headlineContent = { Text("Сигнал на старт") },
-                supportingContent = {
+                AnimatedVisibility(visible = !useLapButton) {
                     Text(
-                        if (isMuted) {
-                            "В беззвучном режиме только Ручной"
-                        } else {
-                            startSignal.displayName
-                        }
+                        text = "Нажимайте на экран чтобы засчитать круг",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 12.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                },
-                modifier = Modifier.clickable(enabled = !isMuted) { showSignalDialog = true },
-                colors = ListItemDefaults.colors(
-                    headlineColor = if (isMuted) {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
+                }
+
+                ListItem(
+                    headlineContent = {
+                        FlowRow(
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("Кнопки ", modifier = Modifier.align(Alignment.CenterVertically))
+                            InlineButton(
+                                text = "Ошибка",
+                                iconRes = R.drawable.ic_cross
+                            )
+                            Text(" и ", modifier = Modifier.align(Alignment.CenterVertically))
+                            InlineButton(
+                                text = "Исправил",
+                                iconRes = R.drawable.ic_square
+                            )
+                            Text(
+                                if (useErrorFixButtons) " видны" else " скрыты",
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            )
+                        }
                     },
-                    supportingColor = if (isMuted) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                    trailingContent = {
+                        CompactSwitch(
+                            checked = useErrorFixButtons,
+                            onCheckedChange = onUseErrorFixButtonsChange
+                        )
                     }
                 )
-            )
-            ListItem(
-                headlineContent = { Text("Точность ручной засечки") },
-                supportingContent = { Text(timerPrecision.displayName) },
-                modifier = Modifier.clickable { showPrecisionDialog = true }
-            )
+                AnimatedVisibility(visible = useErrorFixButtons) {
+                    Text(
+                        text = "Нажимайте Ошибка когда пилот сошел с траектории. Нажимайте Исправил, когда пилот вернулся на траекторию",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 12.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
-            SectionDivider()
+                SectionDivider()
 
-            ListItem(
-                headlineContent = { Text("Сетка") },
-                supportingContent = { Text(channelGrid.displayName) },
-                modifier = Modifier.clickable { showGridDialog = true }
-            )
-            ListItem(
-                headlineContent = { Text("Цвета") },
-                supportingContent = { Text(colorCount.displayName) },
-                modifier = Modifier.clickable { showColorDialog = true }
-            )
-
-            SectionDivider()
-
-            ListItem(
-                headlineContent = { Text("Тема") },
-                supportingContent = { Text(appTheme.displayName) },
-                modifier = Modifier.clickable { showThemeDialog = true }
-            )
-
-            SectionDivider()
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                            append("Laps")
-                        }
-                        withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
-                            append(".Trainer")
-                        }
-                        append(" v$versionName")
+                ListItem(
+                    headlineContent = { Text("Сигнал на старт") },
+                    supportingContent = {
+                        Text(
+                            if (isMuted) {
+                                "В беззвучном режиме только Ручной"
+                            } else {
+                                startSignal.displayName
+                            }
+                        )
                     },
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.clickable(enabled = !isMuted) { showSignalDialog = true },
+                    colors = ListItemDefaults.colors(
+                        headlineColor = if (isMuted) {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                        supportingColor = if (isMuted) {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
                 )
-                if (VIP_BADGE_ENABLED) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFFFFD700),
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    ) {
+                ListItem(
+                    headlineContent = { Text("Точность ручной засечки") },
+                    supportingContent = { Text(timerPrecision.displayName) },
+                    modifier = Modifier.clickable { showPrecisionDialog = true }
+                )
+
+                SectionDivider()
+
+                ListItem(
+                    headlineContent = { Text("Сетка") },
+                    supportingContent = { Text(channelGrid.displayName) },
+                    modifier = Modifier.clickable { showGridDialog = true }
+                )
+                ListItem(
+                    headlineContent = { Text("Цвета") },
+                    supportingContent = { Text(colorCount.displayName) },
+                    modifier = Modifier.clickable { showColorDialog = true }
+                )
+
+                SectionDivider()
+
+                ListItem(
+                    headlineContent = { Text("Тема") },
+                    supportingContent = { Text(appTheme.displayName) },
+                    modifier = Modifier.clickable { showThemeDialog = true }
+                )
+
+                SectionDivider()
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
+                                append("Laps")
+                            }
+                            withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
+                                append(".Trainer")
+                            }
+                            append(" v$versionName")
+                        },
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (BuildConfig.FLAVOR == "rustore") {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier
+                                .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Star,
+                                painter = painterResource(R.drawable.ic_rustore),
                                 contentDescription = null,
-                                tint = Color.Black,
-                                modifier = Modifier.size(16.dp)
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "VIP 3DFPV Edition",
-                                color = Color.Black,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = Icons.Filled.Star,
-                                contentDescription = null,
-                                tint = Color.Black,
-                                modifier = Modifier.size(16.dp)
+                                text = "RuStore Edition",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+
+                    if (BuildConfig.FLAVOR == "vip") {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0xFFFFD700),
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = BuildConfig.VIP_BADGE_TEXT.takeIf(String::isNotBlank)
+                                        ?: "VIP Edition",
+                                    color = Color.Black,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "© 2026 NOOB@WHOOP",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://pay.cloudtips.ru/p/0c51e214".toUri()
+                                )
+                            )
+                        },
+                        modifier = Modifier.padding(top = 40.dp),
+                    ) {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Донат автору на")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            painter = painterResource(R.drawable.ic_cloudtips),
+                            contentDescription = "CloudTips",
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("CloudTips")
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-
-                Text(
-                    text = "© 2026 NOOB@WHOOP",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
@@ -409,6 +473,7 @@ fun SettingsScreen(
             items = TimerPrecision.entries,
             selected = timerPrecision,
             itemText = { it.displayName },
+            itemDescription = { it.description },
             onSelect = {
                 onTimerPrecisionChange(it)
                 showPrecisionDialog = false
@@ -423,6 +488,7 @@ fun SettingsScreen(
             items = StartSignal.entries,
             selected = startSignal,
             itemText = { it.displayName },
+            itemDescription = { it.description },
             onSelect = {
                 onStartSignalChange(it)
                 showSignalDialog = false
@@ -460,7 +526,7 @@ private fun InlineButton(
 ) {
     Surface(
         modifier = modifier.padding(vertical = 3.dp),
-        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
         shape = RoundedCornerShape(6.dp)
     ) {
         Row(
@@ -506,6 +572,7 @@ private fun <T> SelectionDialog(
     items: List<T>,
     selected: T,
     itemText: (T) -> String,
+    itemDescription: ((T) -> String)? = null,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -526,7 +593,7 @@ private fun <T> SelectionDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp)
+                            .height(if (itemDescription != null) 64.dp else 48.dp)
                             .clickable { onSelect(item) }
                             .padding(start = 16.dp, end = 24.dp)
                     ) {
@@ -535,10 +602,19 @@ private fun <T> SelectionDialog(
                             onClick = { onSelect(item) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = itemText(item),
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        Column {
+                            Text(
+                                text = itemText(item),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                            itemDescription?.let { description ->
+                                Text(
+                                    text = description(item),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
                 Row(
