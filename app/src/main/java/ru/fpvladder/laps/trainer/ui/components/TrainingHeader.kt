@@ -149,9 +149,18 @@ fun TrainingHeader(
                         .clickable(enabled = enabled) { expanded = !expanded },
                     contentAlignment = Alignment.Center
                 ) {
+                    val isSingleTraining = trainings.size <= 1
                     Icon(
-                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (expanded) "Свернуть" else "Развернуть",
+                        imageVector = when {
+                            expanded -> Icons.Default.KeyboardArrowUp
+                            isSingleTraining -> Icons.Default.Add
+                            else -> Icons.Default.KeyboardArrowDown
+                        },
+                        contentDescription = when {
+                            expanded -> "Свернуть"
+                            isSingleTraining -> "Добавить"
+                            else -> "Развернуть"
+                        },
                         tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
                             alpha = 0.38f
                         )
