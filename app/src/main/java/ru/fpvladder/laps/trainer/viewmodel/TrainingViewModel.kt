@@ -2,16 +2,20 @@ package ru.fpvladder.laps.trainer.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Flight
-import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.Training
+import ru.fpvladder.laps.trainer.storage.TrainingStorage
 
 class TrainingViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val storage = TrainingStorage(application.applicationContext)
 
     private val _trainings = MutableStateFlow<List<Training>>(emptyList())
     val trainings: StateFlow<List<Training>> = _trainings.asStateFlow()
@@ -23,15 +27,20 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     val selectedTraining: StateFlow<Training>
 
     init {
-        val individual = Training.Individual()
-        val team = Training.Team(pilot = Pilot.Team(name1 = "Командор", name2 = "Дринкинс"))
-        _trainings.value = listOf(individual, team)
-        _selectedTraining = MutableStateFlow(individual)
+        val loaded = storage.loadAll()
+        val initial = loaded.ifEmpty { listOf(Training.DEFAULT) }
+        _trainings.value = initial
+        _selectedTraining = MutableStateFlow(initial.first())
         selectedTraining = _selectedTraining.asStateFlow()
     }
 
     fun selectTraining(training: Training) {
         _selectedTraining.value = training
+        viewModelScope.launch {
+            storage.touch(training)
+        }
+        cleanupDefaults(training)
+        _trainings.value = listOf(training) + _trainings.value.filter { it.id != training.id }
     }
 
     fun markPagerWiggled() {
@@ -39,15 +48,28 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun addTraining(training: Training) {
-        val updated = _trainings.value + training
-        _trainings.value = updated
+        _trainings.value = listOf(training) + _trainings.value.filter { it.id != training.id }
+        cleanupDefaults(training)
+        _selectedTraining.value = training
+        viewModelScope.launch {
+            storage.save(training)
+        }
     }
 
     fun deleteTraining(training: Training) {
-        val updated = _trainings.value.filter { it.id != training.id }
-        _trainings.value = updated
-        if (_selectedTraining.value.id == training.id) {
-            _selectedTraining.value = updated.lastOrNull() ?: _selectedTraining.value
+        val remaining = _trainings.value.filter { it.id != training.id }
+        val newSelected = if (_selectedTraining.value.id == training.id) {
+            remaining.lastOrNull() ?: Training.DEFAULT
+        } else {
+            _selectedTraining.value
+        }
+        _selectedTraining.value = newSelected
+        cleanupDefaults(newSelected)
+        _trainings.value = listOf(newSelected) + _trainings.value.filter {
+            it.id != newSelected.id && it.id != training.id
+        }
+        viewModelScope.launch {
+            storage.delete(training)
         }
     }
 
@@ -88,6 +110,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         _trainings.value = updated
         val selectedIndex = previous.indexOfFirst { it.id == _selectedTraining.value.id }
         _selectedTraining.value = if (selectedIndex >= 0) updated[selectedIndex] else updated.last()
+        saveAll(updated)
     }
 
     fun updateCurrentPilotChannel(channel: Channel) {
@@ -133,6 +156,24 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         _trainings.value = updatedList
         if (_selectedTraining.value.id == updatedTraining.id) {
             _selectedTraining.value = updatedTraining
+        }
+        cleanupDefaults(updatedTraining)
+        save(updatedTraining)
+    }
+
+    private fun cleanupDefaults(keep: Training) {
+        _trainings.value = _trainings.value.filter { !it.isDefault() || it.id == keep.id }
+    }
+
+    private fun save(training: Training) {
+        viewModelScope.launch {
+            storage.save(training)
+        }
+    }
+
+    private fun saveAll(trainings: List<Training>) {
+        viewModelScope.launch {
+            trainings.forEach { storage.save(it) }
         }
     }
 }

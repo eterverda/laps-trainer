@@ -12,6 +12,7 @@ import ru.fpvladder.laps.trainer.model.TimeInterval
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.computeIndividualFlight
 import ru.fpvladder.laps.trainer.model.computeTeamFlight
+import java.io.File
 
 class YamlSamplesTest {
 
@@ -42,10 +43,9 @@ class YamlSamplesTest {
             flights = listOf(flight1, flight2)
         )
 
-        val file = tempFolder.newFile("individual.yaml")
-        TrainingStorage(file).save(training)
+        TrainingStorage(tempFolder.root).save(training)
         println("===== INDIVIDUAL =====")
-        println(file.readText())
+        println(File(tempFolder.root, "${training.id}.yaml").readText())
     }
 
     @Test
@@ -72,9 +72,8 @@ class YamlSamplesTest {
             flights = listOf(flight1, flight2)
         )
 
-        val file = tempFolder.newFile("team.yaml")
-        TrainingStorage(file).save(training)
+        TrainingStorage(tempFolder.root).save(training)
         println("===== TEAM =====")
-        println(file.readText())
+        println(File(tempFolder.root, "${training.id}.yaml").readText())
     }
 }

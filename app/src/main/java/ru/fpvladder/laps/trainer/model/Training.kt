@@ -17,6 +17,13 @@ sealed class Training {
 
     val stats: Stats by lazy { computeTrainingStats(this) }
 
+    fun isEmpty(): Boolean = flights.isEmpty()
+    fun isDefault(): Boolean = isEmpty() && pilot.isAnonymous()
+
+    companion object {
+        val DEFAULT: Training = Training.Individual()
+    }
+
     @Serializable
     @SerialName("individual")
     class Individual private constructor(

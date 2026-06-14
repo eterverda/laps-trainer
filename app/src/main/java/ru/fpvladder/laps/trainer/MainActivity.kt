@@ -37,10 +37,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +52,7 @@ import kotlinx.coroutines.Job
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.channels.ChannelResult
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
+import ru.fpvladder.laps.trainer.ui.components.ConfirmFinishTrainingDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
 import ru.fpvladder.laps.trainer.ui.components.IndividualNameDialog
 import ru.fpvladder.laps.trainer.ui.components.TeamNameDialog
@@ -162,6 +166,7 @@ fun AppRoot(
     var showTeamNameDialog by remember { mutableStateOf(false) }
     var nameEditorIsNew by remember { mutableStateOf(false) }
     var showRulesEditor by remember { mutableStateOf(false) }
+    var trainingToFinish by remember { mutableStateOf<Training?>(null) }
 
     val changeRemainingMs = when (val r = selectedTraining.rules) {
         is Rules.Team -> if (r.changeMode == Rules.Team.ChangeMode.TIME) {
@@ -344,18 +349,47 @@ fun AppRoot(
                                 )
 
                                 AppScreen.Training -> {
-                                    StatsScreen(
-                                        description = selectedTraining.description(LocalContext.current),
-                                        onEditRulesClick = { showRulesEditor = true },
-                                        stats = selectedTraining.stats,
-                                        showRecordKinds = selectedTraining.rules.showRecordKinds,
-                                        timerPrecision = timerPrecision,
-                                        pilot = selectedTraining.pilot,
-                                        onRotatePilots = { trainingViewModel.rotatePilotOrder() },
-                                        hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
-                                        onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
+                                    AnimatedContent(
+                                        targetState = selectedTraining,
+                                        transitionSpec = {
+                                            (fadeIn(animationSpec = tween(350)) +
+                                                    scaleIn(
+                                                        initialScale = 0.9f,
+                                                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                                    ))
+                                                .togetherWith(
+                                                    fadeOut(animationSpec = tween(250)) +
+                                                            scaleOut(
+                                                                targetScale = 1.08f,
+                                                                animationSpec = tween(300)
+                                                            )
+                                                )
+                                        },
+                                        contentKey = { it.id },
+                                        label = "training_switch",
                                         modifier = Modifier.fillMaxSize()
-                                    )
+                                    ) { training ->
+                                        StatsScreen(
+                                            description = training.description(LocalContext.current),
+                                            onEditRulesClick = { showRulesEditor = true },
+                                            stats = training.stats,
+                                            showRecordKinds = training.rules.showRecordKinds,
+                                            timerPrecision = timerPrecision,
+                                            pilot = training.pilot,
+                                            onRotatePilots = { trainingViewModel.rotatePilotOrder() },
+                                            hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
+                                            onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
+                                            isDefault = training.isDefault(),
+                                            onDeleteClick = {
+                                                if (training.isEmpty()) {
+                                                    trainingViewModel.deleteTraining(training)
+                                                } else {
+                                                    trainingToFinish = training
+                                                }
+                                            },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
                                 }
 
                                 else -> {}
@@ -587,6 +621,16 @@ fun AppRoot(
                 showRulesEditor = false
             },
             onDismiss = { showRulesEditor = false }
+        )
+    }
+
+    trainingToFinish?.let { training ->
+        ConfirmFinishTrainingDialog(
+            onConfirm = {
+                trainingViewModel.deleteTraining(training)
+                trainingToFinish = null
+            },
+            onDismiss = { trainingToFinish = null }
         )
     }
 }

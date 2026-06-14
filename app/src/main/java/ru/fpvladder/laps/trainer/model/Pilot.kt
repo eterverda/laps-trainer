@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 sealed class Pilot {
     abstract val name: String
     abstract val channel: Channel
+    abstract fun isAnonymous(): Boolean
 
     @Serializable
     @SerialName("individual")
@@ -17,7 +18,9 @@ sealed class Pilot {
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         override val name: String = "",
         override val channel: Channel = Channel()
-    ) : Pilot()
+    ) : Pilot() {
+        override fun isAnonymous(): Boolean = name.isBlank()
+    }
 
     @Serializable
     @SerialName("team")
@@ -35,5 +38,7 @@ sealed class Pilot {
                 name2.isNotBlank() -> name2
                 else -> ""
             }
+
+        override fun isAnonymous(): Boolean = name1.isBlank() && name2.isBlank()
     }
 }
