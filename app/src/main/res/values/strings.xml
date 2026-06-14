@@ -6,30 +6,35 @@
         <item quantity="one">%d круг</item>
         <item quantity="few">%d круга</item>
         <item quantity="many">%d кругов</item>
+        <item quantity="other">%d кругов</item>
     </plurals>
 
     <plurals name="laps_up_to">
         <item quantity="one">до %d круга</item>
         <item quantity="few">до %d кругов</item>
         <item quantity="many">до %d кругов</item>
+        <item quantity="other">до %d кругов</item>
     </plurals>
 
     <plurals name="flights">
         <item quantity="one">%d вылет</item>
         <item quantity="few">%d вылета</item>
         <item quantity="many">%d вылетов</item>
+        <item quantity="other">%d вылетов</item>
     </plurals>
 
     <plurals name="times">
         <item quantity="one">%d раз</item>
         <item quantity="few">%d раза</item>
         <item quantity="many">%d раз</item>
+        <item quantity="other">%d раз</item>
     </plurals>
 
     <plurals name="minutes">
         <item quantity="one">минута</item>
         <item quantity="few">минуты</item>
         <item quantity="many">минут</item>
+        <item quantity="other">минут</item>
     </plurals>
 
     <string name="individual_pilot">Пилот</string>
