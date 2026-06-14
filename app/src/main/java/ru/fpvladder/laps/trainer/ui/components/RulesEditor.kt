@@ -53,7 +53,9 @@ import java.util.EnumSet
 @Composable
 fun RulesEditorDialog(
     currentRules: Rules,
+    isEmpty: Boolean,
     onConfirm: (Rules) -> Unit,
+    onRequestConfirm: ((Rules) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -67,7 +69,9 @@ fun RulesEditorDialog(
         ) {
             RulesEditorContent(
                 currentRules = currentRules,
+                isEmpty = isEmpty,
                 onConfirm = onConfirm,
+                onRequestConfirm = onRequestConfirm,
                 onDismiss = onDismiss
             )
         }
@@ -77,7 +81,9 @@ fun RulesEditorDialog(
 @Composable
 fun RulesEditorContent(
     currentRules: Rules,
+    isEmpty: Boolean,
     onConfirm: (Rules) -> Unit,
+    onRequestConfirm: ((Rules) -> Unit)? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -164,6 +170,32 @@ fun RulesEditorContent(
             prevTime = selectedTime
             prevLaps = selectedLaps
         }
+    }
+
+    fun buildNewRules(): Rules = when (currentRules) {
+        is Rules.Individual -> Rules.Individual(
+            lapsLimit = selectedLaps,
+            timeLimitSeconds = selectedTime,
+            holeshotEnabled = holeshot,
+            showRecordKinds = EnumSet.copyOf(enabledKinds)
+        )
+
+        is Rules.Team -> Rules.Team(
+            lapsLimit = selectedLaps,
+            timeLimitSeconds = selectedTime,
+            holeshotEnabled = holeshot && TEAM_HOLESHOT_ENABLED,
+            changeMode = changeMode,
+            showRecordKinds = EnumSet.copyOf(enabledKinds)
+        )
+    }
+
+    fun hasSignificantChanges(newRules: Rules): Boolean {
+        if (currentRules.timeLimitSeconds != newRules.timeLimitSeconds) return true
+        if (currentRules.lapsLimit != newRules.lapsLimit) return true
+        val currentTeam = currentRules as? Rules.Team
+        val newTeam = newRules as? Rules.Team
+        if (currentTeam != null && newTeam != null && currentTeam.changeMode != newTeam.changeMode) return true
+        return false
     }
 
     Column(
@@ -379,23 +411,12 @@ fun RulesEditorContent(
             }
             Button(
                 onClick = {
-                    val newRules = when (currentRules) {
-                        is Rules.Individual -> Rules.Individual(
-                            lapsLimit = selectedLaps,
-                            timeLimitSeconds = selectedTime,
-                            holeshotEnabled = holeshot,
-                            showRecordKinds = EnumSet.copyOf(enabledKinds)
-                        )
-
-                        is Rules.Team -> Rules.Team(
-                            lapsLimit = selectedLaps,
-                            timeLimitSeconds = selectedTime,
-                            holeshotEnabled = holeshot && TEAM_HOLESHOT_ENABLED,
-                            changeMode = changeMode,
-                            showRecordKinds = EnumSet.copyOf(enabledKinds)
-                        )
+                    val newRules = buildNewRules()
+                    if (isEmpty || !hasSignificantChanges(newRules)) {
+                        onConfirm(newRules)
+                    } else {
+                        onRequestConfirm?.invoke(newRules)
                     }
-                    onConfirm(newRules)
                 },
                 enabled = when (currentRules) {
                     is Rules.Individual -> true

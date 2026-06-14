@@ -51,8 +51,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.channels.ChannelResult
+import java.time.LocalDate
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmFinishTrainingDialog
+import ru.fpvladder.laps.trainer.ui.components.ConfirmRulesChangeDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
 import ru.fpvladder.laps.trainer.ui.components.IndividualNameDialog
 import ru.fpvladder.laps.trainer.ui.components.TeamNameDialog
@@ -166,6 +168,7 @@ fun AppRoot(
     var showTeamNameDialog by remember { mutableStateOf(false) }
     var nameEditorIsNew by remember { mutableStateOf(false) }
     var showRulesEditor by remember { mutableStateOf(false) }
+    var pendingRulesChange by remember { mutableStateOf<Rules?>(null) }
     var trainingToFinish by remember { mutableStateOf<Training?>(null) }
 
     val changeRemainingMs = when (val r = selectedTraining.rules) {
@@ -616,11 +619,42 @@ fun AppRoot(
     if (showRulesEditor) {
         RulesEditorDialog(
             currentRules = selectedTraining.rules,
+            isEmpty = selectedTraining.isEmpty(),
             onConfirm = { newRules ->
                 trainingViewModel.updateTrainingRules(selectedTraining, newRules)
                 showRulesEditor = false
             },
+            onRequestConfirm = { newRules ->
+                pendingRulesChange = newRules
+                showRulesEditor = false
+            },
             onDismiss = { showRulesEditor = false }
+        )
+    }
+
+    pendingRulesChange?.let { newRules ->
+        ConfirmRulesChangeDialog(
+            onContinue = {
+                trainingViewModel.updateTrainingRules(selectedTraining, newRules)
+                pendingRulesChange = null
+            },
+            onCreateNew = {
+                val pilot = selectedTraining.pilot
+                val newTraining = when (pilot) {
+                    is Pilot.Individual -> Training.Individual(
+                        pilot = pilot.copy(),
+                        date = LocalDate.now()
+                    ).copy(rules = newRules as Rules.Individual)
+
+                    is Pilot.Team -> Training.Team(
+                        pilot = pilot.copy(),
+                        date = LocalDate.now()
+                    ).copy(rules = newRules as Rules.Team)
+                }
+                trainingViewModel.addTraining(newTraining)
+                pendingRulesChange = null
+            },
+            onDismiss = { pendingRulesChange = null }
         )
     }
 
