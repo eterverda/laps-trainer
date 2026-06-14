@@ -7,9 +7,19 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+version = "0.1.3"
+
 val keystoreProperties = Properties().apply {
     val file = rootProject.file("keystore.properties")
     if (file.exists()) load(file.inputStream())
+}
+
+fun versionCodeFromName(flavorSuffix: Int): Int {
+    val regex = """^(\d+)\.(\d+)\.(\d+)$""".toRegex()
+    val match = regex.matchEntire(version.toString())
+        ?: error("version must be in M.m.p format, got: $version")
+    val (major, minor, patch) = match.destructured
+    return major.toInt() * 1_000_000 + minor.toInt() * 10_000 + patch.toInt() * 100 + flavorSuffix
 }
 
 android {
@@ -22,8 +32,7 @@ android {
         applicationId = "ru.fpvladder.laps.trainer"
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.3"
+        versionName = version.toString()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -56,11 +65,13 @@ android {
     productFlavors {
         create("rustore") {
             dimension = "distribution"
+            versionCode = versionCodeFromName(0)
             buildConfigField("String", "VIP_BADGE_TEXT", "\"\"")
         }
         create("vip") {
             dimension = "distribution"
             isDefault = true
+            versionCode = versionCodeFromName(1)
             val vipProperties = Properties().apply {
                 val file = rootProject.file("vip.properties")
                 if (file.exists()) load(file.inputStream())
