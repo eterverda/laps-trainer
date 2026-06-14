@@ -1,0 +1,62 @@
+!<individual>
+id: 8b096fbe-6d58-48cf-8d94-9e59051aa7c3
+date: 2026-06-14
+pilot:
+  name: Noob
+  channel: L5 ffa000
+rules:
+  laps_limit: max
+  time_limit_seconds: max
+  holeshot_enabled: true
+  show_record_kinds:
+  - BEST_1
+  - BEST_3
+flights:
+- laps:
+  - number: 0
+    interval_ms: 0 -> 1160
+    success: true
+  - number: 1
+    interval_ms: 1160 -> 71784
+    success: true
+  - number: 2
+    interval_ms: 71784 -> 114232
+    success: true
+  - number: 3
+    interval_ms: 114232 -> 160872
+    success: true
+  - number: 4
+    interval_ms: 160872 -> 202296
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 2207
+    success: true
+  - number: 1
+    interval_ms: 2207 -> 48996
+    success: true
+  - number: 2
+    interval_ms: 48996 -> 98246
+    success: true
+  - number: 3
+    interval_ms: 98246 -> 166800
+    success: true
+  - number: 4
+    interval_ms: 166800 -> 218808
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 2149
+    success: true
+  - number: 1
+    interval_ms: 2149 -> 49243
+    success: true
+  - number: 2
+    interval_ms: 49243 -> 90979
+    success: true
+  - number: 3
+    interval_ms: 90979 -> 130455
+    success: true
+  stop_reason: MANUAL

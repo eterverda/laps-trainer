@@ -1,0 +1,46 @@
+!<individual>
+id: 713a0a1a-7358-481c-9d97-133e1409fe60
+date: 2026-06-14
+pilot:
+  name: TLDR
+  channel: R3 2979ff
+rules:
+  laps_limit: max
+  time_limit_seconds: 150
+  holeshot_enabled: true
+  show_record_kinds:
+  - BEST_1
+  - BEST_3
+  - MOST
+flights:
+- laps:
+  - number: 0
+    interval_ms: 0 -> 1149
+    success: true
+  - number: 1
+    interval_ms: 1149 -> 82275
+    success: true
+  stop_reason: TIME_LIMIT
+- laps:
+  - number: 0
+    interval_ms: 0 -> 1024
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 704
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 9401
+    success: true
+  - number: 1
+    interval_ms: 9401 -> 68044
+    success: true
+  - number: 2
+    interval_ms: 68044 -> 114991
+    success: true
+  stop_reason: TIME_LIMIT
+- laps: []
+  stop_reason: MANUAL

@@ -1,0 +1,78 @@
+!<individual>
+id: 42242cfc-35cc-4c85-a6fb-12bf5594ea2f
+date: 2026-06-14
+pilot:
+  name: Stephanao
+  channel: R5 ff0000
+rules:
+  laps_limit: max
+  time_limit_seconds: 120
+  holeshot_enabled: true
+  show_record_kinds:
+  - BEST_1
+  - BEST_3
+  - MOST
+flights:
+- laps:
+  - number: 0
+    interval_ms: 0 -> 749
+    success: true
+  - number: 1
+    interval_ms: 749 -> 25830
+    success: true
+  - number: 2
+    interval_ms: 25830 -> 48948
+    success: true
+  - number: 3
+    interval_ms: 48948 -> 76765
+    success: true
+  - number: 4
+    interval_ms: 76765 -> 105645
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 458
+    success: true
+  - number: 1
+    interval_ms: 458 -> 20691
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 205
+    success: true
+  - number: 1
+    interval_ms: 205 -> 20419
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 630
+    success: true
+  - number: 1
+    interval_ms: 630 -> 41956
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 1191
+    success: true
+  - number: 1
+    interval_ms: 1191 -> 20655
+    success: true
+  - number: 2
+    interval_ms: 20655 -> 52063
+    success: true
+  stop_reason: MANUAL
+- laps:
+  - number: 0
+    interval_ms: 0 -> 3539
+    success: true
+  - number: 1
+    interval_ms: 3539 -> 35097
+    success: true
+  - number: 2
+    interval_ms: 35097 -> 57790
+    success: true
+  stop_reason: MANUAL

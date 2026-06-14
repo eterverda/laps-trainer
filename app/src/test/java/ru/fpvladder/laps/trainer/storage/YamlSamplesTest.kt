@@ -1,5 +1,8 @@
 package ru.fpvladder.laps.trainer.storage
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -18,6 +21,20 @@ class YamlSamplesTest {
 
     @get:Rule
     val tempFolder = TemporaryFolder()
+
+    @Test
+    fun `reads all sample training yaml files from test resources`() {
+        val resourceDir = File(javaClass.classLoader!!.getResource("trainings")!!.file)
+        val storage = TrainingStorage(resourceDir)
+
+        val loaded = storage.loadAll()
+
+        assertEquals(3, loaded.size)
+        loaded.forEach { training ->
+            assertFalse(training.isDefault())
+            assertTrue(training.flights.isNotEmpty())
+        }
+    }
 
     @Test
     fun `print individual training yaml`() {
