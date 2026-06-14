@@ -225,6 +225,17 @@ fun SettingsScreen(
                     )
                 }
             )
+            AnimatedVisibility(visible = useErrorFixButtons) {
+                Text(
+                    text = "Нажимайте Ошибка когда пилот сошел с траектории. Нажимайте Исправил, когда пилот вернулся на траекторию",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             SectionDivider()
 
