@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -32,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -232,7 +232,6 @@ fun FlightScreen(
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(horizontal = 8.dp)
-                                            .height(54.dp)
                                     )
                                     Box(modifier = Modifier.size(48.dp))
                                 }
@@ -248,38 +247,28 @@ fun FlightScreen(
                                     ),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Button(
-                                        onClick = onErrorClick,
-                                        shape = RoundedCornerShape(12.dp),
-                                        contentPadding = PaddingValues(
-                                            horizontal = 24.dp,
-                                            vertical = 6.dp
-                                        )
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.ic_cross),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("ОШИБКА", fontSize = 14.sp)
-                                    }
-                                    Button(
-                                        onClick = onFixClick,
-                                        shape = RoundedCornerShape(12.dp),
-                                        contentPadding = PaddingValues(
-                                            horizontal = 24.dp,
-                                            vertical = 6.dp
-                                        )
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.ic_square),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("ИСПРАВИЛ", fontSize = 14.sp)
-                                    }
+                                    HoldButton(
+                                        onConfirm = onErrorClick,
+                                        text = "ОШИБКА",
+                                        iconRes = R.drawable.ic_cross,
+                                        iconSize = 18.dp,
+                                        textSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        contentSpacing = 4.dp,
+                                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                                        holdDurationMs = 0
+                                    )
+                                    HoldButton(
+                                        onConfirm = onFixClick,
+                                        text = "ИСПРАВИЛ",
+                                        iconRes = R.drawable.ic_square,
+                                        iconSize = 18.dp,
+                                        textSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        contentSpacing = 4.dp,
+                                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                                        holdDurationMs = 0
+                                    )
                                 }
                             }
                         }

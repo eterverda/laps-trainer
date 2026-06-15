@@ -11,12 +11,15 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,6 +41,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -50,6 +55,11 @@ fun HoldButton(
     holdDurationMs: Int = 1200,
     text: String = "Старт",
     iconRes: Int = R.drawable.ic_triangle,
+    iconSize: Dp = 32.dp,
+    textSize: TextUnit = 20.sp,
+    fontWeight: FontWeight = FontWeight.Black,
+    contentSpacing: Dp = 8.dp,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     enabled: Boolean = true,
     onPressStart: () -> Unit = {},
     onPressEnd: () -> Unit = {}
@@ -72,35 +82,36 @@ fun HoldButton(
     val backgroundColor = if (isPressed) fillColor else MaterialTheme.colorScheme.primary
 
     val baseModifier = modifier
-        .height(54.dp)
         .clip(RoundedCornerShape(12.dp))
         .background(backgroundColor)
 
     val content: @Composable BoxScope.() -> Unit = {
-        Box(
-            modifier = Modifier
-                .align(if (isSuccess) Alignment.CenterEnd else Alignment.CenterStart)
-                .fillMaxHeight()
-                .fillMaxWidth(progress.value)
-                .background(fillColor)
-        )
+        if (currentHoldDurationMs > 0) {
+            Box(
+                modifier = Modifier
+                    .align(if (isSuccess) Alignment.CenterEnd else Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress.value)
+                    .background(fillColor)
+            )
+        }
 
         Row(
-            modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(contentPadding)
         ) {
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(iconSize),
                 tint = MaterialTheme.colorScheme.onPrimary
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(contentSpacing))
             Text(
                 text = text.uppercase(),
-                fontWeight = FontWeight.Black,
-                fontSize = 20.sp,
+                fontWeight = fontWeight,
+                fontSize = textSize,
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
@@ -204,7 +215,7 @@ fun HoldButton(
     }
 
     Box(
-        modifier = baseModifier.then(gestureModifier),
+        modifier = baseModifier.then(gestureModifier).height(IntrinsicSize.Min),
         contentAlignment = Alignment.Center
     ) {
         content()

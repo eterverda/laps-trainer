@@ -151,6 +151,7 @@ fun AppRoot(
 
     val scope = rememberCoroutineScope()
     var soundJob by remember { mutableStateOf<Job?>(null) }
+    var wasHoldConfirmed by remember { mutableStateOf(false) }
 
     val laps by flightViewModel.laps.collectAsState()
     val currentLap by flightViewModel.currentLap.collectAsState()
@@ -475,6 +476,7 @@ fun AppRoot(
 
                             HoldButton(
                                 onConfirm = {
+                                    wasHoldConfirmed = true
                                     when {
                                         !isOnFlight -> pilotViewModel.navigateTo(AppScreen.Flight)
                                         isManualPreStart -> flightViewModel.manualStart(isMuted)
@@ -506,20 +508,20 @@ fun AppRoot(
                                 text = buttonText,
                                 holdDurationMs = holdDurationMs,
                                 onPressStart = {
+                                    wasHoldConfirmed = false
                                     if (!isMuted && (!isOnFlight || (isPostFlight && IMMEDIATE_START_ENABLED))) {
                                         soundJob = SoundManager.playStageSequence(scope)
                                     }
                                 },
                                 onPressEnd = {
-                                    if (flightPhase != FlightPhase.POST_FLIGHT) {
-                                        soundJob?.cancel()
+                                    soundJob?.cancel()
+                                    if (!wasHoldConfirmed) {
                                         SoundManager.stop()
                                     }
                                 },
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(horizontal = 8.dp)
-                                    .height(54.dp)
                             )
                             IconButton(
                                 onClick = {
