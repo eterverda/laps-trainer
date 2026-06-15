@@ -201,7 +201,7 @@ fun TrainingHeader(
                         DoubleBottomSurface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(8.dp)
                                 .heightIn(max = maxListHeight)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
