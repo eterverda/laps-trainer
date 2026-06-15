@@ -85,40 +85,29 @@ class FlightViewModel : ViewModel() {
         reset()
         _flightPhase.value = FlightPhase.PRE_FLIGHT
         preJob = viewModelScope.launch {
-            when (startSignal) {
-                StartSignal.FIXED -> {
-                    val totalDelay = 1500L + if (isMuted) 0 else BUZZER_DURATION_MS
-                    launch {
-                        val start = SystemClock.elapsedRealtime()
-                        while (true) {
-                            val passed = SystemClock.elapsedRealtime() - start
-                            val remaining = (totalDelay - passed).coerceAtLeast(0)
-                            _elapsedMs.value = -remaining
-                            if (remaining <= 0) break
-                            delay(16)
-                        }
+            if (startSignal == StartSignal.MANUAL) {
+                blinkLoop()
+            } else {
+                val wait = when (startSignal) {
+                    StartSignal.FIXED -> 1500L
+                    else -> Random.nextLong(1000, 3000)
+                }
+                val totalDelay = wait + if (isMuted) 0 else BUZZER_DURATION_MS
+                launch {
+                    val start = SystemClock.elapsedRealtime()
+                    while (true) {
+                        val passed = SystemClock.elapsedRealtime() - start
+                        val remaining = (totalDelay - passed).coerceAtLeast(0)
+                        _elapsedMs.value = -remaining
+                        if (remaining <= 0) break
+                        delay(16)
                     }
-                    delay(1500)
-                    if (!isMuted) SoundManager.playBuzzer()
-                    if (!isMuted) delay(BUZZER_DURATION_MS)
-                    _flightPhase.value = FlightPhase.FLIGHT
-                    startTimer(isMuted)
                 }
-
-                StartSignal.RANDOM -> {
-                    val blinkJob = launch { blinkLoop() }
-                    val wait = Random.nextLong(1000, 3000)
-                    delay(wait)
-                    blinkJob.cancel()
-                    if (!isMuted) SoundManager.playBuzzer()
-                    if (!isMuted) delay(BUZZER_DURATION_MS)
-                    _flightPhase.value = FlightPhase.FLIGHT
-                    startTimer(isMuted)
-                }
-
-                StartSignal.MANUAL -> {
-                    blinkLoop()
-                }
+                delay(wait)
+                if (!isMuted) SoundManager.playBuzzer()
+                if (!isMuted) delay(BUZZER_DURATION_MS)
+                _flightPhase.value = FlightPhase.FLIGHT
+                startTimer(isMuted)
             }
         }
     }
