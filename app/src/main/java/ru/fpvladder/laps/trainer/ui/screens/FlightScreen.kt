@@ -55,14 +55,14 @@ import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.settings.AppTheme
 import ru.fpvladder.laps.trainer.ui.components.FlightTimer
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
+import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 
 
 private val FlightSurfaceShape = RoundedCornerShape(24.dp)
 
 @Composable
 fun FlightScreen(
-    isPostFlight: Boolean,
-    isStarted: Boolean,
+    flightPhase: FlightPhase,
     startSignal: StartSignal,
     laps: List<Lap> = emptyList(),
     currentLap: Lap? = null,
@@ -126,7 +126,7 @@ fun FlightScreen(
         var buttonsHeight by remember { mutableIntStateOf(0) }
         val density = LocalDensity.current
 
-        val timerVisible = !isPostFlight
+        val timerVisible = flightPhase != FlightPhase.POST_FLIGHT
         val overlapPx = with(density) { 45.dp.roundToPx() }
         val targetTopPadding = if (timerVisible) (timerHeight - overlapPx).coerceAtLeast(0) else 0
         val animatedTopPadding by animateDpAsState(
@@ -134,7 +134,7 @@ fun FlightScreen(
             label = "timer_reveal"
         )
 
-        val buttonsVisible = !isPostFlight && isStarted && (useLapButton || useErrorFixButtons)
+        val buttonsVisible = flightPhase == FlightPhase.FLIGHT && (useLapButton || useErrorFixButtons)
         val bottomOverlapPx = with(density) { 0.dp.roundToPx() }
         val targetBottomPadding = if (buttonsVisible) (buttonsHeight - bottomOverlapPx).coerceAtLeast(0) else 0
         val animatedBottomPadding by animateDpAsState(
@@ -165,7 +165,7 @@ fun FlightScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         FlightTimer(
-                            isStarted = isStarted,
+                            flightPhase = flightPhase,
                             startSignal = startSignal,
                             elapsedMs = elapsedMs,
                             preStartCountdownMs = preStartCountdownMs,
@@ -186,9 +186,9 @@ fun FlightScreen(
             color = MaterialTheme.colorScheme.background,
             shape = FlightSurfaceShape
         ) {
-            if (!isPostFlight) {
+            if (flightPhase != FlightPhase.POST_FLIGHT) {
                 FlightContent(
-                    isStarted = isStarted,
+                    flightPhase = flightPhase,
                     startSignal = startSignal,
                     laps = laps,
                     currentLap = currentLap,

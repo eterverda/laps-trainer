@@ -72,7 +72,6 @@ import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.USB_ENABLED
 import ru.fpvladder.laps.trainer.settings.WIGGLE_ONCE_ENABLED
 import ru.fpvladder.laps.trainer.settings.IMMEDIATE_START_ENABLED
-import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.ui.helpers.description
 import ru.fpvladder.laps.trainer.audio.SoundManager
@@ -81,6 +80,7 @@ import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
 
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
 import ru.fpvladder.laps.trainer.viewmodel.FlightViewModel
+import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
 import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
 import ru.fpvladder.laps.trainer.viewmodel.SettingsViewModel
@@ -136,9 +136,7 @@ fun AppRoot(
     val effectiveStartSignal by settingsViewModel.effectiveStartSignal.collectAsState()
     val useLapButton by settingsViewModel.useLapButton.collectAsState()
     val useErrorFixButtons by settingsViewModel.useErrorFixButtons.collectAsState()
-    val isPostFlight by flightViewModel.isPostFlight.collectAsState()
-    val isStarted by flightViewModel.isStarted.collectAsState()
-    val isStopping by flightViewModel.isStopping.collectAsState()
+    val flightPhase by flightViewModel.flightPhase.collectAsState()
     val elapsedMs by flightViewModel.elapsedMs.collectAsState()
     val isPreBlinking by flightViewModel.isPreBlinking.collectAsState()
 
@@ -157,8 +155,10 @@ fun AppRoot(
 
     LaunchedEffect(currentScreen) {
         if (currentScreen == AppScreen.Flight) {
-            flightViewModel.setRules(selectedTraining.rules)
-            flightViewModel.prepareRace(effectiveStartSignal, isMuted)
+            if (flightPhase == FlightPhase.IDLE) {
+                flightViewModel.setRules(selectedTraining.rules)
+                flightViewModel.prepareRace(effectiveStartSignal, isMuted)
+            }
         } else {
             flightViewModel.reset()
         }
@@ -198,20 +198,24 @@ fun AppRoot(
     BackHandler(
         enabled = currentScreen == AppScreen.Settings || currentScreen == AppScreen.Flight
     ) {
-        when {
-            currentScreen == AppScreen.Settings -> {
+        when (currentScreen) {
+            AppScreen.Settings -> {
                 pilotViewModel.navigateTo(AppScreen.Training)
             }
 
-            currentScreen == AppScreen.Flight && !isPostFlight && !isStarted -> {
-                pilotViewModel.navigateTo(AppScreen.Training)
-                flightViewModel.reset()
-            }
+            AppScreen.Flight -> when (flightPhase) {
+                FlightPhase.PRE_FLIGHT -> {
+                    pilotViewModel.navigateTo(AppScreen.Training)
+                    flightViewModel.reset()
+                }
 
-            currentScreen == AppScreen.Flight && isPostFlight -> {
-                finishFlight(shouldSaveResult, true)
+                FlightPhase.POST_FLIGHT -> {
+                    finishFlight(shouldSaveResult, true)
+                }
+
+                else -> {}
             }
-            // MAIN — back игнорируется (enabled=true, но ничего не делаем)
+            else -> {}
         }
     }
 
@@ -227,7 +231,7 @@ fun AppRoot(
                     AppScreen.Flight -> TrainingHeader(
                         trainings = trainings,
                         selectedTraining = selectedTraining,
-                        enabled = isPostFlight,
+                        enabled = flightPhase == FlightPhase.POST_FLIGHT,
                         onChannelClick = {},
                         onNameClick = {},
                         onAddIndividualClick = {
@@ -316,8 +320,7 @@ fun AppRoot(
                         ) { screen ->
                             when (screen) {
                                 AppScreen.Flight -> FlightScreen(
-                                    isPostFlight = isPostFlight,
-                                    isStarted = isStarted,
+                                    flightPhase = flightPhase,
                                     startSignal = effectiveStartSignal,
                                     laps = laps,
                                     currentLap = currentLap,
@@ -442,9 +445,10 @@ fun AppRoot(
                                 )
                             }
                             val isManualPreStart =
-                                isOnFlight && !isPostFlight && !isStarted && effectiveStartSignal == StartSignal.MANUAL
+                                isOnFlight && flightPhase == FlightPhase.PRE_FLIGHT && effectiveStartSignal == StartSignal.MANUAL
                             val isPreFixedOrRandom =
-                                isOnFlight && !isPostFlight && !isStarted && effectiveStartSignal != StartSignal.MANUAL
+                                isOnFlight && flightPhase == FlightPhase.PRE_FLIGHT && effectiveStartSignal != StartSignal.MANUAL
+                            val isPostFlight = flightPhase == FlightPhase.POST_FLIGHT
 
                             val buttonText = when {
                                 !isOnFlight -> "Старт"
@@ -473,7 +477,7 @@ fun AppRoot(
                                             flightViewModel.reset()
                                         }
 
-                                        !isPostFlight && isStarted -> {
+                                        flightPhase == FlightPhase.FLIGHT -> {
                                             flightViewModel.stopRace(isMuted)
                                         }
 
@@ -501,7 +505,7 @@ fun AppRoot(
                                     }
                                 },
                                 onPressEnd = {
-                                    if (!isStopping) {
+                                    if (flightPhase != FlightPhase.POST_FLIGHT) {
                                         soundJob?.cancel()
                                         SoundManager.stop()
                                     }
@@ -513,7 +517,7 @@ fun AppRoot(
                             )
                             IconButton(
                                 onClick = {
-                                    if (currentScreen == AppScreen.Flight && isPostFlight) {
+                                    if (currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT) {
                                         finishFlight(shouldSaveResult, false)
                                     }
                                     pilotViewModel.navigateTo(AppScreen.Settings)
@@ -561,7 +565,7 @@ fun AppRoot(
             currentName = currentName,
             isEmpty = nameEditorIsNew || selectedTraining.isEmpty(),
             onConfirm = { name ->
-                val wasPostFlight = currentScreen == AppScreen.Flight && isPostFlight
+                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
                 if (wasPostFlight) {
                     finishFlight(shouldSaveResult, false)
                 }
@@ -603,7 +607,7 @@ fun AppRoot(
             name2 = currentName2,
             isEmpty = nameEditorIsNew || selectedTraining.isEmpty(),
             onConfirm = { n1, n2 ->
-                val wasPostFlight = currentScreen == AppScreen.Flight && isPostFlight
+                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
                 if (wasPostFlight) {
                     finishFlight(shouldSaveResult, false)
                 }
@@ -633,7 +637,7 @@ fun AppRoot(
         ConfirmNameChangeDialog(
             message = "Имя изменено. Вы уверены что хотите продолжить текущую тренировку с новым пилотом?",
             onContinue = {
-                val wasPostFlight = currentScreen == AppScreen.Flight && isPostFlight
+                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
                 if (wasPostFlight) {
                     finishFlight(shouldSaveResult, false)
                 }
@@ -644,7 +648,7 @@ fun AppRoot(
                 pendingIndividualName = null
             },
             onCreateNew = {
-                val wasPostFlight = currentScreen == AppScreen.Flight && isPostFlight
+                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
                 if (wasPostFlight) {
                     finishFlight(shouldSaveResult, false)
                 }
@@ -675,7 +679,7 @@ fun AppRoot(
         ConfirmNameChangeDialog(
             message = teamMessage,
             onContinue = {
-                val wasPostFlight = currentScreen == AppScreen.Flight && isPostFlight
+                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
                 if (wasPostFlight) {
                     finishFlight(shouldSaveResult, false)
                 }
@@ -686,7 +690,7 @@ fun AppRoot(
                 pendingTeamName = null
             },
             onCreateNew = {
-                val wasPostFlight = currentScreen == AppScreen.Flight && isPostFlight
+                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
                 if (wasPostFlight) {
                     finishFlight(shouldSaveResult, false)
                 }

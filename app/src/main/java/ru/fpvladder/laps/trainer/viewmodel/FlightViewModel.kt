@@ -25,23 +25,14 @@ import kotlin.random.Random
 
 class FlightViewModel : ViewModel() {
 
-    private val _isPostFlight = MutableStateFlow(false)
-    val isPostFlight: StateFlow<Boolean> = _isPostFlight.asStateFlow()
-
-    private val _isStarted = MutableStateFlow(false)
-    val isStarted: StateFlow<Boolean> = _isStarted.asStateFlow()
-
-    private val _isStopping = MutableStateFlow(false)
-    val isStopping: StateFlow<Boolean> = _isStopping.asStateFlow()
+    private val _flightPhase = MutableStateFlow(FlightPhase.IDLE)
+    val flightPhase: StateFlow<FlightPhase> = _flightPhase.asStateFlow()
 
     private val _elapsedMs = MutableStateFlow(0L)
     val elapsedMs: StateFlow<Long> = _elapsedMs.asStateFlow()
 
     private val _isPreBlinking = MutableStateFlow(false)
     val isPreBlinking: StateFlow<Boolean> = _isPreBlinking.asStateFlow()
-
-    private val _preStartTime = MutableStateFlow(0L)
-    val preStartTime: StateFlow<Long> = _preStartTime.asStateFlow()
 
     private val _laps = MutableStateFlow<List<Lap>>(emptyList())
     val laps: StateFlow<List<Lap>> = _laps.asStateFlow()
@@ -93,8 +84,9 @@ class FlightViewModel : ViewModel() {
     }
 
     fun prepareRace(startSignal: StartSignal, isMuted: Boolean) {
+        if (_flightPhase.value != FlightPhase.IDLE) return
         reset()
-        _preStartTime.value = SystemClock.elapsedRealtime()
+        _flightPhase.value = FlightPhase.PRE_FLIGHT
         preJob = viewModelScope.launch {
             when (startSignal) {
                 StartSignal.FIXED -> {
@@ -112,6 +104,7 @@ class FlightViewModel : ViewModel() {
                     delay(1500)
                     if (!isMuted) SoundManager.playBuzzer()
                     if (!isMuted) delay(BUZZER_DURATION_MS)
+                    _flightPhase.value = FlightPhase.FLIGHT
                     startTimer(isMuted)
                 }
 
@@ -122,6 +115,7 @@ class FlightViewModel : ViewModel() {
                     blinkJob.cancel()
                     if (!isMuted) SoundManager.playBuzzer()
                     if (!isMuted) delay(BUZZER_DURATION_MS)
+                    _flightPhase.value = FlightPhase.FLIGHT
                     startTimer(isMuted)
                 }
 
@@ -133,8 +127,10 @@ class FlightViewModel : ViewModel() {
     }
 
     fun manualStart(isMuted: Boolean) {
+        if (_flightPhase.value != FlightPhase.PRE_FLIGHT) return
         preJob?.cancel()
         _isPreBlinking.value = false
+        _flightPhase.value = FlightPhase.FLIGHT
         viewModelScope.launch {
             if (!isMuted) SoundManager.playBuzzer()
             delay(BUZZER_DURATION_MS)
@@ -143,7 +139,7 @@ class FlightViewModel : ViewModel() {
     }
 
     fun stopRace(isMuted: Boolean) {
-        performStop(skipBuzzer = false, isMuted = isMuted, reason = StopReason.MANUAL)
+        performStop(skipBuzzer = false, isMuted = isMuted, delayForBuzzer = true, reason = StopReason.MANUAL)
     }
 
     private fun performStop(
@@ -153,18 +149,15 @@ class FlightViewModel : ViewModel() {
         reason: StopReason
     ) {
         _stopReason.value = reason
-        _isStopping.value = true
+        timerJob?.cancel()
+        _currentLap.value = null
+        _flightPhase.value = FlightPhase.POST_FLIGHT
         viewModelScope.launch {
             if (!skipBuzzer && !isMuted) {
                 SoundManager.playBuzzer()
                 if (delayForBuzzer) delay(BUZZER_DURATION_MS)
             }
-            timerJob?.cancel()
 
-            _currentLap.value = null
-
-            _isPostFlight.value = true
-            _isStopping.value = false
             val hasSuccessLap = _laps.value.any { it.success && it.number > 0 }
             _shouldSaveResult.value = hasSuccessLap
             _rotatePilotsForNextFlight.value = hasSuccessLap && rules is Rules.Team
@@ -180,6 +173,7 @@ class FlightViewModel : ViewModel() {
     }
 
     fun addLap() {
+        if (_flightPhase.value != FlightPhase.FLIGHT) return
         if (!raceIsMuted) {
             SoundManager.playGate()
         }
@@ -236,12 +230,14 @@ class FlightViewModel : ViewModel() {
     }
 
     fun addErrorToLastLap() {
+        if (_flightPhase.value != FlightPhase.FLIGHT) return
         val current = _currentLap.value ?: return
         if (!current.success) return
         _currentLap.value = current.copy(success = false)
     }
 
     fun addFixToLastLap() {
+        if (_flightPhase.value != FlightPhase.FLIGHT) return
         val current = _currentLap.value ?: return
         if (current.success) return
         _currentLap.value = current.copy(success = true)
@@ -259,12 +255,8 @@ class FlightViewModel : ViewModel() {
         preJob?.cancel()
         timerJob?.cancel()
         _isPreBlinking.value = false
-        _isStopping.value = false
         _elapsedMs.value = 0L
         _currentLapTime.value = 0L
-        _preStartTime.value = 0L
-        _isPostFlight.value = false
-        _isStarted.value = false
         _laps.value = emptyList()
         _currentLap.value = null
         _stopReason.value = null
@@ -276,6 +268,7 @@ class FlightViewModel : ViewModel() {
         _shouldSaveResult.value = false
         _rotatePilotsForNextFlight.value = false
         _teamFlight.value = null
+        _flightPhase.value = FlightPhase.IDLE
     }
 
     fun buildFlight(): Flight {
@@ -295,9 +288,8 @@ class FlightViewModel : ViewModel() {
     }
 
     private fun startTimer(isMuted: Boolean) {
-        if (_isStarted.value) return
+        if (_flightPhase.value != FlightPhase.FLIGHT) return
         raceIsMuted = isMuted
-        _isStarted.value = true
         nextLapNumber = if (rules.holeshotEnabled) 0 else 1
         _laps.value = emptyList()
         _currentLap.value = Lap(

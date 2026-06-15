@@ -25,12 +25,13 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 import ru.fpvladder.laps.trainer.ui.components.Hint
 import ru.fpvladder.laps.trainer.ui.components.LapList
 
 @Composable
 internal fun FlightContent(
-    isStarted: Boolean,
+    flightPhase: FlightPhase,
     startSignal: StartSignal,
     laps: List<Lap>,
     currentLap: Lap?,
@@ -45,12 +46,12 @@ internal fun FlightContent(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    LaunchedEffect(laps.size, isStarted) {
+    LaunchedEffect(laps.size, flightPhase) {
         delay(50)
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    val tapModifier = if (isStarted && !useLapButton) {
+    val tapModifier = if (flightPhase == FlightPhase.FLIGHT && !useLapButton) {
         Modifier.pointerInput(Unit) {
             detectTapGestures(onTap = { onLapClick() })
         }
@@ -102,7 +103,7 @@ internal fun FlightContent(
             }
         }
 
-        if (!isStarted && startSignal == StartSignal.MANUAL) {
+        if (flightPhase == FlightPhase.PRE_FLIGHT && startSignal == StartSignal.MANUAL) {
             Hint(
                 text = "Нажмите GO чтобы начать вылет",
                 modifier = Modifier.align(Alignment.BottomCenter),

@@ -22,12 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
+import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 import ru.fpvladder.laps.trainer.ui.screens.formatCountdown
 import ru.fpvladder.laps.trainer.ui.screens.formatTime
 
 @Composable
 internal fun FlightTimer(
-    isStarted: Boolean,
+    flightPhase: FlightPhase,
     startSignal: StartSignal,
     elapsedMs: Long,
     preStartCountdownMs: Long,
@@ -36,18 +37,18 @@ internal fun FlightTimer(
     timeLimitSeconds: Int,
     changeRemainingMs: Long? = null
 ) {
-    val isBlinking = !isStarted && isPreBlinking
+    val isBlinking = flightPhase == FlightPhase.PRE_FLIGHT && isPreBlinking
     val alpha by animateFloatAsState(
         targetValue = if (isBlinking) 0f else 1f,
         animationSpec = tween(200),
         label = "timer_blink"
     )
 
-    val timeText = if (!isStarted && startSignal == StartSignal.FIXED) {
+    val timeText = if (flightPhase == FlightPhase.PRE_FLIGHT && startSignal == StartSignal.FIXED) {
         formatCountdown(preStartCountdownMs, timerPrecision) + " "
     } else {
         formatTime(
-            if (!isStarted) 0L else elapsedMs,
+            if (flightPhase == FlightPhase.PRE_FLIGHT) 0L else elapsedMs,
             timerPrecision,
             timeLimitSeconds
         )
@@ -107,7 +108,7 @@ internal fun FlightTimer(
         else -> null
     }
 
-    val alphaValue = if (!isStarted && startSignal == StartSignal.FIXED) 1f else alpha
+    val alphaValue = if (flightPhase == FlightPhase.PRE_FLIGHT && startSignal == StartSignal.FIXED) 1f else alpha
 
     Column(
         modifier = Modifier
