@@ -98,13 +98,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val versionName = remember {
-        try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0.1.0"
-        } catch (e: PackageManager.NameNotFoundException) {
-            "0.1.0"
-        }
-    }
+    val versionName = BuildConfig.VERSION_NAME + if (BuildConfig.DEBUG) "+debug" else ""
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     var showGridDialog by remember { mutableStateOf(false) }
@@ -324,7 +318,7 @@ fun SettingsScreen(
                             withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
                                 append(".Trainer")
                             }
-                            append(" v$versionName")
+                            append(" ver. $versionName")
                         },
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium,
@@ -365,6 +359,18 @@ fun SettingsScreen(
                                     imageVector = Icons.Filled.Star,
                                     contentDescription = null,
                                     tint = Color.Black,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color.Black,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -383,6 +389,18 @@ fun SettingsScreen(
                                     contentDescription = null,
                                     tint = Color.Black,
                                     modifier = Modifier.size(16.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                         }
