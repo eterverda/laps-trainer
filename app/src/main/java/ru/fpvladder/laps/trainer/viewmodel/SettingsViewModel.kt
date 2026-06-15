@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.settings.SettingsDataStore
-import ru.fpvladder.laps.trainer.settings.AppTheme
+import ru.fpvladder.laps.trainer.settings.CatppuccinTheme
 import ru.fpvladder.laps.trainer.settings.ChannelGrid
 import ru.fpvladder.laps.trainer.settings.ColorCount
 import ru.fpvladder.laps.trainer.settings.StartSignal
@@ -37,8 +37,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         .map { it && USB_ENABLED }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), USB_ENABLED)
 
-    val appTheme: StateFlow<AppTheme> = dataStore.appTheme
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppTheme.SYSTEM)
+    val appTheme: StateFlow<CatppuccinTheme> = dataStore.appTheme
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CatppuccinTheme.MOCHA)
 
     val timerPrecision: StateFlow<TimerPrecision> = dataStore.timerPrecision
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TimerPrecision.DECISECONDS)
@@ -80,7 +80,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun setAppTheme(theme: AppTheme) {
+    fun setAppTheme(theme: CatppuccinTheme) {
         viewModelScope.launch {
             dataStore.setAppTheme(theme)
         }

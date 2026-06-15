@@ -70,13 +70,13 @@ class SettingsDataStore(private val context: Context) {
         }
     }
 
-    val appTheme: Flow<AppTheme> = context.dataStore.data.map { prefs ->
+    val appTheme: Flow<CatppuccinTheme> = context.dataStore.data.map { prefs ->
         prefs[APP_THEME_KEY]?.let {
-            runCatching { AppTheme.valueOf(it) }.getOrNull()
-        } ?: AppTheme.SYSTEM
+            runCatching { CatppuccinTheme.valueOf(it) }.getOrNull()
+        } ?: CatppuccinTheme.MOCHA
     }
 
-    suspend fun setAppTheme(theme: AppTheme) {
+    suspend fun setAppTheme(theme: CatppuccinTheme) {
         context.dataStore.edit { prefs ->
             prefs[APP_THEME_KEY] = theme.name
         }

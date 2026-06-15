@@ -92,7 +92,7 @@ fun StatsScreen(
     Surface(
         modifier = modifier.fillMaxSize(),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceVariant,
         tonalElevation = 0.dp
     ) {
         Box(

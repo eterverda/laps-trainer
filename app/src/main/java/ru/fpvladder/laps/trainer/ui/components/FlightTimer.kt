@@ -1,13 +1,17 @@
 package ru.fpvladder.laps.trainer.ui.components
 
+import android.app.Activity
+import android.view.WindowManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.AnnotatedString
@@ -24,6 +28,7 @@ import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 import ru.fpvladder.laps.trainer.ui.screens.formatCountdown
+import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
 import ru.fpvladder.laps.trainer.ui.screens.formatTime
 
 @Composable
@@ -31,12 +36,25 @@ internal fun FlightTimer(
     flightPhase: FlightPhase,
     startSignal: StartSignal,
     elapsedMs: Long,
-    preStartCountdownMs: Long,
     isPreBlinking: Boolean,
     timerPrecision: TimerPrecision,
     timeLimitSeconds: Int,
     changeRemainingMs: Long? = null
 ) {
+    val context = LocalContext.current
+    DisposableEffect(flightPhase) {
+        val window = (context as? Activity)?.window
+        val keepOn = flightPhase == FlightPhase.PRE_FLIGHT || flightPhase == FlightPhase.FLIGHT
+        if (keepOn) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     val isBlinking = flightPhase == FlightPhase.PRE_FLIGHT && isPreBlinking
     val alpha by animateFloatAsState(
         targetValue = if (isBlinking) 0f else 1f,
@@ -44,30 +62,19 @@ internal fun FlightTimer(
         label = "timer_blink"
     )
 
-    val timeText = if (flightPhase == FlightPhase.PRE_FLIGHT && startSignal == StartSignal.FIXED) {
-        formatCountdown(preStartCountdownMs, timerPrecision) + " "
-    } else {
-        formatTime(
-            if (flightPhase == FlightPhase.PRE_FLIGHT) 0L else elapsedMs,
-            timerPrecision,
-            timeLimitSeconds
-        )
-    }
-
     val hasChange = changeRemainingMs != null
     val hasLimit = timeLimitSeconds != Int.MAX_VALUE
     val secondLine: AnnotatedString? = when {
         hasChange -> {
-            val remainingToChange = changeRemainingMs!!
             when {
-                remainingToChange > 0 -> buildAnnotatedString {
+                changeRemainingMs > 0 -> buildAnnotatedString {
                     withStyle(
                         style = SpanStyle(
                             fontFamily = FontFamily.Monospace,
                             fontSize = 14.sp
                         )
                     ) {
-                        append(formatCountdown(remainingToChange, timerPrecision))
+                        append(formatCountdown(changeRemainingMs, timerPrecision))
                     }
                     withStyle(style = SpanStyle(fontSize = 14.sp)) {
                         append(" до смены")
@@ -116,8 +123,35 @@ internal fun FlightTimer(
             .alpha(alphaValue),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        OutlinedText(
-            text = timeText,
+        val timerTextColor = LocalExtendedColors.current.timerOnSurface
+        val fractionFontSize = when (timerPrecision.fractionDigits) {
+            3 -> 27.sp
+            2 -> 36.sp
+            else -> 54.sp
+        }
+        val timeText = formatTime(
+            elapsedMs,
+            timerPrecision,
+            timeLimitSeconds
+        )
+        val dotIndex = timeText.indexOf('.')
+        val annotatedTimeText = buildAnnotatedString {
+            append(timeText.substring(0, dotIndex))
+            withStyle(
+                style = SpanStyle(
+                    fontSize = fractionFontSize,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
+                )
+            ) {
+                append(timeText.substring(dotIndex, timeText.length))
+                append(" ")
+            }
+        }
+
+        Text(
+            text = annotatedTimeText,
+            color = timerTextColor,
             style = TextStyle(
                 fontFamily = FontFamily.Monospace,
                 fontSize = 54.sp,
@@ -126,9 +160,9 @@ internal fun FlightTimer(
             textAlign = TextAlign.Center
         )
         if (secondLine != null) {
-            OutlinedText(
+            Text(
                 text = secondLine,
-                strokeWidth = 4f,
+                color = timerTextColor,
                 style = TextStyle(fontSize = 14.sp),
                 textAlign = TextAlign.Center
             )

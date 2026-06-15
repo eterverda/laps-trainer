@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +49,7 @@ import ru.fpvladder.laps.trainer.settings.IndividualRulePresets
 import ru.fpvladder.laps.trainer.settings.TeamRulePresets
 import ru.fpvladder.laps.trainer.settings.TEAM_HOLESHOT_ENABLED
 import ru.fpvladder.laps.trainer.ui.helpers.formatCalculations
+import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
 import java.util.EnumSet
 
 @Composable
@@ -61,8 +63,7 @@ fun RulesEditorDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
+            color = MaterialTheme.colorScheme.surfaceContainer,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -200,10 +201,11 @@ fun RulesEditorContent(
 
     Column(
         modifier = modifier
-            .padding(20.dp)
+            .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
         SectionTitle("Время")
         OptionGrid(
             options = timeOptions,
@@ -433,6 +435,8 @@ fun RulesEditorContent(
                 Text("OK")
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -538,12 +542,14 @@ private fun SelectableOption(
     fontFamily: FontFamily = FontFamily.Monospace,
     modifier: Modifier = Modifier
 ) {
+    val extendedColors = LocalExtendedColors.current
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (selected) MaterialTheme.colorScheme.primary
+        else extendedColors.selectableSurface,
         modifier = modifier
             .height(48.dp)
+            .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -552,7 +558,7 @@ private fun SelectableOption(
                 fontSize = fontSize,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.ExtraBold,
-                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                color = if (selected) MaterialTheme.colorScheme.onPrimary
                 else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

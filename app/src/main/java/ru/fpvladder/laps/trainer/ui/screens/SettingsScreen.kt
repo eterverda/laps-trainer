@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -24,22 +26,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -58,11 +56,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import ru.fpvladder.laps.trainer.settings.AppTheme
+import ru.fpvladder.laps.trainer.settings.CatppuccinTheme
 import ru.fpvladder.laps.trainer.settings.ChannelGrid
 import ru.fpvladder.laps.trainer.settings.ColorCount
 import ru.fpvladder.laps.trainer.settings.StartSignal
@@ -72,7 +69,7 @@ import ru.fpvladder.laps.trainer.R
 import androidx.core.net.toUri
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     channelGrid: ChannelGrid,
@@ -82,7 +79,7 @@ fun SettingsScreen(
     isUsbFeatureEnabled: Boolean = false,
     useLapButton: Boolean,
     useErrorFixButtons: Boolean,
-    appTheme: AppTheme,
+    appTheme: CatppuccinTheme,
     timerPrecision: TimerPrecision,
     startSignal: StartSignal,
     onChannelGridChange: (ChannelGrid) -> Unit,
@@ -91,7 +88,7 @@ fun SettingsScreen(
     onUsbKeyboardChange: (Boolean) -> Unit,
     onUseLapButtonChange: (Boolean) -> Unit,
     onUseErrorFixButtonsChange: (Boolean) -> Unit,
-    onAppThemeChange: (AppTheme) -> Unit,
+    onAppThemeChange: (CatppuccinTheme) -> Unit,
     onTimerPrecisionChange: (TimerPrecision) -> Unit,
     onStartSignalChange: (StartSignal) -> Unit,
     onNavigateBack: () -> Unit,
@@ -100,51 +97,49 @@ fun SettingsScreen(
     val context = LocalContext.current
     val versionName = BuildConfig.VERSION_NAME + if (BuildConfig.DEBUG) "+debug" else ""
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     var showGridDialog by remember { mutableStateOf(false) }
     var showColorDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showPrecisionDialog by remember { mutableStateOf(false) }
     var showSignalDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        topBar = {
-            TopAppBar(
-                title = { Text("Настройки") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                scrollBehavior = scrollBehavior
-            )
-        }
-    ) { padding ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp
-        ) {
-            Column(
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = Color.Transparent
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Назад",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Text(
+                    text = "Настройки",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .navigationBarsPadding()
+                ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 if (isUsbFeatureEnabled) {
@@ -442,8 +437,9 @@ fun SettingsScreen(
             }
         }
     }
+}   
 
-    if (showGridDialog) {
+if (showGridDialog) {
         SelectionDialog(
             title = "Сетка",
             items = ChannelGrid.entries,
@@ -457,7 +453,7 @@ fun SettingsScreen(
         )
     }
 
-    if (showColorDialog) {
+if (showColorDialog) {
         SelectionDialog(
             title = "Цвета",
             items = ColorCount.entries,
@@ -471,10 +467,10 @@ fun SettingsScreen(
         )
     }
 
-    if (showThemeDialog) {
+if (showThemeDialog) {
         SelectionDialog(
             title = "Тема",
-            items = AppTheme.entries,
+            items = CatppuccinTheme.entries,
             selected = appTheme,
             itemText = { it.displayName },
             onSelect = {
@@ -485,7 +481,7 @@ fun SettingsScreen(
         )
     }
 
-    if (showPrecisionDialog) {
+if (showPrecisionDialog) {
         SelectionDialog(
             title = "Точность ручной засечки",
             items = TimerPrecision.entries,
@@ -500,7 +496,7 @@ fun SettingsScreen(
         )
     }
 
-    if (showSignalDialog) {
+if (showSignalDialog) {
         SelectionDialog(
             title = "Сигнал на старт",
             items = StartSignal.entries,

@@ -26,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +39,7 @@ import ru.fpvladder.laps.trainer.ui.helpers.ChannelColor
 import ru.fpvladder.laps.trainer.ui.helpers.toComposeColor
 import ru.fpvladder.laps.trainer.settings.ChannelGrid
 import ru.fpvladder.laps.trainer.settings.ColorCount
+import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
 
 @Composable
 fun ChannelDialog(
@@ -52,8 +54,7 @@ fun ChannelDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
+            color = MaterialTheme.colorScheme.surfaceContainer,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -105,10 +106,11 @@ fun ChannelEditorContent(
 
     Column(
         modifier = modifier
-            .padding(20.dp)
+            .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
         if (isAnalog) {
             SectionTitle("Сетка")
             LetterGrid(
@@ -208,6 +210,7 @@ fun ChannelEditorContent(
                     textAlign = TextAlign.Center
                 )
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -333,12 +336,14 @@ private fun SelectableItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val extendedColors = LocalExtendedColors.current
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (selected) MaterialTheme.colorScheme.primary
+        else extendedColors.selectableSurface,
         modifier = modifier
             .height(48.dp)
+            .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -347,7 +352,7 @@ private fun SelectableItem(
                 fontSize = 20.sp,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.ExtraBold,
-                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                color = if (selected) MaterialTheme.colorScheme.onPrimary
                 else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -367,7 +372,7 @@ private fun ColorItem(
         color = color.color.toComposeColor(),
         border = BorderStroke(
             width = if (selected) 3.dp else if (hasOutline) 2.dp else 1.dp,
-            color = if (selected) MaterialTheme.colorScheme.primary
+            color = if (selected) MaterialTheme.colorScheme.onSurface
             else color.outlineColor?.toComposeColor() ?: MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
         ),
         modifier = modifier

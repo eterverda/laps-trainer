@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
@@ -101,13 +103,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appTheme by settingsViewModel.appTheme.collectAsState()
             LapsTrainerTheme(appTheme = appTheme) {
-                AppRoot(
-                    keyboardViewModel = keyboardViewModel,
-                    pilotViewModel = pilotViewModel,
-                    trainingViewModel = trainingViewModel,
-                    settingsViewModel = settingsViewModel,
-                    flightViewModel = flightViewModel
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    AppRoot(
+                        keyboardViewModel = keyboardViewModel,
+                        pilotViewModel = pilotViewModel,
+                        trainingViewModel = trainingViewModel,
+                        settingsViewModel = settingsViewModel,
+                        flightViewModel = flightViewModel,
+                        modifier = Modifier.displayCutoutPadding(),
+                    )
+                }
             }
         }
     }
@@ -147,7 +156,6 @@ fun AppRoot(
     val currentLap by flightViewModel.currentLap.collectAsState()
     val currentLapTime by flightViewModel.currentLapTime.collectAsState()
     val stopReason by flightViewModel.stopReason.collectAsState()
-    val preStartCountdownMs by flightViewModel.preStartCountdownMs.collectAsState()
     val flightPilotChangeIndex by flightViewModel.pilotChangeIndex.collectAsState()
     val teamFlight by flightViewModel.teamFlight.collectAsState()
     val shouldSaveResult by flightViewModel.shouldSaveResult.collectAsState()
@@ -224,7 +232,7 @@ fun AppRoot(
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
+            color = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 when (currentScreen) {
@@ -326,7 +334,6 @@ fun AppRoot(
                                     currentLap = currentLap,
                                     currentLapTime = currentLapTime,
                                     elapsedMs = elapsedMs,
-                                    preStartCountdownMs = preStartCountdownMs,
                                     isPreBlinking = isPreBlinking,
                                     timeLimitSeconds = selectedTraining.rules.timeLimitSeconds,
                                     maxLaps = selectedTraining.rules.lapsLimit,
@@ -353,7 +360,6 @@ fun AppRoot(
                                     hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
                                     onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
                                     onBackClick = { finishFlight(shouldSaveResult, true) },
-                                    appTheme = appTheme,
                                     modifier = Modifier.fillMaxSize()
                                 )
 

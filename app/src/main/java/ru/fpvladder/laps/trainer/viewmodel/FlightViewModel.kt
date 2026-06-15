@@ -52,9 +52,6 @@ class FlightViewModel : ViewModel() {
     private val _rotatePilotsForNextFlight = MutableStateFlow(false)
     val rotatePilotsForNextFlight: StateFlow<Boolean> = _rotatePilotsForNextFlight.asStateFlow()
 
-    private val _preStartCountdownMs = MutableStateFlow(0L)
-    val preStartCountdownMs: StateFlow<Long> = _preStartCountdownMs.asStateFlow()
-
     private var timerJob: Job? = null
     private var preJob: Job? = null
     private var nextLapNumber = 0
@@ -96,7 +93,7 @@ class FlightViewModel : ViewModel() {
                         while (true) {
                             val passed = SystemClock.elapsedRealtime() - start
                             val remaining = (totalDelay - passed).coerceAtLeast(0)
-                            _preStartCountdownMs.value = remaining
+                            _elapsedMs.value = -remaining
                             if (remaining <= 0) break
                             delay(16)
                         }
@@ -260,7 +257,6 @@ class FlightViewModel : ViewModel() {
         _laps.value = emptyList()
         _currentLap.value = null
         _stopReason.value = null
-        _preStartCountdownMs.value = 0L
         nextLapNumber = 0
         lastLapElapsedMs = 0L
         _pilotChangeIndex.value = null

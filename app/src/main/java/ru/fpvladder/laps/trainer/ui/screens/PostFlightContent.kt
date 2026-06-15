@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -238,7 +239,11 @@ fun PostFlightContent(
                     ) {
                         Checkbox(
                             checked = shouldSaveResult,
-                            onCheckedChange = null
+                            onCheckedChange = null,
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.primary,
+                                uncheckedColor = MaterialTheme.colorScheme.primary
+                            )
                         )
                         Text(
                             text = "Сохранить результат",
@@ -264,7 +269,11 @@ fun PostFlightContent(
                         ) {
                             Checkbox(
                                 checked = rotatePilotsForNextFlight,
-                                onCheckedChange = null
+                                onCheckedChange = null,
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.primary
+                                )
                             )
                             Text(
                                 text = stringResource(R.string.rotate_pilots_for_next_flight),

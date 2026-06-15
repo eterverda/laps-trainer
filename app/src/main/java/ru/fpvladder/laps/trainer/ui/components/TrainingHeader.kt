@@ -1,5 +1,6 @@
 package ru.fpvladder.laps.trainer.ui.components
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -55,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import ru.fpvladder.laps.trainer.ui.components.DoubleBottomSurface
 import ru.fpvladder.laps.trainer.ui.helpers.ChannelColor
 import ru.fpvladder.laps.trainer.ui.helpers.toComposeColor
 import ru.fpvladder.laps.trainer.model.Channel
@@ -78,8 +81,13 @@ fun TrainingHeader(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val screenHeightDp = LocalConfiguration.current.screenHeightDp.dp
-    val maxListHeight = screenHeightDp / 2
+    val configuration = LocalConfiguration.current
+    val screenHeightDp = configuration.screenHeightDp.dp
+    val maxListHeight = if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        screenHeightDp * 3 / 4
+    } else {
+        screenHeightDp / 2
+    }
 
     val individuals = remember(trainings) {
         trainings.filterIsInstance<Training.Individual>()
@@ -172,14 +180,12 @@ fun TrainingHeader(
         if (expanded) {
             Dialog(
                 onDismissRequest = { expanded = false },
-                properties = DialogProperties(
-                    usePlatformDefaultWidth = false,
-                    decorFitsSystemWindows = false
-                )
+                properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .displayCutoutPaddingFromWindow()
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
@@ -192,74 +198,96 @@ fun TrainingHeader(
                         enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
                         exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
                     ) {
-                        Surface(
-                            shape = MaterialTheme.shapes.large,
-                            color = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 6.dp,
+                        DoubleBottomSurface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(8.dp)
+                                .padding(16.dp)
                                 .heightIn(max = maxListHeight)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
-                                ) { }
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp)
-                                    .verticalScroll(scrollState),
-                            ) {
-                                if (hasBoth && individuals.isNotEmpty()) {
-                                    Text(
-                                        text = "Пилоты",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(
-                                            horizontal = 20.dp,
-                                            vertical = 8.dp
-                                        )
-                                    )
-                                }
-                                individuals.forEach { training ->
-                                    TrainingListItem(
-                                        training = training,
-                                        isSelected = training.id == selectedTraining.id,
-                                        onClick = {
-                                            onTrainingSelect(training)
-                                            expanded = false
-                                        }
-                                    )
-                                }
-                                if (hasBoth && teams.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = "Команды",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(
-                                            horizontal = 20.dp,
-                                            vertical = 8.dp
-                                        )
-                                    )
-                                }
-                                teams.forEach { training ->
-                                    TrainingListItem(
-                                        training = training,
-                                        isSelected = training.id == selectedTraining.id,
-                                        onClick = {
-                                            onTrainingSelect(training)
-                                            expanded = false
-                                        }
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Row(
+                                ) { },
+                            upperContentPadding = 0.dp,
+                            lowerPaddingTop = 72.dp,
+                            lowerPaddingBottom = 16.dp,
+                            upperContent = {
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                                        .verticalScroll(scrollState),
+                                ) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    val individualsFirst = trainings.firstOrNull() is Training.Individual
+
+                                    @Composable
+                                    fun IndividualsSection() {
+                                        if (individuals.isNotEmpty()) {
+                                            if (hasBoth) {
+                                                Text(
+                                                    text = "Пилоты",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
+                                                )
+                                            }
+                                            individuals.forEach { training ->
+                                                TrainingListItem(
+                                                    training = training,
+                                                    isSelected = training.id == selectedTraining.id,
+                                                    onClick = {
+                                                        onTrainingSelect(training)
+                                                        expanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    @Composable
+                                    fun TeamsSection() {
+                                        if (teams.isNotEmpty()) {
+                                            if (hasBoth) {
+                                                Text(
+                                                    text = "Команды",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
+                                                )
+                                            }
+                                            teams.forEach { training ->
+                                                TrainingListItem(
+                                                    training = training,
+                                                    isSelected = training.id == selectedTraining.id,
+                                                    onClick = {
+                                                        onTrainingSelect(training)
+                                                        expanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (individualsFirst) {
+                                        IndividualsSection()
+                                        if (hasBoth) {
+                                            Spacer(modifier = Modifier.height(16.dp))
+                                            TeamsSection()
+                                        }
+                                    } else {
+                                        TeamsSection()
+                                        if (hasBoth) {
+                                            Spacer(modifier = Modifier.height(16.dp))
+                                            IndividualsSection()
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                }
+                            },
+                            lowerContent = {
+                                Row(
+                                    modifier = Modifier
+                                        .width(IntrinsicSize.Max)
+                                        .align(Alignment.Center),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     OutlinedButton(
@@ -292,7 +320,7 @@ fun TrainingHeader(
                                     }
                                 }
                             }
-                        }
+                        )
                     }
                 }
             }
@@ -401,7 +429,7 @@ private fun TrainingListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {

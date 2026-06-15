@@ -1,14 +1,11 @@
 package ru.fpvladder.laps.trainer.ui.screens
 
-import android.app.Activity
-import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,9 +23,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -52,7 +48,6 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
-import ru.fpvladder.laps.trainer.settings.AppTheme
 import ru.fpvladder.laps.trainer.ui.components.FlightTimer
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
@@ -68,7 +63,6 @@ fun FlightScreen(
     currentLap: Lap? = null,
     currentLapTime: Long = 0L,
     elapsedMs: Long = 0L,
-    preStartCountdownMs: Long = 0L,
     isPreBlinking: Boolean = false,
     timeLimitSeconds: Int = 0,
     maxLaps: Int = Int.MAX_VALUE,
@@ -93,33 +87,9 @@ fun FlightScreen(
     hasPagerWiggled: Boolean = false,
     onPagerWiggleComplete: () -> Unit = {},
     onBackClick: () -> Unit = {},
-    appTheme: AppTheme,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    DisposableEffect(Unit) {
-        val window = (context as? Activity)?.window
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-
-    val primary = MaterialTheme.colorScheme.primary
-    val isDarkTheme = appTheme == AppTheme.DARK || (appTheme == AppTheme.SYSTEM && isSystemInDarkTheme())
-    val timerSurfaceColor = if (isDarkTheme) {
-        Color(
-            red = primary.red * 0.55f,
-            green = primary.green * 0.55f,
-            blue = primary.blue * 0.55f
-        )
-    } else {
-        Color(
-            red = (primary.red + (1f - primary.red) * 0.35f).coerceIn(0f, 1f),
-            green = (primary.green + (1f - primary.green) * 0.35f).coerceIn(0f, 1f),
-            blue = (primary.blue + (1f - primary.blue) * 0.35f).coerceIn(0f, 1f)
-        )
-    }
+    val timerSurfaceColor = LocalExtendedColors.current.timerSurface
 
     Box(modifier = modifier.fillMaxSize()) {
         var timerHeight by remember { mutableIntStateOf(0) }
@@ -168,7 +138,6 @@ fun FlightScreen(
                             flightPhase = flightPhase,
                             startSignal = startSignal,
                             elapsedMs = elapsedMs,
-                            preStartCountdownMs = preStartCountdownMs,
                             isPreBlinking = isPreBlinking,
                             timerPrecision = timerPrecision,
                             timeLimitSeconds = timeLimitSeconds,
@@ -183,7 +152,7 @@ fun FlightScreen(
             modifier = Modifier
                 .padding(top = animatedTopPadding, bottom = animatedBottomPadding)
                 .fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             shape = FlightSurfaceShape
         ) {
             if (flightPhase != FlightPhase.POST_FLIGHT) {

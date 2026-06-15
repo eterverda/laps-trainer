@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -66,7 +65,7 @@ fun HoldButton(
     val currentOnPressEnd by rememberUpdatedState(onPressEnd)
     val currentHoldDurationMs by rememberUpdatedState(holdDurationMs)
 
-    val fillColor = Color(0xFFcc5555)
+    val fillColor = MaterialTheme.colorScheme.error
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
