@@ -84,8 +84,6 @@ fun FlightScreen(
     teamFlight: Flight.Team? = null,
     swapMode: Rules.Team.SwapMode = Rules.Team.SwapMode.STRAIGHT,
     changeRemainingMs: Long? = null,
-    hasPagerWiggled: Boolean = false,
-    onPagerWiggleComplete: () -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -188,9 +186,7 @@ fun FlightScreen(
                     onShouldSaveResultChange = onShouldSaveResultChange,
                     rotatePilotsForNextFlight = rotatePilotsForNextFlight,
                     onRotatePilotsForNextFlightChange = onRotatePilotsForNextFlightChange,
-                    onBackClick = onBackClick,
-                    hasPagerWiggled = hasPagerWiggled,
-                    onPagerWiggleComplete = onPagerWiggleComplete
+                    onBackClick = onBackClick
                 )
             }
         }

@@ -76,8 +76,6 @@ fun StatsScreen(
     timerPrecision: TimerPrecision = TimerPrecision.MILLISECONDS,
     pilot: Pilot,
     onRotatePilots: () -> Unit = {},
-    hasPagerWiggled: Boolean = false,
-    onPagerWiggleComplete: () -> Unit = {},
     isDefault: Boolean = true,
     onDeleteClick: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -202,9 +200,7 @@ fun StatsScreen(
                                     timerPrecision = timerPrecision,
                                     showRecordKinds = showRecordKinds,
                                     pilot1Name = pilot.displayName1(context),
-                                    pilot2Name = pilot.displayName2(context),
-                                    hasPagerWiggled = hasPagerWiggled,
-                                    onPagerWiggleComplete = onPagerWiggleComplete
+                                    pilot2Name = pilot.displayName2(context)
                                 )
                             } else if (stats is Stats.Individual) {
                                 Column(modifier = Modifier.padding(horizontal = 24.dp)) {
@@ -266,9 +262,7 @@ private fun TeamStatsContent(
     showRecordKinds: Set<Record.Kind>,
     timerPrecision: TimerPrecision,
     pilot1Name: String,
-    pilot2Name: String,
-    hasPagerWiggled: Boolean = false,
-    onPagerWiggleComplete: () -> Unit = {}
+    pilot2Name: String
 ) {
     val pages: List<Pair<String, @Composable () -> Unit>> = listOf(
         "Результаты" to @Composable {
@@ -357,9 +351,7 @@ private fun TeamStatsContent(
     MeasuredHorizontalPager(
         state = pagerState,
         pageCount = pages.size,
-        modifier = Modifier.fillMaxWidth(),
-        wiggleOnAppear = !hasPagerWiggled,
-        onWiggleComplete = onPagerWiggleComplete
+        modifier = Modifier.fillMaxWidth()
     ) { page ->
         pages[page].second()
     }

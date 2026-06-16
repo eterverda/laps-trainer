@@ -80,8 +80,6 @@ fun PostFlightContent(
     rotatePilotsForNextFlight: Boolean,
     onRotatePilotsForNextFlightChange: (Boolean) -> Unit,
     onBackClick: () -> Unit,
-    hasPagerWiggled: Boolean,
-    onPagerWiggleComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -185,9 +183,7 @@ fun PostFlightContent(
                                 tailCounters = teamResults.tailResults.counters,
                                 headPilotName = headPilot,
                                 tailPilotName = tailPilot,
-                                timerPrecision = timerPrecision,
-                                hasPagerWiggled = hasPagerWiggled,
-                                onPagerWiggleComplete = onPagerWiggleComplete
+                                timerPrecision = timerPrecision
                             )
                         } else {
                             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
@@ -314,9 +310,7 @@ private fun TeamFlightPostResults(
     tailCounters: List<Counter>,
     headPilotName: String,
     tailPilotName: String,
-    timerPrecision: TimerPrecision,
-    hasPagerWiggled: Boolean = false,
-    onPagerWiggleComplete: () -> Unit = {}
+    timerPrecision: TimerPrecision
 ) {
     val pages: List<Pair<String, @Composable () -> Unit>> = listOf(
         "Результаты" to @Composable {
@@ -382,9 +376,7 @@ private fun TeamFlightPostResults(
     MeasuredHorizontalPager(
         state = pagerState,
         pageCount = pages.size,
-        modifier = Modifier.fillMaxWidth(),
-        wiggleOnAppear = !hasPagerWiggled,
-        onWiggleComplete = onPagerWiggleComplete
+        modifier = Modifier.fillMaxWidth()
     ) { page ->
         pages[page].second()
     }

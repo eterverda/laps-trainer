@@ -72,7 +72,6 @@ import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.USB_ENABLED
-import ru.fpvladder.laps.trainer.settings.WIGGLE_ONCE_ENABLED
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.ui.helpers.description
 import ru.fpvladder.laps.trainer.audio.SoundManager
@@ -137,7 +136,6 @@ fun AppRoot(
     val currentScreen by pilotViewModel.currentScreen.collectAsState()
     val trainings by trainingViewModel.trainings.collectAsState()
     val selectedTraining by trainingViewModel.selectedTraining.collectAsState()
-    val hasPagerWiggled by trainingViewModel.hasPagerWiggled.collectAsState()
     val channelGrid by settingsViewModel.channelGrid.collectAsState()
     val colorCount by settingsViewModel.colorCount.collectAsState()
     val isMuted by settingsViewModel.isMuted.collectAsState()
@@ -370,8 +368,6 @@ fun AppRoot(
                                     teamFlight = teamFlight,
                                     swapMode = (selectedTraining as? Training.Team)?.rules?.swapMode ?: Rules.Team.SwapMode.STRAIGHT,
                                     changeRemainingMs = changeRemainingMs,
-                                    hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
-                                    onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
                                     onBackClick = { finishFlight(shouldSaveResult, true) },
                                     modifier = Modifier.fillMaxSize()
                                 )
@@ -405,8 +401,6 @@ fun AppRoot(
                                             timerPrecision = timerPrecision,
                                             pilot = training.pilot,
                                             onRotatePilots = { trainingViewModel.rotatePilotOrder() },
-                                            hasPagerWiggled = if (WIGGLE_ONCE_ENABLED) hasPagerWiggled else false,
-                                            onPagerWiggleComplete = { trainingViewModel.markPagerWiggled() },
                                             isDefault = training.isDefault(),
                                             onDeleteClick = {
                                                 if (training.isEmpty()) {
