@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -113,7 +114,7 @@ fun TrainingHeader(
                 .statusBarsPadding()
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .padding(bottom = 8.dp, top = 4.dp),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
             ChannelBadge(
                 channel = channel,
@@ -134,7 +135,7 @@ fun TrainingHeader(
                     .clickable(
                         enabled = enabled,
                         onClick = onNameClick
-                    )
+                    ),
             ) {
                 PilotNameDisplay(
                     pilot = pilot,
@@ -289,14 +290,17 @@ private fun ChannelBadge(
     fontSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier
 ) {
+    val composeColor = channel.color.toComposeColor()
     val preset = remember(channel.color) { ChannelColor.entries.find { it.color == channel.color } }
-    val hasOutline = preset?.outlineColor != null
+    val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val outlineColor = if (isLight) preset?.lightOutline else preset?.darkOutline
+    val hasOutline = outlineColor != null
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = channel.color.toComposeColor(),
+        color = composeColor,
         border = if (hasOutline) BorderStroke(
             if (fontSize.value >= 20) 2.dp else 1.5.dp,
-            preset!!.outlineColor!!.toComposeColor()
+            outlineColor.toComposeColor()
         ) else null,
         modifier = modifier
     ) {
@@ -312,7 +316,7 @@ private fun ChannelBadge(
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = FontFamily.Monospace,
-                color = if (preset == ChannelColor.WHITE) Color.Black else Color.White
+                color = if (composeColor.luminance() > 0.4) Color(0xFF181926) else Color(0xFFeff1f5)
             )
         }
     }

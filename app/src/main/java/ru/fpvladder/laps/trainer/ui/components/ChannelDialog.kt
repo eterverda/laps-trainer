@@ -3,6 +3,7 @@ package ru.fpvladder.laps.trainer.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,10 +12,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,6 +32,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +46,8 @@ import ru.fpvladder.laps.trainer.ui.helpers.ChannelColor
 import ru.fpvladder.laps.trainer.ui.helpers.toComposeColor
 import ru.fpvladder.laps.trainer.settings.ChannelGrid
 import ru.fpvladder.laps.trainer.settings.ColorCount
+import ru.fpvladder.laps.trainer.ui.helpers.DARK_OUTLINE
+import ru.fpvladder.laps.trainer.ui.helpers.LIGHT_OUTLINE
 import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
 
 @Composable
@@ -147,7 +156,6 @@ fun ChannelEditorContent(
 
         SectionTitle("Цвет")
         ColorGrid(
-            selected = selectedColor,
             selectedPreset = selectedPreset,
             colorCount = colorCount,
             onSelect = { color, preset ->
@@ -162,7 +170,8 @@ fun ChannelEditorContent(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(
                     onClick = onDismiss
@@ -302,7 +311,6 @@ private fun ChannelGrid(
 
 @Composable
 private fun ColorGrid(
-    selected: Int,
     selectedPreset: ChannelColor?,
     colorCount: ColorCount,
     onSelect: (Int, ChannelColor?) -> Unit
@@ -364,21 +372,30 @@ private fun ColorItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val hasOutline = color.outlineColor != null
+    val composeColor = color.color.toComposeColor()
+    val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val outlineColor = if (isLight) LIGHT_OUTLINE else DARK_OUTLINE
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = color.color.toComposeColor(),
+        color = composeColor,
         border = BorderStroke(
-            width = if (selected) 3.dp else if (hasOutline) 2.dp else 1.dp,
-            color = if (selected) MaterialTheme.colorScheme.onSurface
-            else color.outlineColor?.toComposeColor() ?: MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            width = 2.dp,
+            color = outlineColor.toComposeColor()
         ),
         modifier = modifier
             .height(48.dp)
             .clickable(onClick = onClick)
+            .clip(RoundedCornerShape(10.dp))
     ) {
         Box(contentAlignment = Alignment.Center) {
-            // No text, just color
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = if (composeColor.luminance() > 0.4) Color(0xFF181926) else Color(0xFFeff1f5),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
     }
 }
