@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-version = "0.1.3"
+version = "0.1.4"
 
 val keystoreProperties = Properties().apply {
     val file = rootProject.file("keystore.properties")
