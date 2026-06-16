@@ -186,6 +186,7 @@ fun RulesEditorContent(
             timeLimitSeconds = selectedTime,
             holeshotEnabled = holeshot && TEAM_HOLESHOT_ENABLED,
             changeMode = changeMode,
+            swapMode = currentRules.swapMode,
             showRecordKinds = EnumSet.copyOf(enabledKinds)
         )
     }

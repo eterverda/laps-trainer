@@ -16,20 +16,24 @@ sealed class Pilot {
     @SerialName("individual")
     data class Individual(
         @EncodeDefault(EncodeDefault.Mode.NEVER)
-        override val name: String = "",
-        override val channel: Channel = Channel()
+        override val name: String,
+        override val channel: Channel
     ) : Pilot() {
         override fun isAnonymous(): Boolean = name.isBlank()
+
+        companion object {
+            val ANONYMOUS: Individual = Individual(name = "", channel = Channel.DEFAULT)
+        }
     }
 
     @Serializable
     @SerialName("team")
     data class Team(
         @EncodeDefault(EncodeDefault.Mode.NEVER)
-        val name1: String = "",
+        val name1: String,
         @EncodeDefault(EncodeDefault.Mode.NEVER)
-        val name2: String = "",
-        override val channel: Channel = Channel()
+        val name2: String,
+        override val channel: Channel
     ) : Pilot() {
         override val name: String
             get() = when {
@@ -40,5 +44,9 @@ sealed class Pilot {
             }
 
         override fun isAnonymous(): Boolean = name1.isBlank() && name2.isBlank()
+
+        companion object {
+            val ANONYMOUS: Team = Team(name1 = "", name2 = "", channel = Channel.DEFAULT)
+        }
     }
 }

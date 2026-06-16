@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Counter
 import ru.fpvladder.laps.trainer.model.Record
@@ -72,7 +73,7 @@ fun PostFlightContent(
     stopReason: StopReason?,
     showRecordKinds: Set<Record.Kind>,
     pilot: Pilot?,
-    pilotChangeIndex: Int?,
+    pilotChangeIndex: Int = NO_PILOT_CHANGE,
     teamFlight: Flight.Team? = null,
     swapMode: Rules.Team.SwapMode,
     shouldSaveResult: Boolean,

@@ -1,5 +1,7 @@
 package ru.fpvladder.laps.trainer.model
 
+const val NO_PILOT_CHANGE = -1
+
 fun computeIndividualFlight(
     laps: List<Lap>,
     stopReason: StopReason
@@ -13,11 +15,18 @@ fun computeIndividualFlight(
 fun computeTeamFlight(
     laps: List<Lap>,
     stopReason: StopReason,
-    pilotChangeIndex: Int?,
-    swapMode: Rules.Team.SwapMode = Rules.Team.SwapMode.STRAIGHT
+    pilotChangeIndex: Int,
+    swapMode: Rules.Team.SwapMode
 ): Flight.Team {
-    val head = if (pilotChangeIndex != null) laps.take(pilotChangeIndex + 1) else laps
-    val tail = if (pilotChangeIndex != null) laps.drop(pilotChangeIndex + 1) else emptyList()
+    val head: List<Lap>
+    val tail: List<Lap>
+    if (pilotChangeIndex < 0 || pilotChangeIndex >= laps.size) {
+        head = laps
+        tail = emptyList()
+    } else {
+        head = laps.take(pilotChangeIndex + 1)
+        tail = laps.drop(pilotChangeIndex + 1)
+    }
     return Flight.Team(
         headLaps = head,
         tailLaps = tail,

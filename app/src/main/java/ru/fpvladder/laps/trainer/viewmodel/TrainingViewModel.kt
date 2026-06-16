@@ -9,8 +9,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Flight
+import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.Training
+import ru.fpvladder.laps.trainer.settings.DefaultRules
 import ru.fpvladder.laps.trainer.storage.TrainingStorage
 
 class TrainingViewModel(application: Application) : AndroidViewModel(application) {
@@ -23,9 +25,12 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     private val _selectedTraining: MutableStateFlow<Training>
     val selectedTraining: StateFlow<Training>
 
+    private val DEFAULT_TRAINING: Training =
+        Training.Individual(rules = DefaultRules.INDIVIDUAL, pilot = Pilot.Individual.ANONYMOUS)
+
     init {
         val loaded = storage.loadAll()
-        val initial = loaded.ifEmpty { listOf(Training.DEFAULT) }
+        val initial = loaded.ifEmpty { listOf(DEFAULT_TRAINING) }
         _trainings.value = initial
         _selectedTraining = MutableStateFlow(initial.first())
         selectedTraining = _selectedTraining.asStateFlow()
@@ -52,7 +57,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     fun deleteTraining(training: Training) {
         val remaining = _trainings.value.filter { it.id != training.id }
         val newSelected = if (_selectedTraining.value.id == training.id) {
-            remaining.lastOrNull() ?: Training.DEFAULT
+            remaining.lastOrNull() ?: DEFAULT_TRAINING
         } else {
             _selectedTraining.value
         }

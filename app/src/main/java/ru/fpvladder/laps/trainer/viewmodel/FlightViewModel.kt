@@ -13,13 +13,14 @@ import ru.fpvladder.laps.trainer.audio.BUZZER_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.model.Flight
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Rules
+import ru.fpvladder.laps.trainer.settings.DefaultRules
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimeInterval
 import ru.fpvladder.laps.trainer.model.computeIndividualFlight
 import ru.fpvladder.laps.trainer.model.computeTeamFlight
-import ru.fpvladder.laps.trainer.ui.helpers.label
 import kotlin.random.Random
 
 class FlightViewModel : ViewModel() {
@@ -54,12 +55,12 @@ class FlightViewModel : ViewModel() {
     private var timerJob: Job? = null
     private var preJob: Job? = null
     private var nextLapNumber = 0
-    private var rules: Rules = Rules.Individual()
+    private var rules: Rules = DefaultRules.INDIVIDUAL
     private var raceIsMuted: Boolean = false
     private var lastLapElapsedMs = 0L
 
-    private val _pilotChangeIndex = MutableStateFlow<Int?>(null)
-    val pilotChangeIndex: StateFlow<Int?> = _pilotChangeIndex.asStateFlow()
+    private val _pilotChangeIndex = MutableStateFlow(NO_PILOT_CHANGE)
+    val pilotChangeIndex: StateFlow<Int> = _pilotChangeIndex.asStateFlow()
 
     private val _teamFlight = MutableStateFlow<Flight.Team?>(null)
     val teamFlight: StateFlow<Flight.Team?> = _teamFlight.asStateFlow()
@@ -181,7 +182,7 @@ class FlightViewModel : ViewModel() {
             }
 
             if (pendingPilotChange) {
-                if (_pilotChangeIndex.value == null) {
+                if (_pilotChangeIndex.value == NO_PILOT_CHANGE) {
                     _pilotChangeIndex.value = (_laps.value.size - 1).coerceAtLeast(0)
                 }
                 pendingPilotChange = false
@@ -244,7 +245,7 @@ class FlightViewModel : ViewModel() {
         _stopReason.value = null
         nextLapNumber = 0
         lastLapElapsedMs = 0L
-        _pilotChangeIndex.value = null
+        _pilotChangeIndex.value = NO_PILOT_CHANGE
         pendingPilotChange = false
         _shouldSaveResult.value = false
         _rotatePilotsForNextFlight.value = false

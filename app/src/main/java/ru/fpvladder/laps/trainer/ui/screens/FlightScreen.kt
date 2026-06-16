@@ -44,6 +44,7 @@ import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Results
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.model.StopReason
@@ -80,7 +81,7 @@ fun FlightScreen(
     showRecordKinds: Set<Record.Kind> = emptySet(),
     holeshotEnabled: Boolean = false,
     pilot: Pilot? = null,
-    pilotChangeIndex: Int? = null,
+    pilotChangeIndex: Int = NO_PILOT_CHANGE,
     teamFlight: Flight.Team? = null,
     swapMode: Rules.Team.SwapMode = Rules.Team.SwapMode.STRAIGHT,
     changeRemainingMs: Long? = null,

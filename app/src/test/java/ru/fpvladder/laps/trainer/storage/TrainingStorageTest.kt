@@ -15,10 +15,16 @@ import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimeInterval
 import ru.fpvladder.laps.trainer.model.Training
+import ru.fpvladder.laps.trainer.settings.DefaultRules
 import java.io.File
 import java.util.EnumSet
 
 class TrainingStorageTest {
+
+    private val defaultTraining = Training.Individual(
+        rules = DefaultRules.INDIVIDUAL,
+        pilot = Pilot.Individual.ANONYMOUS
+    )
 
     @get:Rule
     val tempFolder = TemporaryFolder()
@@ -27,8 +33,17 @@ class TrainingStorageTest {
     fun `serializes and deserializes individual training`() {
         val training = Training.Individual(
             pilot = Pilot.Individual(name = "Alex", channel = Channel(letter = "R", number = 1, color = 0xFFFF0000.toInt())),
+            rules = Rules.Individual(
+                lapsLimit = 10,
+                timeLimitSeconds = 120,
+                holeshotEnabled = true,
+                showRecordKinds = EnumSet.of(
+                    Record.Kind.BEST_1,
+                    Record.Kind.BEST_3,
+                    Record.Kind.MOST
+                )
+            )
         ).copy(
-            rules = Rules.Individual(lapsLimit = 10, timeLimitSeconds = 120),
             flights = listOf(
                 Flight.Individual(
                     laps = listOf(
@@ -55,12 +70,15 @@ class TrainingStorageTest {
     fun `serializes and deserializes team training`() {
         val training = Training.Team(
             pilot = Pilot.Team(name1 = "A", name2 = "B", channel = Channel(letter = "B", number = 5, color = 0xFF2979FF.toInt())),
-        ).copy(
             rules = Rules.Team(
                 lapsLimit = 50,
+                timeLimitSeconds = 1800,
+                holeshotEnabled = false,
                 changeMode = Rules.Team.ChangeMode.TIME,
+                swapMode = Rules.Team.SwapMode.STRAIGHT,
                 showRecordKinds = EnumSet.of(Record.Kind.BEST_1, Record.Kind.MOST)
-            ),
+            )
+        ).copy(
             flights = listOf(
                 Flight.Team(
                     headLaps = listOf(
@@ -69,7 +87,8 @@ class TrainingStorageTest {
                     tailLaps = listOf(
                         Lap(2, TimeInterval(12000, 26000), success = true)
                     ),
-                    stopReason = StopReason.TIME_LIMIT
+                    stopReason = StopReason.TIME_LIMIT,
+                    swapMode = Rules.Team.SwapMode.STRAIGHT
                 )
             )
         )
@@ -86,6 +105,7 @@ class TrainingStorageTest {
     fun `yaml uses snake_case names and custom scalar formats`() {
         val training = Training.Individual(
             pilot = Pilot.Individual(name = "Alex", channel = Channel(letter = "R", number = 1, color = 0xFFFF0000.toInt())),
+            rules = DefaultRules.INDIVIDUAL
         ).copy(
             flights = listOf(
                 Flight.Individual(
@@ -95,7 +115,8 @@ class TrainingStorageTest {
                             interval = TimeInterval(startMs = 1000, endMs = 15000),
                             success = true
                         )
-                    )
+                    ),
+                    stopReason = StopReason.MANUAL
                 )
             )
         )
@@ -115,8 +136,8 @@ class TrainingStorageTest {
     fun `default training is never saved`() {
         val storage = TrainingStorage(tempFolder.root)
 
-        assertTrue(Training.DEFAULT.isDefault())
-        storage.save(Training.DEFAULT)
+        assertTrue(defaultTraining.isDefault())
+        storage.save(defaultTraining)
 
         assertTrue("storage dir should not be created for default training", !tempFolder.root.exists() || tempFolder.root.listFiles().isNullOrEmpty())
         assertEquals(emptyList<Training>(), storage.loadAll())
@@ -125,7 +146,8 @@ class TrainingStorageTest {
     @Test
     fun `touch updates file modification time`() {
         val training = Training.Individual(
-            pilot = Pilot.Individual(name = "X"),
+            pilot = Pilot.Individual.ANONYMOUS.copy(name = "X"),
+            rules = DefaultRules.INDIVIDUAL
         )
         val storage = TrainingStorage(tempFolder.root)
         storage.save(training)
@@ -142,15 +164,15 @@ class TrainingStorageTest {
     @Test
     fun `touch does nothing for default training`() {
         val storage = TrainingStorage(tempFolder.root)
-        storage.touch(Training.DEFAULT)
+        storage.touch(defaultTraining)
         assertTrue(!tempFolder.root.exists() || tempFolder.root.listFiles().isNullOrEmpty())
     }
 
     @Test
     fun `loadAll returns trainings sorted by modification time descending`() {
-        val first = Training.Individual(pilot = Pilot.Individual(name = "First"))
-        val second = Training.Individual(pilot = Pilot.Individual(name = "Second"))
-        val third = Training.Individual(pilot = Pilot.Individual(name = "Third"))
+        val first = Training.Individual(pilot = Pilot.Individual.ANONYMOUS.copy(name = "First"), rules = DefaultRules.INDIVIDUAL)
+        val second = Training.Individual(pilot = Pilot.Individual.ANONYMOUS.copy(name = "Second"), rules = DefaultRules.INDIVIDUAL)
+        val third = Training.Individual(pilot = Pilot.Individual.ANONYMOUS.copy(name = "Third"), rules = DefaultRules.INDIVIDUAL)
 
         val storage = TrainingStorage(tempFolder.root)
         storage.save(first)
@@ -170,10 +192,14 @@ class TrainingStorageTest {
 
     @Test
     fun `non default empty-named training is still saved`() {
-        val training = Training.Individual().copy(
+        val training = Training.Individual(
+            rules = DefaultRules.INDIVIDUAL,
+            pilot = Pilot.Individual.ANONYMOUS
+        ).copy(
             flights = listOf(
                 Flight.Individual(
-                    laps = listOf(Lap(1, TimeInterval(0, 1000), success = true))
+                    laps = listOf(Lap(1, TimeInterval(0, 1000), success = true)),
+                    stopReason = StopReason.MANUAL
                 )
             )
         )

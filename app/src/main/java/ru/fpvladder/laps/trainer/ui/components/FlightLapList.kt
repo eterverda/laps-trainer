@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.settings.TimerPrecision
@@ -44,7 +45,7 @@ internal fun LapList(
     timerPrecision: TimerPrecision,
     isPostFlight: Boolean,
     pilot: Pilot? = null,
-    pilotChangeIndex: Int? = null,
+    pilotChangeIndex: Int = NO_PILOT_CHANGE,
     swapMode: Rules.Team.SwapMode = Rules.Team.SwapMode.STRAIGHT,
     modifier: Modifier = Modifier
 ) {
@@ -120,7 +121,7 @@ internal fun LapList(
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
             )
-            if (pilot is Pilot.Team && pilotChangeIndex != null && index == pilotChangeIndex) {
+            if (pilot is Pilot.Team && pilotChangeIndex >= 0 && index == pilotChangeIndex) {
                 val nextPilot = pilot.displayNameTail(swapMode, context)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -143,7 +144,7 @@ internal fun LapList(
                 maxTimeLen = maxTimeLen
             )
         }
-        if (pilot is Pilot.Team && pilotChangeIndex != null && pilotChangeIndex == laps.size) {
+        if (pilot is Pilot.Team && pilotChangeIndex >= 0 && pilotChangeIndex == laps.size) {
             val nextPilot = pilot.displayNameTail(swapMode, context)
             Spacer(modifier = Modifier.height(16.dp))
             Text(

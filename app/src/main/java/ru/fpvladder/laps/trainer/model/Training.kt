@@ -20,10 +20,6 @@ sealed class Training {
     fun isEmpty(): Boolean = flights.isEmpty()
     fun isDefault(): Boolean = isEmpty() && pilot.isAnonymous()
 
-    companion object {
-        val DEFAULT: Training = Training.Individual()
-    }
-
     @Serializable
     @SerialName("individual")
     class Individual private constructor(
@@ -36,13 +32,13 @@ sealed class Training {
     ) : Training() {
 
         constructor(
-            pilot: Pilot.Individual = Pilot.Individual(),
-            date: LocalDate = LocalDate.now(),
+            rules: Rules.Individual,
+            pilot: Pilot.Individual,
         ) : this(
             id = UUID.randomUUID().toString(),
-            date = date,
+            date = LocalDate.now(),
             pilot = pilot,
-            rules = Rules.Individual(),
+            rules = rules,
             flights = emptyList(),
         )
 
@@ -66,19 +62,19 @@ sealed class Training {
         override val id: String,
         @Serializable(with = LocalDateSerializer::class)
         override val date: LocalDate,
-        override val pilot: Pilot.Team = Pilot.Team(),
-        override val rules: Rules.Team = Rules.Team(),
-        override val flights: List<Flight.Team> = emptyList(),
+        override val pilot: Pilot.Team,
+        override val rules: Rules.Team,
+        override val flights: List<Flight.Team>,
     ) : Training() {
 
         constructor(
-            pilot: Pilot.Team = Pilot.Team(),
-            date: LocalDate = LocalDate.now(),
+            rules: Rules.Team,
+            pilot: Pilot.Team,
         ) : this(
             id = UUID.randomUUID().toString(),
-            date = date,
+            date = LocalDate.now(),
             pilot = pilot,
-            rules = Rules.Team(),
+            rules = rules,
             flights = emptyList(),
         )
 

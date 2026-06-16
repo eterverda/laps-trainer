@@ -52,8 +52,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.channels.ChannelResult
-import java.time.LocalDate
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmFinishTrainingDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmNameChangeDialog
@@ -70,6 +68,7 @@ import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
+import ru.fpvladder.laps.trainer.settings.DefaultRules
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.USB_ENABLED
 import ru.fpvladder.laps.trainer.model.Training
@@ -572,9 +571,12 @@ fun AppRoot(
             isEmpty = nameEditorIsNew || selectedTraining.isEmpty(),
             onConfirm = { name ->
                 if (nameEditorIsNew) {
-                    val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel()
+                    val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel.DEFAULT
                     val newPilot = Pilot.Individual(name = name, channel = defaultChannel)
-                    val newTraining = Training.Individual(pilot = newPilot)
+                    val newTraining = Training.Individual(
+                        pilot = newPilot,
+                        rules = DefaultRules.INDIVIDUAL
+                    )
                     trainingViewModel.addTraining(newTraining)
                     trainingViewModel.selectTraining(newTraining)
                 } else {
@@ -607,9 +609,12 @@ fun AppRoot(
             isEmpty = nameEditorIsNew || selectedTraining.isEmpty(),
             onConfirm = { n1, n2 ->
                 if (nameEditorIsNew) {
-                    val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel()
+                    val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel.DEFAULT
                     val newPilot = Pilot.Team(name1 = n1, name2 = n2, channel = defaultChannel)
-                    val newTraining = Training.Team(pilot = newPilot)
+                    val newTraining = Training.Team(
+                        pilot = newPilot,
+                        rules = DefaultRules.TEAM
+                    )
                     trainingViewModel.addTraining(newTraining)
                     trainingViewModel.selectTraining(newTraining)
                 } else {
@@ -638,8 +643,10 @@ fun AppRoot(
                     finishFlight(shouldSaveResult, false)
                 }
                 val pilot = Pilot.Individual(name = name, channel = selectedTraining.pilot.channel)
-                val newTraining = Training.Individual(pilot = pilot, date = LocalDate.now())
-                    .copy(rules = selectedTraining.rules as Rules.Individual)
+                val newTraining = Training.Individual(
+                    pilot = pilot,
+                    rules = selectedTraining.rules as Rules.Individual
+                )
                 trainingViewModel.addTraining(newTraining)
                 if (wasPostFlight) {
                     pilotViewModel.navigateTo(AppScreen.Training)
@@ -673,8 +680,10 @@ fun AppRoot(
                     finishFlight(shouldSaveResult, false)
                 }
                 val pilot = Pilot.Team(name1 = n1, name2 = n2, channel = selectedTraining.pilot.channel)
-                val newTraining = Training.Team(pilot = pilot, date = LocalDate.now())
-                    .copy(rules = selectedTraining.rules as Rules.Team)
+                val newTraining = Training.Team(
+                    pilot = pilot,
+                    rules = selectedTraining.rules as Rules.Team
+                )
                 trainingViewModel.addTraining(newTraining)
                 if (wasPostFlight) {
                     pilotViewModel.navigateTo(AppScreen.Training)
@@ -711,14 +720,14 @@ fun AppRoot(
                 val pilot = selectedTraining.pilot
                 val newTraining = when (pilot) {
                     is Pilot.Individual -> Training.Individual(
-                        pilot = pilot.copy(),
-                        date = LocalDate.now()
-                    ).copy(rules = newRules as Rules.Individual)
+                        pilot = pilot,
+                        rules = newRules as Rules.Individual
+                    )
 
                     is Pilot.Team -> Training.Team(
-                        pilot = pilot.copy(),
-                        date = LocalDate.now()
-                    ).copy(rules = newRules as Rules.Team)
+                        pilot = pilot,
+                        rules = newRules as Rules.Team
+                    )
                 }
                 trainingViewModel.addTraining(newTraining)
                 pendingRulesChange = null

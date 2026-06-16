@@ -8,7 +8,9 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Pilot
+import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.StopReason
 import ru.fpvladder.laps.trainer.model.TimeInterval
@@ -16,6 +18,7 @@ import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.model.computeIndividualFlight
 import ru.fpvladder.laps.trainer.model.computeTeamFlight
 import java.io.File
+import java.util.EnumSet
 
 class YamlSamplesTest {
 
@@ -55,8 +58,17 @@ class YamlSamplesTest {
 
         val training = Training.Individual(
             pilot = Pilot.Individual("Alex", Channel("R", 1, 0xFFFF0000.toInt())),
+            rules = Rules.Individual(
+                lapsLimit = 50,
+                timeLimitSeconds = 180,
+                holeshotEnabled = true,
+                showRecordKinds = EnumSet.of(
+                    Record.Kind.BEST_1,
+                    Record.Kind.BEST_3,
+                    Record.Kind.MOST
+                )
+            )
         ).copy(
-            rules = Rules.Individual(lapsLimit = 50, timeLimitSeconds = 180),
             flights = listOf(flight1, flight2)
         )
 
@@ -79,13 +91,33 @@ class YamlSamplesTest {
             Lap(3, TimeInterval(27000, 45000), success = true),
         )
 
-        val flight1 = computeTeamFlight(laps1, StopReason.MANUAL, pilotChangeIndex = 1)
-        val flight2 = computeTeamFlight(laps2, StopReason.MANUAL, pilotChangeIndex = null)
+        val flight1 = computeTeamFlight(
+            laps1,
+            StopReason.MANUAL,
+            pilotChangeIndex = 1,
+            swapMode = Rules.Team.SwapMode.STRAIGHT
+        )
+        val flight2 = computeTeamFlight(
+            laps2,
+            StopReason.MANUAL,
+            pilotChangeIndex = NO_PILOT_CHANGE,
+            swapMode = Rules.Team.SwapMode.STRAIGHT
+        )
 
         val training = Training.Team(
             pilot = Pilot.Team("A", "B", Channel("B", 5, 0xFF2979FF.toInt())),
+            rules = Rules.Team(
+                lapsLimit = 100,
+                timeLimitSeconds = 600,
+                holeshotEnabled = false,
+                changeMode = Rules.Team.ChangeMode.LAPS,
+                swapMode = Rules.Team.SwapMode.STRAIGHT,
+                showRecordKinds = EnumSet.of(
+                    Record.Kind.BEST_1,
+                    Record.Kind.MOST
+                )
+            )
         ).copy(
-            rules = Rules.Team(lapsLimit = 100, timeLimitSeconds = 600),
             flights = listOf(flight1, flight2)
         )
 

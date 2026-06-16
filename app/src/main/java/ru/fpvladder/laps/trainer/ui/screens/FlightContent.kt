@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.settings.StartSignal
@@ -41,7 +42,7 @@ internal fun FlightContent(
     useLapButton: Boolean,
     onLapClick: () -> Unit = {},
     pilot: Pilot?,
-    pilotChangeIndex: Int?,
+    pilotChangeIndex: Int = NO_PILOT_CHANGE,
     swapMode: Rules.Team.SwapMode,
     modifier: Modifier = Modifier
 ) {

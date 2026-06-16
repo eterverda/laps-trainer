@@ -3,6 +3,7 @@ package ru.fpvladder.laps.trainer.model
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ru.fpvladder.laps.trainer.settings.DefaultRules
 
 class StatsComputationTest {
 
@@ -16,7 +17,10 @@ class StatsComputationTest {
             ),
             stopReason = StopReason.MANUAL
         )
-        val training = Training.Individual().copy(flights = listOf(flight))
+        val training = Training.Individual(
+            rules = DefaultRules.INDIVIDUAL,
+            pilot = Pilot.Individual.ANONYMOUS
+        ).copy(flights = listOf(flight))
 
         val stats = training.stats as Stats.Individual
         val recordKinds = stats.results.records.map { it.kind }
@@ -42,12 +46,13 @@ class StatsComputationTest {
                 Lap(3, TimeInterval(25000, 40000), success = true),
                 Lap(4, TimeInterval(40000, 56000), success = true)
             ),
-            stopReason = StopReason.MANUAL
+            stopReason = StopReason.MANUAL,
+            swapMode = Rules.Team.SwapMode.STRAIGHT
         )
-        val training = Training.Team().copy(
-            rules = Rules.Team(swapMode = Rules.Team.SwapMode.STRAIGHT),
-            flights = listOf(flight)
-        )
+        val training = Training.Team(
+            rules = DefaultRules.TEAM,
+            pilot = Pilot.Team.ANONYMOUS
+        ).copy(flights = listOf(flight))
 
         val stats = training.stats as Stats.Team
         assertEquals(4, stats.common.records.single().count)
@@ -73,9 +78,10 @@ class StatsComputationTest {
             stopReason = StopReason.MANUAL,
             swapMode = Rules.Team.SwapMode.SWAPPED
         )
-        val training = Training.Team().copy(
-            flights = listOf(flight)
-        )
+        val training = Training.Team(
+            rules = DefaultRules.TEAM,
+            pilot = Pilot.Team.ANONYMOUS
+        ).copy(flights = listOf(flight))
 
         val stats = training.stats as Stats.Team
         val firstBest1 = stats.first.total.records.single { it.kind == Record.Kind.BEST_1 }
@@ -99,7 +105,10 @@ class StatsComputationTest {
             stopReason = StopReason.MANUAL,
             swapMode = Rules.Team.SwapMode.SWAPPED
         )
-        val training = Training.Team().copy(flights = listOf(flight1, flight2))
+        val training = Training.Team(
+            rules = DefaultRules.TEAM,
+            pilot = Pilot.Team.ANONYMOUS
+        ).copy(flights = listOf(flight1, flight2))
 
         val stats = training.stats as Stats.Team
         val firstBest1 = stats.first.total.records.single { it.kind == Record.Kind.BEST_1 }

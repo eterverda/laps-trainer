@@ -13,8 +13,8 @@ sealed class Flight {
     @Serializable
     @SerialName("individual")
     data class Individual(
-        override val laps: List<Lap> = emptyList(),
-        override val stopReason: StopReason = StopReason.MANUAL,
+        override val laps: List<Lap>,
+        override val stopReason: StopReason,
     ) : Flight() {
         override val results: Results by lazy { computeFlightResults(laps) }
     }
@@ -22,10 +22,10 @@ sealed class Flight {
     @Serializable
     @SerialName("team")
     data class Team(
-        val headLaps: List<Lap> = emptyList(),
-        val tailLaps: List<Lap> = emptyList(),
-        override val stopReason: StopReason = StopReason.MANUAL,
-        val swapMode: SwapMode = SwapMode.STRAIGHT,
+        val headLaps: List<Lap>,
+        val tailLaps: List<Lap>,
+        override val stopReason: StopReason,
+        val swapMode: SwapMode,
     ) : Flight() {
         override val laps: List<Lap> by lazy { headLaps + tailLaps }
         override val results: Results by lazy { computeTeamCommonResults(laps) }

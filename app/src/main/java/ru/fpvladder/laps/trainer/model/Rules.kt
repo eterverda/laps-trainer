@@ -3,8 +3,6 @@ package ru.fpvladder.laps.trainer.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import ru.fpvladder.laps.trainer.model.serialization.MinMaxIntSerializer
-import ru.fpvladder.laps.trainer.settings.TEAM_HOLESHOT_ENABLED
-import java.util.EnumSet
 
 @Serializable
 sealed class Rules {
@@ -17,29 +15,24 @@ sealed class Rules {
     @SerialName("individual")
     data class Individual(
         @Serializable(MinMaxIntSerializer::class)
-        override val lapsLimit: Int = Int.MAX_VALUE,
+        override val lapsLimit: Int,
         @Serializable(MinMaxIntSerializer::class)
-        override val timeLimitSeconds: Int = 180,
-        override val holeshotEnabled: Boolean = true,
-        override val showRecordKinds: Set<Record.Kind> = EnumSet.of(
-            Record.Kind.BEST_1,
-            Record.Kind.BEST_3
-        ).apply { if (timeLimitSeconds != Int.MAX_VALUE) add(Record.Kind.MOST) }
+        override val timeLimitSeconds: Int,
+        override val holeshotEnabled: Boolean,
+        override val showRecordKinds: Set<Record.Kind>
     ) : Rules()
 
     @Serializable
     @SerialName("team")
     data class Team(
         @Serializable(MinMaxIntSerializer::class)
-        override val lapsLimit: Int = 50,
+        override val lapsLimit: Int,
         @Serializable(MinMaxIntSerializer::class)
-        override val timeLimitSeconds: Int = 1800,
-        override val holeshotEnabled: Boolean = TEAM_HOLESHOT_ENABLED,
-        val changeMode: ChangeMode = ChangeMode.LAPS,
-        val swapMode: SwapMode = SwapMode.STRAIGHT,
-        override val showRecordKinds: Set<Record.Kind> = EnumSet.of(
-            Record.Kind.BEST_1, Record.Kind.MOST,
-        )
+        override val timeLimitSeconds: Int,
+        override val holeshotEnabled: Boolean,
+        val changeMode: ChangeMode,
+        val swapMode: SwapMode,
+        override val showRecordKinds: Set<Record.Kind>
     ) : Rules() {
         @Serializable
         enum class ChangeMode {
