@@ -102,7 +102,11 @@ class MainActivity : ComponentActivity() {
         SoundManager.init(this)
         setContent {
             val appTheme by settingsViewModel.appTheme.collectAsState()
-            LapsTrainerTheme(appTheme = appTheme) {
+            val darkThemeVariant by settingsViewModel.darkThemeVariant.collectAsState()
+            LapsTrainerTheme(
+                appTheme = appTheme,
+                darkThemeVariant = darkThemeVariant
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -141,6 +145,7 @@ fun AppRoot(
     val isUsbKeyboardEnabled by settingsViewModel.isUsbKeyboardEnabled.collectAsState()
     val effectiveUsbKeyboardEnabled by settingsViewModel.effectiveUsbKeyboardEnabled.collectAsState()
     val appTheme by settingsViewModel.appTheme.collectAsState()
+    val darkThemeVariant by settingsViewModel.darkThemeVariant.collectAsState()
     val timerPrecision by settingsViewModel.timerPrecision.collectAsState()
     val effectiveStartSignal by settingsViewModel.effectiveStartSignal.collectAsState()
     val useLapButton by settingsViewModel.useLapButton.collectAsState()
@@ -297,6 +302,7 @@ fun AppRoot(
                         useLapButton = useLapButton,
                         useErrorFixButtons = useErrorFixButtons,
                         appTheme = appTheme,
+                        darkThemeVariant = darkThemeVariant,
                         timerPrecision = timerPrecision,
                         startSignal = effectiveStartSignal,
                         onChannelGridChange = { settingsViewModel.setChannelGrid(it) },
@@ -306,6 +312,7 @@ fun AppRoot(
                         onUseLapButtonChange = { settingsViewModel.setUseLapButton(it) },
                         onUseErrorFixButtonsChange = { settingsViewModel.setUseErrorFixButtons(it) },
                         onAppThemeChange = { settingsViewModel.setAppTheme(it) },
+                        onDarkThemeVariantChange = { settingsViewModel.setDarkThemeVariant(it) },
                         onTimerPrecisionChange = { settingsViewModel.setTimerPrecision(it) },
                         onStartSignalChange = { settingsViewModel.setStartSignal(it) },
                         onNavigateBack = { pilotViewModel.navigateTo(AppScreen.Training) },

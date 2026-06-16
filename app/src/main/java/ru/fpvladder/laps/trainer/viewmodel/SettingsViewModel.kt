@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.settings.SettingsDataStore
-import ru.fpvladder.laps.trainer.settings.CatppuccinTheme
+import ru.fpvladder.laps.trainer.settings.AppThemeMode
+import ru.fpvladder.laps.trainer.settings.DarkThemeVariant
 import ru.fpvladder.laps.trainer.settings.ChannelGrid
 import ru.fpvladder.laps.trainer.settings.ColorCount
 import ru.fpvladder.laps.trainer.settings.StartSignal
@@ -20,6 +21,12 @@ import ru.fpvladder.laps.trainer.settings.USB_ENABLED
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dataStore = SettingsDataStore(application.applicationContext)
+
+    init {
+        viewModelScope.launch {
+            dataStore.migrateThemeSettings()
+        }
+    }
 
     val channelGrid: StateFlow<ChannelGrid> = dataStore.channelGrid
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ChannelGrid.HDZERO)
@@ -37,8 +44,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         .map { it && USB_ENABLED }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), USB_ENABLED)
 
-    val appTheme: StateFlow<CatppuccinTheme> = dataStore.appTheme
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CatppuccinTheme.MOCHA)
+    val appTheme: StateFlow<AppThemeMode> = dataStore.appTheme
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppThemeMode.SYSTEM)
+
+    val darkThemeVariant: StateFlow<DarkThemeVariant> = dataStore.darkThemeVariant
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DarkThemeVariant.CATPUCCIN_MOCHA)
 
     val timerPrecision: StateFlow<TimerPrecision> = dataStore.timerPrecision
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TimerPrecision.DECISECONDS)
@@ -80,9 +90,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun setAppTheme(theme: CatppuccinTheme) {
+    fun setAppTheme(mode: AppThemeMode) {
         viewModelScope.launch {
-            dataStore.setAppTheme(theme)
+            dataStore.setAppTheme(mode)
+        }
+    }
+
+    fun setDarkThemeVariant(variant: DarkThemeVariant) {
+        viewModelScope.launch {
+            dataStore.setDarkThemeVariant(variant)
         }
     }
 

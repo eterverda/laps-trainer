@@ -20,6 +20,7 @@ class SettingsDataStore(private val context: Context) {
         private val IS_MUTED_KEY = booleanPreferencesKey("is_muted")
         private val USB_KEYBOARD_KEY = booleanPreferencesKey("usb_keyboard_enabled")
         private val APP_THEME_KEY = stringPreferencesKey("app_theme")
+        private val DARK_THEME_VARIANT_KEY = stringPreferencesKey("dark_theme_variant")
         private val TIMER_PRECISION_KEY = stringPreferencesKey("timer_precision")
         private val START_SIGNAL_KEY = stringPreferencesKey("start_signal")
         private val USE_LAP_BUTTON_KEY = booleanPreferencesKey("use_lap_button")
@@ -70,15 +71,63 @@ class SettingsDataStore(private val context: Context) {
         }
     }
 
-    val appTheme: Flow<CatppuccinTheme> = context.dataStore.data.map { prefs ->
-        prefs[APP_THEME_KEY]?.let {
-            runCatching { CatppuccinTheme.valueOf(it) }.getOrNull()
-        } ?: CatppuccinTheme.MOCHA
+    val appTheme: Flow<AppThemeMode> = context.dataStore.data.map { prefs ->
+        when (prefs[APP_THEME_KEY]) {
+            AppThemeMode.LIGHT.name -> AppThemeMode.LIGHT
+            AppThemeMode.DARK.name -> AppThemeMode.DARK
+            AppThemeMode.SYSTEM.name -> AppThemeMode.SYSTEM
+            "LATTE" -> AppThemeMode.LIGHT
+            "FRAPPE", "MACCHIATO", "MOCHA" -> AppThemeMode.DARK
+            else -> AppThemeMode.SYSTEM
+        }
     }
 
-    suspend fun setAppTheme(theme: CatppuccinTheme) {
+    val darkThemeVariant: Flow<DarkThemeVariant> = context.dataStore.data.map { prefs ->
+        prefs[DARK_THEME_VARIANT_KEY]?.let {
+            runCatching { DarkThemeVariant.valueOf(it) }.getOrNull()
+        } ?: DarkThemeVariant.CATPUCCIN_MOCHA
+    }
+
+    suspend fun setAppTheme(mode: AppThemeMode) {
         context.dataStore.edit { prefs ->
-            prefs[APP_THEME_KEY] = theme.name
+            prefs[APP_THEME_KEY] = mode.name
+        }
+    }
+
+    suspend fun setDarkThemeVariant(variant: DarkThemeVariant) {
+        context.dataStore.edit { prefs ->
+            prefs[DARK_THEME_VARIANT_KEY] = variant.name
+        }
+    }
+
+    suspend fun migrateThemeSettings() {
+        context.dataStore.edit { prefs ->
+            when (val raw = prefs[APP_THEME_KEY]) {
+                AppThemeMode.LIGHT.name,
+                AppThemeMode.DARK.name,
+                AppThemeMode.SYSTEM.name -> { /* already new format */ }
+                "LATTE" -> {
+                    prefs[APP_THEME_KEY] = AppThemeMode.LIGHT.name
+                }
+                "FRAPPE" -> {
+                    prefs[APP_THEME_KEY] = AppThemeMode.DARK.name
+                    prefs[DARK_THEME_VARIANT_KEY] = DarkThemeVariant.CATPUCCIN_FRAPPE.name
+                }
+                "MACCHIATO" -> {
+                    prefs[APP_THEME_KEY] = AppThemeMode.DARK.name
+                    prefs[DARK_THEME_VARIANT_KEY] = DarkThemeVariant.CATPUCCIN_MACCHIATO.name
+                }
+                "MOCHA" -> {
+                    prefs[APP_THEME_KEY] = AppThemeMode.DARK.name
+                    prefs[DARK_THEME_VARIANT_KEY] = DarkThemeVariant.CATPUCCIN_MOCHA.name
+                }
+                else -> {
+                    prefs[APP_THEME_KEY] = AppThemeMode.SYSTEM.name
+                    if (prefs[DARK_THEME_VARIANT_KEY] == null) {
+                        prefs[DARK_THEME_VARIANT_KEY] = DarkThemeVariant.CATPUCCIN_MOCHA.name
+                    }
+                }
+            }
         }
     }
 
