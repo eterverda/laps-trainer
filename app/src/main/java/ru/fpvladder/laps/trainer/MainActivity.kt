@@ -73,7 +73,6 @@ import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.USB_ENABLED
 import ru.fpvladder.laps.trainer.settings.WIGGLE_ONCE_ENABLED
-import ru.fpvladder.laps.trainer.settings.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.model.Training
 import ru.fpvladder.laps.trainer.ui.helpers.description
 import ru.fpvladder.laps.trainer.audio.SoundManager
@@ -471,18 +470,14 @@ fun AppRoot(
                             val isPostFlight = flightPhase == FlightPhase.POST_FLIGHT
 
                             val buttonText = when {
-                                !isOnFlight -> "Старт"
+                                !isOnFlight || isPostFlight -> "Старт"
                                 isManualPreStart -> "GO GO GO"
                                 isPreFixedOrRandom -> "ОТМЕНА"
-                                isPostFlight -> if (IMMEDIATE_START_ENABLED) "Старт" else "Закрыть"
                                 else -> "Стоп"
                             }
                             val holdDurationMs = when {
-                                !isOnFlight -> if (isMuted) 1800 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
+                                !isOnFlight || isPostFlight -> if (isMuted) 1800 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
                                 isManualPreStart || isPreFixedOrRandom -> 0
-                                isPostFlight -> if (IMMEDIATE_START_ENABLED) {
-                                    if (isMuted) 1800 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
-                                } else 0
                                 else -> 1200
                             }
 
@@ -503,13 +498,9 @@ fun AppRoot(
                                         }
 
                                         isPostFlight -> {
-                                            if (IMMEDIATE_START_ENABLED) {
-                                                finishFlight(shouldSaveResult, false)
-                                                flightViewModel.setRules(selectedTraining.rules)
-                                                flightViewModel.prepareRace(effectiveStartSignal, isMuted)
-                                            } else {
-                                                finishFlight(shouldSaveResult, true)
-                                            }
+                                            finishFlight(shouldSaveResult, false)
+                                            flightViewModel.setRules(selectedTraining.rules)
+                                            flightViewModel.prepareRace(effectiveStartSignal, isMuted)
                                         }
 
                                         else -> {
@@ -522,7 +513,7 @@ fun AppRoot(
                                 holdDurationMs = holdDurationMs,
                                 onPressStart = {
                                     wasHoldConfirmed = false
-                                    if (!isMuted && (!isOnFlight || (isPostFlight && IMMEDIATE_START_ENABLED))) {
+                                    if (!isMuted && (!isOnFlight || isPostFlight)) {
                                         soundJob = SoundManager.playStageSequence(scope)
                                     }
                                 },

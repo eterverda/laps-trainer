@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.R
-import ru.fpvladder.laps.trainer.settings.IMMEDIATE_START_ENABLED
 import ru.fpvladder.laps.trainer.model.Lap
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Counter
@@ -282,22 +281,20 @@ fun PostFlightContent(
                             )
                         }
                     }
-                    if (IMMEDIATE_START_ENABLED) {
-                        TextButton(
-                            onClick = onBackClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RectangleShape
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Назад",
-                                fontSize = 16.sp
-                            )
-                        }
+                    TextButton(
+                        onClick = onBackClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RectangleShape
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Назад",
+                            fontSize = 16.sp
+                        )
                     }
                 }
             }
