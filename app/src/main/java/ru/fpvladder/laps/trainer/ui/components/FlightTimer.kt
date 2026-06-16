@@ -125,9 +125,9 @@ internal fun FlightTimer(
     ) {
         val timerTextColor = LocalExtendedColors.current.timerOnSurface
         val fractionFontSize = when (timerPrecision.fractionDigits) {
-            3 -> 27.sp
-            2 -> 36.sp
-            else -> 54.sp
+            3 -> 30.sp
+            2 -> 40.sp
+            else -> 60.sp
         }
         val timeText = formatTime(
             elapsedMs,
@@ -154,7 +154,7 @@ internal fun FlightTimer(
             color = timerTextColor,
             style = TextStyle(
                 fontFamily = FontFamily.Monospace,
-                fontSize = 54.sp,
+                fontSize = 60.sp,
                 fontWeight = FontWeight.Bold
             ),
             textAlign = TextAlign.Center

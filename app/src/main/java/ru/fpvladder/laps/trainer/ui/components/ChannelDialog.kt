@@ -56,8 +56,6 @@ fun ChannelDialog(
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceContainer,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
         ) {
             ChannelEditorContent(
                 currentChannel = currentChannel,

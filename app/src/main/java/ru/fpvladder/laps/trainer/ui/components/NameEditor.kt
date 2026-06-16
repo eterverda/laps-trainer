@@ -48,8 +48,6 @@ fun IndividualNameDialog(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -57,6 +55,14 @@ fun IndividualNameDialog(
             ) {
                 var nameField by remember { mutableStateOf(TextFieldValue(currentName, selection = TextRange(0, currentName.length))) }
                 val focusRequester = remember { FocusRequester() }
+                val handleConfirm = {
+                    val newName = nameField.text.trim()
+                    if (isEmpty || !isSignificantNameChange(currentName, newName)) {
+                        onConfirm(newName)
+                    } else {
+                        onRequestConfirm?.invoke(newName)
+                    }
+                }
 
                 Text(
                     text = stringResource(R.string.individual_pilot),
@@ -77,7 +83,7 @@ fun IndividualNameDialog(
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { onConfirm(nameField.text.trim()) }
+                        onDone = { handleConfirm() }
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -96,14 +102,7 @@ fun IndividualNameDialog(
                         Text("Отмена")
                     }
                     Button(
-                        onClick = {
-                            val newName = nameField.text.trim()
-                            if (isEmpty || !isSignificantNameChange(currentName, newName)) {
-                                onConfirm(newName)
-                            } else {
-                                onRequestConfirm?.invoke(newName)
-                            }
-                        },
+                        onClick = { handleConfirm() },
                         enabled = true
                     ) {
                         Text("OK")
@@ -147,8 +146,6 @@ fun TeamNameDialog(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -158,6 +155,15 @@ fun TeamNameDialog(
                 var name2Field by remember { mutableStateOf(TextFieldValue(name2)) }
                 val focusRequester1 = remember { FocusRequester() }
                 val focusRequester2 = remember { FocusRequester() }
+                val handleConfirm = {
+                    val newName1 = name1Field.text.trim()
+                    val newName2 = name2Field.text.trim()
+                    if (isEmpty || !isSignificantNameChange(name1, newName1, name2, newName2)) {
+                        onConfirm(newName1, newName2)
+                    } else {
+                        onRequestConfirm?.invoke(newName1, newName2)
+                    }
+                }
 
                 Text(
                     text = stringResource(R.string.team_pilot_1),
@@ -209,7 +215,7 @@ fun TeamNameDialog(
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { onConfirm(name1Field.text.trim(), name2Field.text.trim()) }
+                        onDone = { handleConfirm() }
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -228,15 +234,7 @@ fun TeamNameDialog(
                         Text("Отмена")
                     }
                     Button(
-                        onClick = {
-                            val newName1 = name1Field.text.trim()
-                            val newName2 = name2Field.text.trim()
-                            if (isEmpty || !isSignificantNameChange(name1, newName1, name2, newName2)) {
-                                onConfirm(newName1, newName2)
-                            } else {
-                                onRequestConfirm?.invoke(newName1, newName2)
-                            }
-                        },
+                        onClick = { handleConfirm() },
                         enabled = name1Field.text.isNotBlank() == name2Field.text.isNotBlank()
                     ) {
                         Text("OK")

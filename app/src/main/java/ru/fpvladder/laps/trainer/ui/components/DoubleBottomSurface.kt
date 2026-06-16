@@ -3,12 +3,15 @@ package ru.fpvladder.laps.trainer.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -29,6 +32,7 @@ fun DoubleBottomSurface(
     upperContentPadding: Dp = 20.dp,
     lowerPaddingTop: Dp = 72.dp,
     lowerPaddingBottom: Dp = 16.dp,
+    scrollable: Boolean = false,
     upperContent: @Composable () -> Unit,
     lowerContent: @Composable () -> Unit
 ) {
@@ -45,7 +49,17 @@ fun DoubleBottomSurface(
         MaterialTheme.colorScheme.surfaceContainerLow
     }
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    val scrollModifier = if (scrollable) {
+        Modifier.verticalScroll(rememberScrollState())
+    } else {
+        Modifier
+    }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .then(scrollModifier)
+    ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()

@@ -30,7 +30,7 @@ fun LapsTrainerTheme(
     }
     val colorScheme = palette.toColorScheme()
     val extendedColors = ExtendedColors(
-        timerSurface = palette.green,
+        timerSurface = palette.brightYellow,
         timerOnSurface = palette.crust,
         selectableSurface = palette.surface1,
         selectableSelectedText = palette.teal

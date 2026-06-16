@@ -520,7 +520,7 @@ fun SettingsScreen(
 
     if (showDarkThemeVariantDialog) {
         SelectionDialog(
-            title = "Тёмная тема",
+            title = "Вариация тёмной темы",
             items = DarkThemeVariant.entries,
             selected = darkThemeVariant,
             itemText = { it.displayName },

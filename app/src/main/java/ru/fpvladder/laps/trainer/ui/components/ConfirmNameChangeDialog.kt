@@ -34,8 +34,8 @@ fun ConfirmNameChangeDialog(
     Dialog(onDismissRequest = onDismiss) {
         DoubleBottomSurface(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+                .fillMaxWidth(),
+            scrollable = true,
             upperContent = {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally

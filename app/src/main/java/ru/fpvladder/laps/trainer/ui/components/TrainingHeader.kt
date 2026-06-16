@@ -1,6 +1,8 @@
 package ru.fpvladder.laps.trainer.ui.components
 
+import android.content.Context
 import android.content.res.Configuration
+import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -29,6 +31,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -88,14 +93,6 @@ fun TrainingHeader(
     } else {
         screenHeightDp / 2
     }
-
-    val individuals = remember(trainings) {
-        trainings.filterIsInstance<Training.Individual>()
-    }
-    val teams = remember(trainings) {
-        trainings.filterIsInstance<Training.Team>()
-    }
-    val hasBoth = individuals.isNotEmpty() && teams.isNotEmpty()
 
     val channel = when (selectedTraining) {
         is Training.Individual -> selectedTraining.pilot.channel
@@ -182,15 +179,26 @@ fun TrainingHeader(
                 onDismissRequest = { expanded = false },
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
+                val density = LocalDensity.current
+                val context = LocalContext.current
+                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                val metrics = windowManager.currentWindowMetrics
+                val insetsCompat = androidx.core.view.WindowInsetsCompat.toWindowInsetsCompat(metrics.windowInsets)
+                val cutout = insetsCompat.getInsetsIgnoringVisibility(
+                    androidx.core.view.WindowInsetsCompat.Type.displayCutout()
+                )
+                val screenWidthPx = metrics.bounds.width()
+                val safeWidthPx = screenWidthPx - cutout.left - cutout.right
+                val safeWidthDp = with(density) { safeWidthPx.toDp() }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .displayCutoutPaddingFromWindow()
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) { expanded = false },
-                    contentAlignment = Alignment.TopCenter
+                    contentAlignment = Alignment.TopStart
                 ) {
                     val scrollState = rememberScrollState()
                     AnimatedVisibility(
@@ -200,13 +208,13 @@ fun TrainingHeader(
                     ) {
                         DoubleBottomSurface(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .width(safeWidthDp)
                                 .padding(8.dp)
                                 .heightIn(max = maxListHeight)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
-                                ) { },
+                                ) {},
                             upperContentPadding = 0.dp,
                             lowerPaddingTop = 72.dp,
                             lowerPaddingBottom = 16.dp,
@@ -217,68 +225,15 @@ fun TrainingHeader(
                                         .verticalScroll(scrollState),
                                 ) {
                                     Spacer(modifier = Modifier.height(16.dp))
-                                    val individualsFirst = trainings.firstOrNull() is Training.Individual
-
-                                    @Composable
-                                    fun IndividualsSection() {
-                                        if (individuals.isNotEmpty()) {
-                                            if (hasBoth) {
-                                                Text(
-                                                    text = "Пилоты",
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
-                                                )
+                                    trainings.forEach { training ->
+                                        TrainingListItem(
+                                            training = training,
+                                            isSelected = training.id == selectedTraining.id,
+                                            onClick = {
+                                                onTrainingSelect(training)
+                                                expanded = false
                                             }
-                                            individuals.forEach { training ->
-                                                TrainingListItem(
-                                                    training = training,
-                                                    isSelected = training.id == selectedTraining.id,
-                                                    onClick = {
-                                                        onTrainingSelect(training)
-                                                        expanded = false
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    @Composable
-                                    fun TeamsSection() {
-                                        if (teams.isNotEmpty()) {
-                                            if (hasBoth) {
-                                                Text(
-                                                    text = "Команды",
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
-                                                )
-                                            }
-                                            teams.forEach { training ->
-                                                TrainingListItem(
-                                                    training = training,
-                                                    isSelected = training.id == selectedTraining.id,
-                                                    onClick = {
-                                                        onTrainingSelect(training)
-                                                        expanded = false
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    if (individualsFirst) {
-                                        IndividualsSection()
-                                        if (hasBoth) {
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            TeamsSection()
-                                        }
-                                    } else {
-                                        TeamsSection()
-                                        if (hasBoth) {
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            IndividualsSection()
-                                        }
+                                        )
                                     }
                                     Spacer(modifier = Modifier.height(16.dp))
                                 }

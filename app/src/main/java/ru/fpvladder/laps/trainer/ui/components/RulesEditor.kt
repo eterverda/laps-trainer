@@ -9,8 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -66,7 +67,6 @@ fun RulesEditorDialog(
             color = MaterialTheme.colorScheme.surfaceContainer,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
         ) {
             RulesEditorContent(
                 currentRules = currentRules,
@@ -200,26 +200,26 @@ fun RulesEditorContent(
     }
 
     Column(
-        modifier = modifier
-            .padding(horizontal = 16.dp)
-            .verticalScroll(rememberScrollState()),
+        modifier = modifier.verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(16.dp))
-        SectionTitle("Время")
+        SectionTitle("Время", modifier = Modifier.padding(horizontal = 16.dp))
         OptionGrid(
             options = timeOptions,
             selected = selectedTime,
-            onSelect = { selectedTime = it }
+            onSelect = { selectedTime = it },
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        SectionTitle("Круги")
+        SectionTitle("Круги", modifier = Modifier.padding(horizontal = 16.dp))
         OptionGrid(
             options = lapOptions,
             selected = selectedLaps,
-            onSelect = { selectedLaps = it }
+            onSelect = { selectedLaps = it },
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -227,7 +227,8 @@ fun RulesEditorContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { countsExpanded = !countsExpanded },
+                .clickable { countsExpanded = !countsExpanded }
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -245,7 +246,7 @@ fun RulesEditorContent(
         }
 
         AnimatedVisibility(visible = countsExpanded) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Spacer(modifier = Modifier.height(8.dp))
                 if (currentRules is Rules.Individual) {
                     val mostAvailable = selectedTime != Int.MAX_VALUE
@@ -285,7 +286,8 @@ fun RulesEditorContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { optionsExpanded = !optionsExpanded },
+                .clickable { optionsExpanded = !optionsExpanded }
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -309,64 +311,28 @@ fun RulesEditorContent(
                     is Rules.Team -> TEAM_HOLESHOT_ENABLED
                 }
                 if (holeshotEditable) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(modifier = Modifier.offset(x = (-8).dp)) {
-                            Checkbox(
-                                checked = holeshot,
-                                onCheckedChange = { holeshot = it }
-                            )
-                        }
-                        Box(modifier = Modifier.offset(x = (-8).dp)) {
+                    CheckboxOption(
+                        checked = holeshot,
+                        onCheckedChange = { holeshot = it },
+                        title = "Holeshot",
+                        description = {
+                            Spacer(modifier = Modifier.size(8.dp))
                             Text(
-                                text = "Holeshot",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
+                                text = if (holeshot) {
+                                    "Время первого круга считаем от первых ворот"
+                                } else {
+                                    "Время первого круга считаем от стартового сигнала"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
-                    Text(
-                        text = if (holeshot) {
-                            "Время первого круга считаем от первых ворот"
-                        } else {
-                            "Время первого круга считаем от стартового сигнала"
-                        },
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 40.dp)
                     )
                 }
 
                 if (currentRules is Rules.Team) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    val changeAlpha = if (bothSet) 1f else 0.38f
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(modifier = Modifier.offset(x = (-8).dp)) {
-                            Checkbox(
-                                checked = changeMode == Rules.Team.ChangeMode.TIME,
-                                onCheckedChange = {
-                                    changeMode = if (it) Rules.Team.ChangeMode.TIME else Rules.Team.ChangeMode.LAPS
-                                },
-                                enabled = bothSet
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .offset(x = (-8).dp)
-                                .alpha(changeAlpha)
-                        ) {
-                            Text(
-                                text = "Смена по времени",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
+                    val changeChecked = changeMode == Rules.Team.ChangeMode.TIME
                     val timeVal = selectedTime
                     val lapsVal = selectedLaps
                     val changeHint = when {
@@ -393,16 +359,24 @@ fun RulesEditorContent(
 
                         else -> ""
                     }
-                    if (changeHint.isNotBlank()) {
-                        Text(
-                            text = changeHint,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .padding(start = 40.dp)
-                                .alpha(changeAlpha)
-                        )
-                    }
+                    CheckboxOption(
+                        checked = changeChecked,
+                        onCheckedChange = {
+                            changeMode = if (it) Rules.Team.ChangeMode.TIME else Rules.Team.ChangeMode.LAPS
+                        },
+                        title = "Смена по времени",
+                        enabled = bothSet,
+                        description = {
+                            if (changeHint.isNotBlank()) {
+                                Spacer(modifier = Modifier.size(8.dp))
+                                Text(
+                                    text = changeHint,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -441,12 +415,53 @@ fun RulesEditorContent(
 }
 
 @Composable
+private fun CheckboxOption(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    title: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    description: @Composable () -> Unit = {}
+) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.38f)
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(start = 4.dp, end = 20.dp)
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 14.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge
+            )
+            description()
+        }
+    }
+}
+
+@Composable
 private fun OptionGrid(
     options: List<Pair<Int, String>>,
     selected: Int,
-    onSelect: (Int) -> Unit
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         options.chunked(4).forEach { row ->
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

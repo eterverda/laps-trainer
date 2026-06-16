@@ -1,7 +1,6 @@
 package ru.fpvladder.laps.trainer.viewmodel
 
 import android.os.SystemClock
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -165,7 +164,6 @@ class FlightViewModel : ViewModel() {
         }
 
         val current = _currentLap.value ?: return
-        Log.d("FlightVM", "addLap: currentLabel=${current.label}, nextLapNumber=$nextLapNumber, changePointLap=$changePointLap, pendingPilotChange=$pendingPilotChange, lapsSize=${_laps.value.size}")
         val completed = current.copy(interval = TimeInterval(current.startMs, _elapsedMs.value))
         _laps.value = _laps.value + completed
 
@@ -179,7 +177,6 @@ class FlightViewModel : ViewModel() {
         if (teamRules != null) {
             if (teamRules.changeMode == Rules.Team.ChangeMode.LAPS && !pendingPilotChange && nextLapNumber - 1 == changePointLap) {
                 pendingPilotChange = true
-                Log.d("FlightVM", "Triggering pilot change at lap ${nextLapNumber - 1}")
                 if (!raceIsMuted) SoundManager.playBuzzer()
             }
 
@@ -212,7 +209,6 @@ class FlightViewModel : ViewModel() {
             interval = TimeInterval(lastLapElapsedMs, lastLapElapsedMs),
             success = true,
         )
-        Log.d("FlightVM", "addLap finished: number=${_currentLap.value?.number}, pilotChangeIndex=${_pilotChangeIndex.value}")
     }
 
     fun addErrorToLastLap() {

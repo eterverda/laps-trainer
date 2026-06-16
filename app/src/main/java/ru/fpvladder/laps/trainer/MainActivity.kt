@@ -246,8 +246,14 @@ fun AppRoot(
                         trainings = trainings,
                         selectedTraining = selectedTraining,
                         enabled = flightPhase == FlightPhase.POST_FLIGHT,
-                        onChannelClick = {},
-                        onNameClick = {},
+                        onChannelClick = { showChannelDialog = true },
+                        onNameClick = {
+                            nameEditorIsNew = false
+                            when (selectedTraining) {
+                                is Training.Individual -> showIndividualNameDialog = true
+                                is Training.Team -> showTeamNameDialog = true
+                            }
+                        },
                         onAddIndividualClick = {
                             nameEditorIsNew = true
                             showIndividualNameDialog = true
@@ -580,10 +586,6 @@ fun AppRoot(
             currentName = currentName,
             isEmpty = nameEditorIsNew || selectedTraining.isEmpty(),
             onConfirm = { name ->
-                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
-                if (wasPostFlight) {
-                    finishFlight(shouldSaveResult, false)
-                }
                 if (nameEditorIsNew) {
                     val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel()
                     val newPilot = Pilot.Individual(name = name, channel = defaultChannel)
@@ -592,9 +594,6 @@ fun AppRoot(
                     trainingViewModel.selectTraining(newTraining)
                 } else {
                     trainingViewModel.updateCurrentPilotNames(name, "")
-                }
-                if (wasPostFlight) {
-                    pilotViewModel.navigateTo(AppScreen.Training)
                 }
                 showIndividualNameDialog = false
             },
@@ -622,10 +621,6 @@ fun AppRoot(
             name2 = currentName2,
             isEmpty = nameEditorIsNew || selectedTraining.isEmpty(),
             onConfirm = { n1, n2 ->
-                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
-                if (wasPostFlight) {
-                    finishFlight(shouldSaveResult, false)
-                }
                 if (nameEditorIsNew) {
                     val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel()
                     val newPilot = Pilot.Team(name1 = n1, name2 = n2, channel = defaultChannel)
@@ -634,9 +629,6 @@ fun AppRoot(
                     trainingViewModel.selectTraining(newTraining)
                 } else {
                     trainingViewModel.updateCurrentPilotNames(n1, n2)
-                }
-                if (wasPostFlight) {
-                    pilotViewModel.navigateTo(AppScreen.Training)
                 }
                 showTeamNameDialog = false
             },
@@ -652,14 +644,7 @@ fun AppRoot(
         ConfirmNameChangeDialog(
             message = "Имя изменено. Вы уверены что хотите продолжить текущую тренировку с новым пилотом?",
             onContinue = {
-                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
-                if (wasPostFlight) {
-                    finishFlight(shouldSaveResult, false)
-                }
                 trainingViewModel.updateCurrentPilotNames(name, "")
-                if (wasPostFlight) {
-                    pilotViewModel.navigateTo(AppScreen.Training)
-                }
                 pendingIndividualName = null
             },
             onCreateNew = {
@@ -694,14 +679,7 @@ fun AppRoot(
         ConfirmNameChangeDialog(
             message = teamMessage,
             onContinue = {
-                val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
-                if (wasPostFlight) {
-                    finishFlight(shouldSaveResult, false)
-                }
                 trainingViewModel.updateCurrentPilotNames(n1, n2)
-                if (wasPostFlight) {
-                    pilotViewModel.navigateTo(AppScreen.Training)
-                }
                 pendingTeamName = null
             },
             onCreateNew = {

@@ -67,9 +67,9 @@ fun formatCountdown(remainingMs: Long, timerPrecision: TimerPrecision): String {
     val ms = rounded % 1000
 
     return when (timerPrecision.fractionDigits) {
-        0 -> String.format("-%d:%02d ", minutes, seconds)
-        1 -> String.format("-%d:%02d.%01d ", minutes, seconds, ms / 100)
-        2 -> String.format("-%d:%02d.%02d ", minutes, seconds, ms / 10)
-        else -> String.format("-%d:%02d.%03d ", minutes, seconds, ms)
+        0 -> String.format("-%d:%02d", minutes, seconds)
+        1 -> String.format("-%d:%02d.%01d", minutes, seconds, ms / 100)
+        2 -> String.format("-%d:%02d.%02d", minutes, seconds, ms / 10)
+        else -> String.format("-%d:%02d.%03d", minutes, seconds, ms)
     }
 }

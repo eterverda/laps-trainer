@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -152,6 +153,7 @@ fun StatsScreen(
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.TopCenter)
+                                        .offset(y = (-6).dp)
                                         .clip(CircleShape)
                                         .clickable(onClick = onEditRulesClick)
                                         .padding(8.dp),
@@ -161,13 +163,15 @@ fun StatsScreen(
                                         imageVector = Icons.Default.Edit,
                                         contentDescription = "Редактировать правила",
                                         tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier
+                                            .size(24.dp)
                                     )
                                 }
                                 if (pilot is Pilot.Team) {
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.BottomCenter)
+                                            .offset(y = 6.dp)
                                             .clip(CircleShape)
                                             .clickable(onClick = onRotatePilots)
                                             .padding(8.dp),
@@ -177,7 +181,8 @@ fun StatsScreen(
                                             imageVector = Icons.Default.SwapHoriz,
                                             contentDescription = "Поменять местами",
                                             tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier
+                                                .size(24.dp)
                                         )
                                     }
                                 }

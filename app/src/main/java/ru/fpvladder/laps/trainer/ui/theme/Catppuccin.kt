@@ -236,7 +236,7 @@ fun CatppuccinPalette.toColorScheme(): ColorScheme {
         onSurface = text,
         onSurfaceVariant = subtext0,
 
-        surfaceTint = blue,
+        surfaceTint = base,
         inverseSurface = text,
         inverseOnSurface = base,
         error = red,
