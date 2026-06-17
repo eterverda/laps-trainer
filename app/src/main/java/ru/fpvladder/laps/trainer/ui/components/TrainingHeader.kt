@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,12 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -57,6 +53,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -118,7 +115,7 @@ fun TrainingHeader(
         ) {
             ChannelBadge(
                 channel = channel,
-                fontSize = 24.sp,
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier
                     .fillMaxHeight()
                     .clickable(
@@ -139,7 +136,7 @@ fun TrainingHeader(
             ) {
                 PilotNameDisplay(
                     pilot = pilot,
-                    fontSize = 24.sp,
+                    style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
                 )
             }
@@ -287,7 +284,7 @@ fun TrainingHeader(
 @Composable
 private fun ChannelBadge(
     channel: Channel,
-    fontSize: androidx.compose.ui.unit.TextUnit,
+    style: TextStyle,
     modifier: Modifier = Modifier
 ) {
     val composeColor = channel.color.toComposeColor()
@@ -295,26 +292,27 @@ private fun ChannelBadge(
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val outlineColor = if (isLight) preset?.lightOutline else preset?.darkOutline
     val hasOutline = outlineColor != null
+    val fontSizeValue = style.fontSize.value
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = composeColor,
         border = if (hasOutline) BorderStroke(
-            if (fontSize.value >= 20) 2.dp else 1.5.dp,
+            if (fontSizeValue >= 20) 2.dp else 1.5.dp,
             outlineColor.toComposeColor()
         ) else null,
         modifier = modifier
     ) {
         Box(
             modifier = Modifier.padding(
-                horizontal = if (fontSize.value >= 20) 8.dp else 6.dp,
-                vertical = if (fontSize.value >= 20) 4.dp else 3.dp
+                horizontal = if (fontSizeValue >= 20) 8.dp else 6.dp,
+                vertical = if (fontSizeValue >= 20) 4.dp else 3.dp
             ),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "${channel.letter}${channel.number}",
-                fontSize = fontSize,
-                fontWeight = FontWeight.ExtraBold,
+                style = style,
+                fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
                 color = if (composeColor.luminance() > 0.4) Color(0xFF181926) else Color(0xFFeff1f5)
             )
@@ -325,7 +323,7 @@ private fun ChannelBadge(
 @Composable
 private fun PilotNameDisplay(
     pilot: Pilot,
-    fontSize: androidx.compose.ui.unit.TextUnit,
+    style: TextStyle,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -333,7 +331,7 @@ private fun PilotNameDisplay(
         is Pilot.Individual -> {
             Text(
                 text = pilot.label(context),
-                fontSize = fontSize,
+                style = style,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -345,14 +343,14 @@ private fun PilotNameDisplay(
             Column(modifier = modifier) {
                 Text(
                     text = pilot.label1(context),
-                    fontSize = fontSize,
+                    style = style,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = pilot.label2(context),
-                    fontSize = fontSize,
+                    style = style,
                     fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -394,14 +392,14 @@ private fun TrainingListItem(
         ) {
             ChannelBadge(
                 channel = channel,
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.fillMaxHeight()
             )
 
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(vertical = 3.dp)
+                    .align(Alignment.CenterVertically)
             ) {
                 when (pilot) {
                     is Pilot.Individual -> {
@@ -410,7 +408,7 @@ private fun TrainingListItem(
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
 

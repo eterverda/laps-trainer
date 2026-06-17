@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -85,8 +84,8 @@ internal fun FlightContent(
         val showTapHint = laps.size < 3 && !useLapButton
         Box(
             modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = (-40).dp),
+                .align(Alignment.TopCenter)
+                .padding(top = 128.dp),
             contentAlignment = Alignment.Center
         ) {
             AnimatedVisibility(

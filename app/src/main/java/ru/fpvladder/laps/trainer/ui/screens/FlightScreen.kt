@@ -220,7 +220,7 @@ fun FlightScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(modifier = Modifier.size(48.dp))
+                                    Box(modifier = Modifier.size(56.dp))
                                     HoldButton(
                                         onConfirm = onLapClick,
                                         text = "Круг",
@@ -230,14 +230,14 @@ fun FlightScreen(
                                             .weight(1f)
                                             .padding(horizontal = 8.dp)
                                     )
-                                    Box(modifier = Modifier.size(48.dp))
+                                    Box(modifier = Modifier.size(56.dp))
                                 }
                             }
                             if (useErrorFixButtons) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 24.dp),
+                                        .padding(horizontal = 8.dp),
                                     horizontalArrangement = Arrangement.spacedBy(
                                         16.dp,
                                         Alignment.CenterHorizontally
@@ -248,22 +248,22 @@ fun FlightScreen(
                                         onConfirm = onErrorClick,
                                         text = "ОШИБКА",
                                         iconRes = R.drawable.ic_cross,
-                                        iconSize = 18.dp,
-                                        textSize = 14.sp,
+                                        iconSize = 24.dp,
+                                        textSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
-                                        contentSpacing = 4.dp,
-                                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                                        contentSpacing = 8.dp,
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                         holdDurationMs = 0
                                     )
                                     HoldButton(
                                         onConfirm = onFixClick,
                                         text = "ИСПРАВИЛ",
                                         iconRes = R.drawable.ic_square,
-                                        iconSize = 18.dp,
-                                        textSize = 14.sp,
+                                        iconSize = 24.dp,
+                                        textSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
-                                        contentSpacing = 4.dp,
-                                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                                        contentSpacing = 8.dp,
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                         holdDurationMs = 0
                                     )
                                 }

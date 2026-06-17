@@ -1,5 +1,6 @@
 package ru.fpvladder.laps.trainer
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -7,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +33,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,9 +55,11 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmFinishTrainingDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmNameChangeDialog
@@ -71,6 +76,7 @@ import ru.fpvladder.laps.trainer.ui.theme.LapsTrainerTheme
 import ru.fpvladder.laps.trainer.model.Channel
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
+import ru.fpvladder.laps.trainer.settings.AppThemeMode
 import ru.fpvladder.laps.trainer.settings.DefaultRules
 import ru.fpvladder.laps.trainer.settings.StartSignal
 import ru.fpvladder.laps.trainer.settings.USB_ENABLED
@@ -98,11 +104,26 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
         SoundManager.init(this)
         setContent {
             val appTheme by settingsViewModel.appTheme.collectAsState()
             val darkThemeVariant by settingsViewModel.darkThemeVariant.collectAsState()
+
+            val isDark = when (appTheme) {
+                AppThemeMode.LIGHT -> false
+                AppThemeMode.DARK -> true
+                AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.context as Activity).window
+                val controller = WindowCompat.getInsetsController(window, view)
+                controller.isAppearanceLightStatusBars = !isDark
+                controller.isAppearanceLightNavigationBars = !isDark
+            }
+
             LapsTrainerTheme(
                 appTheme = appTheme,
                 darkThemeVariant = darkThemeVariant
@@ -460,7 +481,7 @@ fun AppRoot(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 16.dp),
+                                .padding(start = 8.dp, end = 8.dp, bottom = 16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(

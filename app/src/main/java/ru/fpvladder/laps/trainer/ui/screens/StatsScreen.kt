@@ -108,7 +108,7 @@ fun StatsScreen(
             ) {
                 Box(modifier = Modifier.onSizeChanged { contentHeight = it.height }) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
