@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,11 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,7 +65,6 @@ fun HoldButton(
     val progress = remember { Animatable(0f) }
 
     var isSuccess by remember { mutableStateOf(false) }
-    var activeGesture by remember { mutableStateOf<Boolean?>(null) }
 
     val currentOnConfirm by rememberUpdatedState(onConfirm)
     val currentOnPressStart by rememberUpdatedState(onPressStart)
@@ -117,51 +113,9 @@ fun HoldButton(
         }
     }
 
-    val isClickMode = activeGesture == null && currentHoldDurationMs <= 0
+    val isClickMode = currentHoldDurationMs <= 0
 
     val gestureModifier = when {
-        activeGesture == true -> Modifier.pointerInput(Unit) {
-            detectTapGestures(
-                onPress = {
-                    activeGesture = true
-                    isSuccess = false
-                    currentOnPressStart()
-                    val confirmAtStart = currentOnConfirm
-                    val job = scope.launch {
-                        progress.animateTo(
-                            targetValue = 1f,
-                            animationSpec = tween(
-                                durationMillis = currentHoldDurationMs,
-                                easing = LinearEasing
-                            )
-                        )
-                        isSuccess = true
-                        confirmAtStart()
-                        progress.animateTo(
-                            targetValue = 0f,
-                            animationSpec = tween(durationMillis = 300)
-                        )
-                        isSuccess = false
-                    }
-                    try {
-                        awaitRelease()
-                    } finally {
-                        activeGesture = null
-                        currentOnPressEnd()
-                        if (job.isActive) {
-                            job.cancel()
-                            isSuccess = false
-                            scope.launch {
-                                progress.animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = tween(durationMillis = 300)
-                                )
-                            }
-                        }
-                    }
-                }
-            )
-        }
         !enabled -> Modifier
         isClickMode -> Modifier.clickable(
             interactionSource = interactionSource,
@@ -173,7 +127,7 @@ fun HoldButton(
         else -> Modifier.pointerInput(Unit) {
             detectTapGestures(
                 onPress = {
-                    activeGesture = true
+                    progress.snapTo(0f)
                     isSuccess = false
                     currentOnPressStart()
                     val confirmAtStart = currentOnConfirm
@@ -196,7 +150,6 @@ fun HoldButton(
                     try {
                         awaitRelease()
                     } finally {
-                        activeGesture = null
                         currentOnPressEnd()
                         if (job.isActive) {
                             job.cancel()

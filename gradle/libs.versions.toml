@@ -9,7 +9,7 @@ lifecycleRuntimeKtx = "2.10.0"
 lifecycleService = "2.10.0"
 activityCompose = "1.8.0"
 datastore = "1.1.4"
-composeBom = "2025.02.00"
+composeBom = "2025.05.00"
 kaml = "0.62.0"
 kotlinxSerialization = "1.7.3"
 
