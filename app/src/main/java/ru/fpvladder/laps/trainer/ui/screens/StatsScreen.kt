@@ -113,39 +113,22 @@ fun StatsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(IntrinsicSize.Min)
-                                .padding(horizontal = 24.dp),
+                                .padding(start = 24.dp, end = 12.dp),
                             verticalAlignment = Alignment.Top
                         ) {
-                            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            Column(modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 12.dp)
+                            ) {
                                 ScreenTitle("Правила")
-                                val paragraphs = remember(description) {
-                                    buildList {
-                                        val text = description.text
-                                        var start = 0
-                                        while (true) {
-                                            val idx = text.indexOf('\n', start)
-                                            if (idx < 0) {
-                                                add(description.subSequence(start, text.length))
-                                                break
-                                            }
-                                            add(description.subSequence(start, idx))
-                                            start = idx + 1
-                                        }
-                                    }
-                                }
-                                Column(modifier = Modifier.padding(top = 16.dp)) {
-                                    paragraphs.forEachIndexed { index, paragraph ->
-                                        if (index > 0) {
-                                            Spacer(modifier = Modifier.height(10.dp))
-                                        }
-                                        Text(
-                                            text = paragraph,
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Normal,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
+
+                                Text(
+                                    text = description,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(top = 16.dp)
+                                )
                             }
                             Box(modifier = Modifier.fillMaxHeight()) {
                                 Box(

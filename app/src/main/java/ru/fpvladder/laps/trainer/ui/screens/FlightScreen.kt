@@ -53,8 +53,16 @@ import ru.fpvladder.laps.trainer.ui.components.FlightTimer
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 
-private val FlightSurfaceShape = RoundedCornerShape(24.dp)
+
+private val FlightSurfaceCornerRadius = 24.dp
+private val FlightSurfaceInset = 4.dp
+private val FlightSurfaceShape = RoundedCornerShape(FlightSurfaceCornerRadius)
 
 @Composable
 fun FlightScreen(
@@ -91,13 +99,11 @@ fun FlightScreen(
     val timerSurfaceColor = LocalExtendedColors.current.timerSurface
 
     Box(modifier = modifier.fillMaxSize()) {
-        var timerHeight by remember { mutableIntStateOf(0) }
         var buttonsHeight by remember { mutableIntStateOf(0) }
         val density = LocalDensity.current
 
-        val timerVisible = flightPhase != FlightPhase.POST_FLIGHT
-        val overlapPx = with(density) { 45.dp.roundToPx() }
-        val targetTopPadding = if (timerVisible) (timerHeight - overlapPx).coerceAtLeast(0) else 0
+        val timerVisible = flightPhase == FlightPhase.PRE_FLIGHT || flightPhase == FlightPhase.FLIGHT
+        val targetTopPadding = if (timerVisible) with(density) { 74.sp.roundToPx() + 36.dp.roundToPx() } else 0
         val animatedTopPadding by animateDpAsState(
             targetValue = with(density) { targetTopPadding.toDp() },
             label = "timer_reveal"
@@ -111,38 +117,56 @@ fun FlightScreen(
             label = "buttons_reveal"
         )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onSizeChanged { if (it.height > 0) timerHeight = it.height },
-            contentAlignment = Alignment.TopCenter
-        ) {
-            AnimatedVisibility(
-                visible = timerVisible,
-                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
+        val isPostFlight = flightPhase == FlightPhase.POST_FLIGHT
+        val contentClipInset by animateDpAsState(
+            targetValue = if (isPostFlight) 0.dp else FlightSurfaceInset,
+            label = "contentClipInset"
+        )
+        val contentClipRadius by animateDpAsState(
+            targetValue = if (isPostFlight) FlightSurfaceCornerRadius else FlightSurfaceCornerRadius - FlightSurfaceInset,
+            label = "contentClipRadius"
+        )
+        val contentShape = remember(contentClipInset, contentClipRadius, density) {
+            GenericShape { size, _ ->
+                val insetPx = with(density) { contentClipInset.toPx() }
+                val radiusPx = with(density) { contentClipRadius.toPx() }.coerceAtLeast(0f)
+                addRoundRect(
+                    RoundRect(
+                        rect = Rect(
+                            left = insetPx,
+                            top = insetPx,
+                            right = size.width - insetPx,
+                            bottom = size.height - insetPx
+                        ),
+                        cornerRadius = CornerRadius(radiusPx, radiusPx)
+                    )
+                )
+            }
+        }
+
+        if (timerVisible) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = animatedBottomPadding),
+                color = timerSurfaceColor,
+                shape = FlightSurfaceShape
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = timerSurfaceColor,
-                    shape = FlightSurfaceShape
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(all = 8.dp),
+                    contentAlignment = Alignment.TopCenter
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp, bottom = 54.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        FlightTimer(
-                            flightPhase = flightPhase,
-                            startSignal = startSignal,
-                            elapsedMs = elapsedMs,
-                            isPreBlinking = isPreBlinking,
-                            timerPrecision = timerPrecision,
-                            timeLimitSeconds = timeLimitSeconds,
-                            changeRemainingMs = changeRemainingMs
-                        )
-                    }
+                    FlightTimer(
+                        flightPhase = flightPhase,
+                        startSignal = startSignal,
+                        elapsedMs = elapsedMs,
+                        isPreBlinking = isPreBlinking,
+                        timerPrecision = timerPrecision,
+                        timeLimitSeconds = timeLimitSeconds,
+                        changeRemainingMs = changeRemainingMs
+                    )
                 }
             }
         }
@@ -152,8 +176,10 @@ fun FlightScreen(
                 .padding(top = animatedTopPadding, bottom = animatedBottomPadding)
                 .fillMaxSize(),
             color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = FlightSurfaceShape
+            shape = contentShape
         ) {
+            val contentModifier = Modifier.clip(contentShape)
+
             if (flightPhase != FlightPhase.POST_FLIGHT) {
                 FlightContent(
                     flightPhase = flightPhase,
@@ -167,7 +193,8 @@ fun FlightScreen(
                     onLapClick = onLapClick,
                     pilot = pilot,
                     pilotChangeIndex = pilotChangeIndex,
-                    swapMode = swapMode
+                    swapMode = swapMode,
+                    modifier = contentModifier
                 )
             } else {
                 PostFlightContent(
@@ -187,7 +214,8 @@ fun FlightScreen(
                     onShouldSaveResultChange = onShouldSaveResultChange,
                     rotatePilotsForNextFlight = rotatePilotsForNextFlight,
                     onRotatePilotsForNextFlightChange = onRotatePilotsForNextFlightChange,
-                    onBackClick = onBackClick
+                    onBackClick = onBackClick,
+                    modifier = contentModifier
                 )
             }
         }
