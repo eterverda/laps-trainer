@@ -56,7 +56,6 @@ class FlightViewModel : ViewModel() {
     private var preJob: Job? = null
     private var nextLapNumber = 0
     private var rules: Rules = DefaultRules.INDIVIDUAL
-    private var raceIsMuted: Boolean = false
     private var lastLapElapsedMs = 0L
 
     private val _pilotChangeIndex = MutableStateFlow(NO_PILOT_CHANGE)
@@ -80,7 +79,7 @@ class FlightViewModel : ViewModel() {
         }
     }
 
-    fun prepareRace(startSignal: StartSignal, isMuted: Boolean) {
+    fun prepareRace(startSignal: StartSignal, muted: StateFlow<Boolean>) {
         if (_flightPhase.value != FlightPhase.IDLE) return
         reset()
         _flightPhase.value = FlightPhase.PRE_FLIGHT
@@ -92,7 +91,7 @@ class FlightViewModel : ViewModel() {
                     StartSignal.FIXED -> 1500L
                     else -> Random.nextLong(1000, 3000)
                 }
-                val totalDelay = wait + if (isMuted) 0 else BUZZER_DURATION_MS
+                val totalDelay = wait + if (muted.value) 0 else BUZZER_DURATION_MS
                 launch {
                     val start = SystemClock.elapsedRealtime()
                     while (true) {
@@ -104,33 +103,37 @@ class FlightViewModel : ViewModel() {
                     }
                 }
                 delay(wait)
-                if (!isMuted) SoundManager.playBuzzer()
-                if (!isMuted) delay(BUZZER_DURATION_MS)
+                if (!muted.value) {
+                    SoundManager.playBuzzer()
+                    delay(BUZZER_DURATION_MS)
+                }
                 _flightPhase.value = FlightPhase.FLIGHT
-                startTimer(isMuted)
+                startTimer(muted)
             }
         }
     }
 
-    fun manualStart(isMuted: Boolean) {
+    fun manualStart(muted: StateFlow<Boolean>) {
         if (_flightPhase.value != FlightPhase.PRE_FLIGHT) return
         preJob?.cancel()
         _isPreBlinking.value = false
         _flightPhase.value = FlightPhase.FLIGHT
         viewModelScope.launch {
-            if (!isMuted) SoundManager.playBuzzer()
+            if (!muted.value) {
+                SoundManager.playBuzzer()
+            }
             delay(BUZZER_DURATION_MS)
-            startTimer(isMuted)
+            startTimer(muted)
         }
     }
 
-    fun stopRace(isMuted: Boolean) {
-        performStop(skipBuzzer = false, isMuted = isMuted, delayForBuzzer = true, reason = StopReason.MANUAL)
+    fun stopRace(muted: Boolean) {
+        performStop(skipBuzzer = false, muted = muted, delayForBuzzer = true, reason = StopReason.MANUAL)
     }
 
     private fun performStop(
         skipBuzzer: Boolean,
-        isMuted: Boolean,
+        muted: Boolean,
         delayForBuzzer: Boolean = true,
         reason: StopReason
     ) {
@@ -139,7 +142,7 @@ class FlightViewModel : ViewModel() {
         _currentLap.value = null
         _flightPhase.value = FlightPhase.POST_FLIGHT
         viewModelScope.launch {
-            if (!skipBuzzer && !isMuted) {
+            if (!skipBuzzer && !muted) {
                 SoundManager.playBuzzer()
                 if (delayForBuzzer) delay(BUZZER_DURATION_MS)
             }
@@ -158,15 +161,15 @@ class FlightViewModel : ViewModel() {
         }
     }
 
-    fun addLap() {
+    fun addLap(muted: Boolean) {
         if (_flightPhase.value != FlightPhase.FLIGHT) return
-        if (!raceIsMuted) {
+        if (!muted) {
             SoundManager.playGate()
         }
 
         val current = _currentLap.value ?: return
         val completed = current.copy(interval = TimeInterval(current.startMs, _elapsedMs.value))
-        _laps.value = _laps.value + completed
+        _laps.value += completed
 
         if (current.success) {
             nextLapNumber++
@@ -178,7 +181,7 @@ class FlightViewModel : ViewModel() {
         if (teamRules != null) {
             if (teamRules.changeMode == Rules.Team.ChangeMode.LAPS && !pendingPilotChange && nextLapNumber - 1 == changePointLap) {
                 pendingPilotChange = true
-                if (!raceIsMuted) SoundManager.playBuzzer()
+                if (!muted) SoundManager.playBuzzer()
             }
 
             if (pendingPilotChange) {
@@ -198,7 +201,7 @@ class FlightViewModel : ViewModel() {
         if (current.success && current.number > 0 && nextLapNumber - 1 >= rules.lapsLimit) {
             performStop(
                 skipBuzzer = false,
-                isMuted = raceIsMuted,
+                muted = muted,
                 delayForBuzzer = false,
                 reason = StopReason.LAPS_LIMIT
             )
@@ -269,9 +272,8 @@ class FlightViewModel : ViewModel() {
         }
     }
 
-    private fun startTimer(isMuted: Boolean) {
+    private fun startTimer(muted: StateFlow<Boolean>) {
         if (_flightPhase.value != FlightPhase.FLIGHT) return
-        raceIsMuted = isMuted
         nextLapNumber = if (rules.holeshotEnabled) 0 else 1
         _laps.value = emptyList()
         _currentLap.value = Lap(
@@ -293,17 +295,19 @@ class FlightViewModel : ViewModel() {
                 val localRules = rules
                 if (localRules is Rules.Team && localRules.changeMode == Rules.Team.ChangeMode.TIME && !changeBuzzerPlayed && elapsed >= changePointTimeMs) {
                     changeBuzzerPlayed = true
-                    if (!isMuted) SoundManager.playBuzzer()
+                    if (!muted.value) SoundManager.playBuzzer()
                     pendingPilotChange = true
                     _pilotChangeIndex.value = _laps.value.size
                 }
 
                 if (rules.timeLimitSeconds != Int.MAX_VALUE && !buzzerPlayed && elapsed >= buzzerStartMs) {
                     buzzerPlayed = true
-                    if (!isMuted) SoundManager.playBuzzer()
+                    if (!muted.value) {
+                        SoundManager.playBuzzer()
+                    }
                 }
                 if (rules.timeLimitSeconds != Int.MAX_VALUE && elapsed >= limitMs) {
-                    performStop(skipBuzzer = true, isMuted = isMuted, reason = StopReason.TIME_LIMIT)
+                    performStop(skipBuzzer = true, muted = muted.value, reason = StopReason.TIME_LIMIT)
                     break
                 }
                 delay(16)

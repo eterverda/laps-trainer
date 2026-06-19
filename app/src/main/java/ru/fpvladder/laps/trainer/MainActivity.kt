@@ -191,7 +191,7 @@ fun AppRoot(
         if (currentScreen == AppScreen.Flight) {
             if (flightPhase == FlightPhase.IDLE) {
                 flightViewModel.setRules(selectedTraining.rules)
-                flightViewModel.prepareRace(effectiveStartSignal, isMuted)
+                flightViewModel.prepareRace(effectiveStartSignal, settingsViewModel.isMuted)
             }
         } else {
             flightViewModel.reset()
@@ -381,7 +381,7 @@ fun AppRoot(
                                     useLapButton = useLapButton,
                                     useErrorFixButtons = useErrorFixButtons,
                                     onLapClick = {
-                                        flightViewModel.addLap()
+                                        flightViewModel.addLap(isMuted)
                                     },
                                     onErrorClick = { flightViewModel.addErrorToLastLap() },
                                     onFixClick = { flightViewModel.addFixToLastLap() },
@@ -517,7 +517,7 @@ fun AppRoot(
                                     wasHoldConfirmed = true
                                     when {
                                         !isOnFlight -> pilotViewModel.navigateTo(AppScreen.Flight)
-                                        isManualPreStart -> flightViewModel.manualStart(isMuted)
+                                        isManualPreStart -> flightViewModel.manualStart(settingsViewModel.isMuted)
                                         isPreFixedOrRandom -> {
                                             pilotViewModel.navigateTo(AppScreen.Training)
                                             flightViewModel.reset()
@@ -530,7 +530,7 @@ fun AppRoot(
                                         isPostFlight -> {
                                             finishFlight(shouldSaveResult, false)
                                             flightViewModel.setRules(selectedTraining.rules)
-                                            flightViewModel.prepareRace(effectiveStartSignal, isMuted)
+                                            flightViewModel.prepareRace(effectiveStartSignal, settingsViewModel.isMuted)
                                         }
 
                                         else -> {
