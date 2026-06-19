@@ -17,7 +17,7 @@ fun ScreenTitle(
 ) {
     Text(
         text = text,
-        fontSize = 21.sp,
+        fontSize = 20.sp,
         fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.fillMaxWidth()

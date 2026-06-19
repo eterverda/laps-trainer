@@ -124,7 +124,7 @@ fun StatsScreen(
 
                                 Text(
                                     text = description,
-                                    fontSize = 16.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.Normal,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.padding(top = 16.dp)

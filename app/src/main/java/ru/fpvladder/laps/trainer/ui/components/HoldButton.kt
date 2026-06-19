@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.R
+import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
 
 @Composable
 fun HoldButton(
@@ -71,7 +72,7 @@ fun HoldButton(
     val currentOnPressEnd by rememberUpdatedState(onPressEnd)
     val currentHoldDurationMs by rememberUpdatedState(holdDurationMs)
 
-    val fillColor = MaterialTheme.colorScheme.error
+    val fillColor = LocalExtendedColors.current.holdButtonFill
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()

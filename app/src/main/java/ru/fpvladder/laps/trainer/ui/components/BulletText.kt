@@ -15,7 +15,7 @@ fun BulletText(
 ) {
     Text(
         text = "• $text",
-        fontSize = 18.sp,
+        fontSize = 16.sp,
         fontWeight = FontWeight.Normal,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier.fillMaxWidth()

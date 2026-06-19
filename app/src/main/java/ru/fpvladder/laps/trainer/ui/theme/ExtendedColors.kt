@@ -13,7 +13,7 @@ data class ExtendedColors(
     val timerSurface: Color = Color.Unspecified,
     val timerOnSurface: Color = Color.Unspecified,
     val selectableSurface: Color = Color.Unspecified,
-    val selectableSelectedText: Color = Color.Unspecified
+    val holdButtonFill: Color = Color.Unspecified
 )
 
 val LocalExtendedColors = staticCompositionLocalOf { ExtendedColors() }

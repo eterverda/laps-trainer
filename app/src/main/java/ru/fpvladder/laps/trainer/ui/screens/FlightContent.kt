@@ -81,11 +81,11 @@ internal fun FlightContent(
             )
         }
 
-        val showTapHint = laps.size < 3 && !useLapButton
+        val showTapHint = laps.isEmpty() && !useLapButton
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 128.dp),
+                .padding(top = 96.dp),
             contentAlignment = Alignment.Center
         ) {
             AnimatedVisibility(

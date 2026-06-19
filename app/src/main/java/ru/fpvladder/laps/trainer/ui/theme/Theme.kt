@@ -19,26 +19,30 @@ fun LapsTrainerTheme(
         AppThemeMode.DARK -> true
         AppThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val palette = if (isDark) {
-        when (darkThemeVariant) {
+    val palette = when {
+        isDark -> when (darkThemeVariant) {
             DarkThemeVariant.CATPUCCIN_FRAPPE -> CatppuccinFrappe
             DarkThemeVariant.CATPUCCIN_MACCHIATO -> CatppuccinMacchiato
             DarkThemeVariant.CATPUCCIN_MOCHA -> CatppuccinMocha
         }
-    } else {
-        CatppuccinLatte
+        else -> CatppuccinLatte
     }
-    val colorScheme = palette.toColorScheme()
     val extendedColors = ExtendedColors(
         timerSurface = palette.brightGreen,
         timerOnSurface = palette.crust,
         selectableSurface = palette.surface1,
-        selectableSelectedText = palette.teal
+        holdButtonFill = when (palette) {
+            CatppuccinLatte -> Color(0xFFd44960)
+            CatppuccinFrappe -> Color(0xFFff7f81)
+            CatppuccinMacchiato -> Color(0xFFff7f92)
+            CatppuccinMocha -> Color(0xFFff89a4)
+            else -> palette.red
+        }
     )
 
     CompositionLocalProvider(LocalExtendedColors provides extendedColors) {
         MaterialTheme(
-            colorScheme = colorScheme,
+            colorScheme = palette.toColorScheme(),
             typography = Typography,
             content = content
         )

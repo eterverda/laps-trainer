@@ -41,12 +41,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -519,6 +515,7 @@ fun SettingsScreen(
     }
 
     if (showDarkThemeVariantDialog) {
+        val isSystemDark = isSystemInDarkTheme()
         SelectionDialog(
             title = "Вариация тёмной темы",
             items = DarkThemeVariant.entries,
@@ -526,6 +523,14 @@ fun SettingsScreen(
             itemText = { it.displayName },
             onSelect = {
                 onDarkThemeVariantChange(it)
+                val isDark = when (appTheme) {
+                    AppThemeMode.DARK -> true
+                    AppThemeMode.SYSTEM -> isSystemDark
+                    else -> false
+                }
+                if (!isDark) {
+                    onAppThemeChange(AppThemeMode.DARK)
+                }
                 showDarkThemeVariantDialog = false
             },
             onDismiss = { showDarkThemeVariantDialog = false }
