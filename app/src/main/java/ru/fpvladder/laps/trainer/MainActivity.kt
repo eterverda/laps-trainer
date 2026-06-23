@@ -89,14 +89,12 @@ import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
 import ru.fpvladder.laps.trainer.viewmodel.FlightViewModel
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
-import ru.fpvladder.laps.trainer.viewmodel.KeyboardViewModel
 import ru.fpvladder.laps.trainer.viewmodel.PilotViewModel
 import ru.fpvladder.laps.trainer.viewmodel.SettingsViewModel
 import ru.fpvladder.laps.trainer.viewmodel.TrainingViewModel
 
 class MainActivity : ComponentActivity() {
 
-    private val keyboardViewModel: KeyboardViewModel by viewModels()
     private val pilotViewModel: PilotViewModel by viewModels()
     private val trainingViewModel: TrainingViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
@@ -134,7 +132,6 @@ class MainActivity : ComponentActivity() {
                         .background(MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     AppRoot(
-                        keyboardViewModel = keyboardViewModel,
                         pilotViewModel = pilotViewModel,
                         trainingViewModel = trainingViewModel,
                         settingsViewModel = settingsViewModel,
@@ -149,7 +146,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppRoot(
-    keyboardViewModel: KeyboardViewModel,
     pilotViewModel: PilotViewModel,
     trainingViewModel: TrainingViewModel,
     settingsViewModel: SettingsViewModel,
