@@ -1,6 +1,10 @@
 package ru.fpvladder.laps.trainer.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -26,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
@@ -56,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.settings.AppThemeMode
@@ -68,6 +75,7 @@ import ru.fpvladder.laps.trainer.BuildConfig
 import ru.fpvladder.laps.trainer.R
 import androidx.core.net.toUri
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
+import ru.fpvladder.laps.trainer.usb.UsbHidInfo
 
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -78,6 +86,8 @@ fun SettingsScreen(
     isMuted: Boolean,
     isUsbKeyboardEnabled: Boolean,
     isUsbFeatureEnabled: Boolean = false,
+    knownUsbDevices: Set<UsbHidInfo> = emptySet(),
+    connectedUsbDevices: Set<UsbHidInfo> = emptySet(),
     useLapButton: Boolean,
     useErrorFixButtons: Boolean,
     appTheme: AppThemeMode,
@@ -156,6 +166,30 @@ fun SettingsScreen(
                                 )
                             }
                         )
+
+                        AnimatedVisibility(
+                            visible = isUsbKeyboardEnabled && knownUsbDevices.isNotEmpty(),
+                            enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                            exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
+                        ) {
+                            Column {
+                                knownUsbDevices.forEach { device ->
+                                    val isConnected = connectedUsbDevices.any { it.identity == device.identity }
+                                    ListItem(
+                                        headlineContent = { Text(device.productName) },
+                                        supportingContent = { Text(device.displayIdentity, fontFamily = FontFamily.Monospace) },
+                                        trailingContent = {
+                                            Icon(
+                                                imageVector = if (isConnected) Icons.Default.Link else Icons.Default.LinkOff,
+                                                contentDescription = if (isConnected) "Подключено" else "Отключено",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(end = 16.dp)
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
 
                         SectionDivider()
                     }

@@ -25,12 +25,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Usb
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -42,7 +44,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -54,6 +55,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.material.icons.filled.AddLink
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -85,6 +88,8 @@ import ru.fpvladder.laps.trainer.ui.helpers.description
 import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.audio.STAGE_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
+import ru.fpvladder.laps.trainer.usb.UsbHidManager
+import ru.fpvladder.laps.trainer.usb.UsbHidState
 
 import ru.fpvladder.laps.trainer.viewmodel.AppScreen
 import ru.fpvladder.laps.trainer.viewmodel.FlightViewModel
@@ -168,6 +173,25 @@ fun AppRoot(
     val useErrorFixButtons by settingsViewModel.useErrorFixButtons.collectAsState()
     val flightPhase by flightViewModel.flightPhase.collectAsState()
     val elapsedMs by flightViewModel.elapsedMs.collectAsState()
+
+    val context = LocalContext.current
+    val keyboardManager = remember { UsbHidManager.getInstance(context) }
+    val keyboardState by keyboardManager.state.collectAsState()
+    val knownUsbDevices by keyboardManager.knownDevices.collectAsState()
+    val connectedUsbDevices = (keyboardState as? UsbHidState.Connected)?.devices ?: emptySet()
+
+    LaunchedEffect(isUsbKeyboardEnabled) {
+        keyboardManager.setUserEnabled(isUsbKeyboardEnabled)
+    }
+
+    LaunchedEffect(currentScreen, flightPhase) {
+        val discoveryAllowed = when (currentScreen) {
+            AppScreen.Settings,
+            AppScreen.Training -> true
+            AppScreen.Flight -> flightPhase != FlightPhase.PRE_FLIGHT && flightPhase != FlightPhase.FLIGHT
+        }
+        keyboardManager.setDiscoveryAllowed(discoveryAllowed)
+    }
     val isPreBlinking by flightViewModel.isPreBlinking.collectAsState()
 
     val scope = rememberCoroutineScope()
@@ -321,6 +345,8 @@ fun AppRoot(
                         isMuted = isMuted,
                         isUsbKeyboardEnabled = isUsbKeyboardEnabled,
                         isUsbFeatureEnabled = USB_ENABLED,
+                        knownUsbDevices = knownUsbDevices,
+                        connectedUsbDevices = connectedUsbDevices,
                         useLapButton = useLapButton,
                         useErrorFixButtons = useErrorFixButtons,
                         appTheme = appTheme,
@@ -445,7 +471,7 @@ fun AppRoot(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         AnimatedVisibility(
-                            visible = effectiveUsbKeyboardEnabled && currentScreen != AppScreen.Flight,
+                            visible = effectiveUsbKeyboardEnabled && currentScreen != AppScreen.Flight && connectedUsbDevices.isEmpty(),
                             enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
                             exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
                         ) {
@@ -454,11 +480,9 @@ fun AppRoot(
                                 modifier = Modifier.padding(vertical = 4.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Usb,
+                                    imageVector = Icons.Default.AddLink,
                                     contentDescription = null,
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .rotate(-90f),
+                                    modifier = Modifier.size(18.dp).rotate(180f),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -776,6 +800,25 @@ fun AppRoot(
                 trainingToFinish = null
             },
             onDismiss = { trainingToFinish = null }
+        )
+    }
+
+    val setupState = keyboardState as? UsbHidState.Setup
+    if (setupState != null) {
+        AlertDialog(
+            onDismissRequest = { keyboardManager.onSetupCancelled(setupState.deviceName) },
+            title = { Text("Настройка клавиатуры") },
+            text = { Text("Подключена клавиатура \"${setupState.info.productName}\". Использовать её?") },
+            confirmButton = {
+                TextButton(onClick = { keyboardManager.onSetupConfirmed(setupState.deviceName) }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { keyboardManager.onSetupCancelled(setupState.deviceName) }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 }
