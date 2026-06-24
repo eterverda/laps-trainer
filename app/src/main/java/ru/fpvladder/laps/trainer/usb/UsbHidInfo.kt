@@ -16,13 +16,20 @@ data class UsbHidInfo(
     val productName: String,
     val vendorId: Int,
     val productId: Int,
-    val serialNumber: String?
+    val serialNumber: String?,
 ) {
     val identity: String
         get() = formatIdentity(vendorId, productId, serialNumber)
 
     val displayIdentity: String
-        get() = formatIdentity(vendorId, productId, serialNumber?.hashCode()?.toUInt()?.toString(16)?.lowercase()?.padStart(16, '0'))
+        get() = formatIdentity(
+            vendorId,
+            productId,
+            when (serialNumber) {
+                null -> null
+                else -> "%08x".format(serialNumber.hashCode())
+            },
+        )
 
     override fun toString(): String {
         return "UsbHidInfo($displayIdentity)"
@@ -38,7 +45,7 @@ data class UsbHidInfo(
                 productName = device.productName ?: "Unknown",
                 vendorId = device.vendorId,
                 productId = device.productId,
-                serialNumber = device.serialNumber
+                serialNumber = device.serialNumber,
             )
         }
 
@@ -52,9 +59,10 @@ data class UsbHidInfo(
         }
 
         private fun formatIdentity(vendorId: Int, productId: Int, serialNumber: String?): String {
-            val vid = vendorId.toString(16).uppercase().padStart(4, '0')
-            val pid = productId.toString(16).uppercase().padStart(4, '0')
-            return if (serialNumber != null) "$vid:$pid:$serialNumber" else "$vid:$pid"
+            return when (serialNumber) {
+                null -> "%04X:%04X".format(vendorId, productId)
+                else -> "%04X:%04X:%s".format(vendorId, productId, serialNumber)
+            }
         }
     }
 }

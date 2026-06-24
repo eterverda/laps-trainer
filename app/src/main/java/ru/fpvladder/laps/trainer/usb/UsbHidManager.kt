@@ -5,12 +5,17 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,13 +24,12 @@ import ru.fpvladder.laps.trainer.settings.USB_ENABLED
 /**
  * Singleton manager responsible for the USB HID keyboard feature state.
  *
- * The manager owns a finite state machine with these states:
- * Disabled → Disconnected → Permission → Setup → Connected(devices).
+ * The manager owns an aggregate UI state machine ([UsbHidState]) while the real USB work is
+ * delegated to per-device [UsbHidSession] instances.
  *
- * Multiple keyboards may be connected simultaneously. However, only one
- * keyboard at a time may be in the permission/setup flow.
+ * UI-visible states: Disabled → Disconnected → Permission → Setup → Connected(devices)
  *
- * Actual USB HID open/claim/read logic is intentionally left as TODO.
+ * Multiple keyboards may be captured simultaneously; each has its own session.
  */
 class UsbHidManager private constructor(context: Context) {
 
@@ -38,82 +42,72 @@ class UsbHidManager private constructor(context: Context) {
 
         fun getInstance(context: Context): UsbHidManager {
             return instance ?: synchronized(this) {
-                instance ?: UsbHidManager(context.applicationContext).also {
-                    instance = it
-                }
+                instance ?: UsbHidManager(context.applicationContext).also { instance = it }
             }
         }
     }
 
     private val appContext: Context = context.applicationContext
     private val usbManager: UsbManager = appContext.getSystemService(Context.USB_SERVICE) as UsbManager
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val managerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _state = MutableStateFlow<UsbHidState>(UsbHidState.Disabled)
     val state: StateFlow<UsbHidState> = _state.asStateFlow()
 
     private val _isEnabled = MutableStateFlow(false)
-    val isEnabled: StateFlow<Boolean> = _isEnabled.asStateFlow()
-
     private val _isDiscoveryAllowed = MutableStateFlow(false)
-    val isDiscoveryAllowed: StateFlow<Boolean> = _isDiscoveryAllowed.asStateFlow()
 
-    private val knownKeyboards: MutableSet<UsbHidInfo> = mutableSetOf()
-
+    // Accessed only on the main thread.
+    private val knownIdentities = mutableSetOf<String>()
     private val _knownDevices = MutableStateFlow<Set<UsbHidInfo>>(emptySet())
     val knownDevices: StateFlow<Set<UsbHidInfo>> = _knownDevices.asStateFlow()
-    private val blacklistedDeviceNames: MutableSet<String> = mutableSetOf()
-    private val connectedDevices: MutableMap<String, UsbHidInfo> = mutableMapOf()
+
+    // Accessed only on the main thread.
+    private val blacklistedDeviceNames = mutableSetOf<String>()
+    private val sessions = ConcurrentHashMap<String, UsbHidSession>()
 
     private var receiverRegistered = false
 
-    private val usbReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                ACTION_USB_PERMISSION -> {
-                    val device = extractDevice(intent)
-                    val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
-                    if (device == null) {
-                        logEvent("permission result", "granted=$granted, device=null")
-                        return
+    private val usbReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    ACTION_USB_PERMISSION -> {
+                        val device = extractDevice(intent)
+                        val granted =
+                            intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+                        if (device == null) {
+                            logEvent("permission result", "granted=$granted, device=null")
+                            return
+                        }
+                        onPermissionResult(device.deviceName, granted)
                     }
-                    if (granted) {
-                        val info = UsbHidInfo.from(device)
-                        logEvent("permission result", "granted=true, info=$info")
-                        onPermissionResultInternal(device.deviceName, granted = true)
-                    } else {
-                        logEvent("permission result", "granted=false, deviceName=${device.deviceName}")
-                        onPermissionResultInternal(device.deviceName, granted = false)
-                    }
-                }
 
-                UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
-                    val device = extractDevice(intent)
-                    if (device == null) {
-                        logEvent("device attached", "device=null")
-                        return
+                    UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                        val device = extractDevice(intent)
+                        if (device == null) {
+                            logEvent("device attached", "device=null")
+                            return
+                        }
+                        handleDeviceAttached(device)
                     }
-                    val identity = UsbHidInfo.formatIdentity(device)
-                    logEvent("device attached", "deviceName=${device.deviceName}, identity=$identity")
-                    handleDeviceAttached(device)
-                }
 
-                UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                    val device = extractDevice(intent)
-                    if (device == null) {
-                        logEvent("device detached", "device=null")
-                        return
+                    UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                        val device = extractDevice(intent)
+                        if (device == null) {
+                            logEvent("device detached", "device=null")
+                            return
+                        }
+                        handleDeviceDetached(device.deviceName)
                     }
-                    val identity = UsbHidInfo.formatIdentity(device)
-                    logEvent("device detached", "deviceName=${device.deviceName}, identity=$identity")
-                    handleDeviceDetached(device.deviceName)
                 }
             }
         }
-    }
 
     /**
-     * Reflects the user setting (e.g. from the Settings screen).
-     * The actual [isEnabled] state also depends on [USB_ENABLED].
+     * Reflects the user setting (e.g. from the Settings screen). The actual [isEnabled] state also
+     * depends on [USB_ENABLED].
      */
     fun setUserEnabled(enabled: Boolean) {
         val newEnabled = enabled && USB_ENABLED
@@ -123,17 +117,18 @@ class UsbHidManager private constructor(context: Context) {
         _isEnabled.value = newEnabled
         if (newEnabled) {
             registerUsbReceiver()
-            transitionTo(UsbHidState.Disconnected, "enabled")
+            transitionTo(UsbHidState.Disconnected)
+            scanAttachedDevices()
         } else {
             unregisterUsbReceiver()
-            clearConnectedDevices("disabled")
-            transitionTo(UsbHidState.Disabled, "disabled")
+            releaseAllSessions()
+            transitionTo(UsbHidState.Disabled)
         }
     }
 
     /**
-     * Tells the manager whether the current application state permits
-     * discovering and connecting new keyboards.
+     * Tells the manager whether the current application state permits discovering and connecting new
+     * keyboards.
      */
     fun setDiscoveryAllowed(allowed: Boolean) {
         logEvent("setDiscoveryAllowed", "allowed=$allowed")
@@ -142,83 +137,48 @@ class UsbHidManager private constructor(context: Context) {
 
         if (!_isEnabled.value) return
 
-        when (_state.value) {
-            is UsbHidState.Permission,
-            is UsbHidState.Setup -> {
-                if (!allowed) {
-                    transitionTo(afterFlowBrokenState(), "discovery disallowed")
+        if (!allowed) {
+            sessions.values.toList().forEach { session ->
+                when (session.state.value) {
+                    UsbHidSessionState.RequestingPermission,
+                    UsbHidSessionState.SetupPending -> {
+                        session.release()
+                    }
+
+                    else -> {}
                 }
             }
-
-            else -> {
-                // Disconnected and Connected are not affected by the discovery flag.
-            }
+            cleanupReleasedSessions()
+            recomputeAggregateState()
+        } else {
+            scanAttachedDevices()
         }
     }
 
-    /**
-     * Called by UI when the system permission dialog is dismissed.
-     */
+    /** Called by UI when the system permission dialog is dismissed. */
     fun onPermissionResult(deviceName: String, granted: Boolean) {
-        logEvent("onPermissionResult", "deviceName=$deviceName, granted=$granted")
-        onPermissionResultInternal(deviceName, granted)
-    }
-
-    /**
-     * Called by UI when the user confirmed keyboard setup (OK).
-     */
-    fun onSetupConfirmed(deviceName: String) {
-        logEvent("onSetupConfirmed", "deviceName=$deviceName")
-        val current = _state.value
-        if (current is UsbHidState.Setup && current.deviceName == deviceName) {
-            addKnownKeyboard(current.info)
-            addConnectedDevice(deviceName, current.info)
-        } else {
-            logEvent("onSetupConfirmed ignored", "state=$current")
-        }
-    }
-
-    /**
-     * Called by UI when the user cancelled keyboard setup.
-     */
-    fun onSetupCancelled(deviceName: String) {
-        logEvent("onSetupCancelled", "deviceName=$deviceName")
-        val current = _state.value
-        if (current is UsbHidState.Setup && current.deviceName == deviceName) {
-            addToBlacklist(deviceName)
-            transitionTo(afterFlowBrokenState(), "setup cancelled")
-        } else {
-            logEvent("onSetupCancelled ignored", "state=$current")
-        }
-    }
-
-    private fun onPermissionResultInternal(deviceName: String, granted: Boolean) {
-        val current = _state.value
-        if (current !is UsbHidState.Permission || current.deviceName != deviceName) {
-            logEvent("permission result ignored", "state=$current, deviceName=$deviceName")
-            return
-        }
-
         if (!granted) {
+            postToMain { addToBlacklist(deviceName) }
+        }
+        sessions[deviceName]?.onPermissionResult(granted)
+    }
+
+    /** Called by UI when the user confirmed keyboard setup (OK). */
+    fun onSetupConfirmed(deviceName: String) {
+        val session = sessions[deviceName]
+        if (session != null && session.state.value == UsbHidSessionState.SetupPending) {
+            addKnownIdentity(session.info.identity)
+            addKnownDevice(session.info)
+            session.confirmSetup()
+        }
+    }
+
+    /** Called by UI when the user cancelled keyboard setup. */
+    fun onSetupCancelled(deviceName: String) {
+        val session = sessions[deviceName]
+        if (session != null && session.state.value == UsbHidSessionState.SetupPending) {
             addToBlacklist(deviceName)
-            transitionTo(afterFlowBrokenState(), "permission denied")
-            return
-        }
-
-        val device = findUsbDevice(deviceName)
-        if (device == null) {
-            logEvent("permission result ignored", "device not found, deviceName=$deviceName")
-            transitionTo(afterFlowBrokenState(), "device missing after grant")
-            return
-        }
-
-        val actualInfo = UsbHidInfo.from(device)
-        logEvent("permission granted", "info=$actualInfo")
-
-        if (isKnown(actualInfo.identity)) {
-            addConnectedDevice(deviceName, actualInfo)
-        } else {
-            transitionTo(UsbHidState.Setup(deviceName, actualInfo), "permission granted, unknown device")
+            session.cancelSetup()
         }
     }
 
@@ -227,84 +187,139 @@ class UsbHidManager private constructor(context: Context) {
         val deviceName = device.deviceName
 
         if (!_isEnabled.value) {
-            logEvent("device attached ignored", "not enabled, deviceName=$deviceName, identity=$identity")
+            logEvent(
+                "device attached ignored",
+                "not enabled, deviceName=$deviceName, identity=$identity"
+            )
             return
         }
-        if (!_isDiscoveryAllowed.value) {
-            logEvent("device attached ignored", "discovery not allowed, deviceName=$deviceName, identity=$identity")
-            return
-        }
+        if (!_isDiscoveryAllowed.value) return
         if (blacklistedDeviceNames.contains(deviceName)) {
-            logEvent("device attached ignored", "blacklisted, deviceName=$deviceName, identity=$identity")
+            logEvent(
+                "device attached ignored",
+                "blacklisted, deviceName=$deviceName, identity=$identity"
+            )
             return
         }
         if (!isHidKeyboard(device)) {
-            logEvent("device attached ignored", "not a HID keyboard, deviceName=$deviceName, identity=$identity")
-            return
-        }
-        if (isConnected(deviceName)) {
-            logEvent("device attached ignored", "already connected, deviceName=$deviceName, identity=$identity")
+            logEvent(
+                "device attached ignored",
+                "not a HID keyboard, deviceName=$deviceName, identity=$identity",
+            )
             return
         }
 
-        when (_state.value) {
-            is UsbHidState.Disconnected,
-            is UsbHidState.Connected -> {
-                if (usbManager.hasPermission(device)) {
-                    val actualInfo = UsbHidInfo.from(device)
-                    if (isKnown(actualInfo.identity)) {
-                        addConnectedDevice(deviceName, actualInfo)
-                    } else {
-                        transitionTo(UsbHidState.Setup(deviceName, actualInfo), "unknown device, permission already granted")
+        sessions[deviceName]?.let { existing ->
+            if (existing.state.value == UsbHidSessionState.Released) {
+                sessions.remove(deviceName)
+            } else {
+                return
+            }
+        }
+
+        val session = UsbHidSession(
+            deviceName = deviceName,
+            device = device,
+            usbManager = usbManager,
+            scope = managerScope,
+            isKnownIdentity = ::isKnown,
+            onStateChanged = { state ->
+                postToMain {
+                    if (state == UsbHidSessionState.Released) {
+                        cleanupReleasedSessions()
                     }
-                } else {
-                    transitionTo(UsbHidState.Permission(deviceName), "requesting permission")
-                    requestPermission(device)
+                    recomputeAggregateState()
                 }
-            }
+            },
+            onKeyEvent = { event ->
+                val keyHex = event.keyCode.toString(16).uppercase().padStart(2, '0')
+                val modsHex = event.modifiers.toString(16).uppercase().padStart(2, '0')
+                val state = if (event.action == UsbHidEvent.ACTION_DOWN) "down" else "up"
+                logEvent("key", "0x$keyHex 0x$modsHex $state")
+            },
+        )
 
-            is UsbHidState.Permission,
-            is UsbHidState.Setup -> {
-                logEvent("device attached ignored", "permission/setup flow in progress, deviceName=$deviceName, identity=$identity")
-            }
+        sessions[deviceName] = session
 
-            is UsbHidState.Disabled -> {
-                logEvent("device attached ignored", "disabled, deviceName=$deviceName, identity=$identity")
-            }
+        if (usbManager.hasPermission(device)) {
+            logEvent(
+                "device attached",
+                "permission already granted, deviceName=$deviceName, identity=$identity",
+            )
+            session.onPermissionResult(true)
+        } else {
+            logEvent(
+                "device attached",
+                "requesting permission, deviceName=$deviceName, identity=$identity",
+            )
+            session.requestPermission(createPermissionPendingIntent(deviceName))
         }
     }
 
     private fun handleDeviceDetached(deviceName: String) {
         removeFromBlacklist(deviceName)
+        sessions[deviceName]?.detach()
+    }
 
-        val current = _state.value
-        when (current) {
-            is UsbHidState.Permission -> if (current.deviceName == deviceName) {
-                transitionTo(afterFlowBrokenState(), "permission device detached")
-                return
+    private fun scanAttachedDevices() {
+        if (!_isDiscoveryAllowed.value) return
+        usbManager.deviceList.values.forEach { device -> handleDeviceAttached(device) }
+    }
+
+    private fun releaseAllSessions() {
+        sessions.values.toList().forEach { it.release() }
+        cleanupReleasedSessions()
+    }
+
+    private fun cleanupReleasedSessions() {
+        sessions.entries
+            .filter { it.value.state.value == UsbHidSessionState.Released }
+            .forEach { sessions.remove(it.key) }
+    }
+
+    private fun recomputeAggregateState() {
+        if (!_isEnabled.value) {
+            if (_state.value != UsbHidState.Disabled) {
+                transitionTo(UsbHidState.Disabled)
             }
-
-            is UsbHidState.Setup -> if (current.deviceName == deviceName) {
-                transitionTo(afterFlowBrokenState(), "setup device detached")
-                return
-            }
-
-            else -> {}
+            return
         }
 
-        if (isConnected(deviceName)) {
-            removeConnectedDevice(deviceName)
+        cleanupReleasedSessions()
+
+        val activeSessions =
+            sessions.values.filter { it.state.value != UsbHidSessionState.Released }
+
+        val setupSession = activeSessions.find { it.state.value == UsbHidSessionState.SetupPending }
+        if (setupSession != null) {
+            transitionTo(UsbHidState.Setup(setupSession.deviceName, setupSession.info))
+            return
+        }
+
+        val permissionSession =
+            activeSessions.find { it.state.value == UsbHidSessionState.RequestingPermission }
+        if (permissionSession != null) {
+            transitionTo(UsbHidState.Permission(permissionSession.deviceName))
+            return
+        }
+
+        val activeDevices =
+            activeSessions.filter { it.state.value == UsbHidSessionState.Active }.map { it.info }
+                .toSet()
+
+        if (activeDevices.isNotEmpty()) {
+            transitionTo(UsbHidState.Connected(activeDevices))
         } else {
-            logEvent("device detached ignored", "not connected, deviceName=$deviceName")
+            transitionTo(UsbHidState.Disconnected)
         }
     }
 
-    private fun afterFlowBrokenState(): UsbHidState {
-        return if (connectedDevices.isEmpty()) UsbHidState.Disconnected else connectedState()
-    }
-
-    private fun connectedState(): UsbHidState.Connected {
-        return UsbHidState.Connected(connectedDevices.values.sortedBy { it.identity }.toSet())
+    private fun postToMain(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            block()
+        } else {
+            mainHandler.post(block)
+        }
     }
 
     private fun registerUsbReceiver() {
@@ -318,10 +333,9 @@ class UsbHidManager private constructor(context: Context) {
             appContext,
             usbReceiver,
             filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
+            ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         receiverRegistered = true
-        logEvent("usb receiver", "registered")
     }
 
     private fun unregisterUsbReceiver() {
@@ -332,104 +346,58 @@ class UsbHidManager private constructor(context: Context) {
             // already unregistered
         }
         receiverRegistered = false
-        logEvent("usb receiver", "unregistered")
     }
 
-    private fun requestPermission(device: UsbDevice) {
-        val pi = PendingIntent.getBroadcast(
+    private fun createPermissionPendingIntent(deviceName: String): PendingIntent {
+        return PendingIntent.getBroadcast(
             appContext,
-            0,
+            deviceName.hashCode(),
             Intent(ACTION_USB_PERMISSION).setPackage(appContext.packageName),
-            PendingIntent.FLAG_MUTABLE
+            PendingIntent.FLAG_MUTABLE,
         )
-        usbManager.requestPermission(device, pi)
-        logEvent("requestPermission", "deviceName=${device.deviceName}")
     }
 
-    private fun findUsbDevice(deviceName: String): UsbDevice? {
-        return usbManager.deviceList.values.find { it.deviceName == deviceName }
+    private fun isKnown(identity: String): Boolean {
+        return knownIdentities.contains(identity)
+    }
+
+    private fun addKnownIdentity(identity: String) {
+        knownIdentities.add(identity)
+    }
+
+    private fun addKnownDevice(info: UsbHidInfo) {
+        val current = _knownDevices.value
+        if (!current.contains(info)) {
+            _knownDevices.value = current + info
+        }
+    }
+
+    private fun addToBlacklist(deviceName: String) {
+        blacklistedDeviceNames.add(deviceName)
+    }
+
+    private fun removeFromBlacklist(deviceName: String) {
+        blacklistedDeviceNames.remove(deviceName)
     }
 
     private fun isHidKeyboard(device: UsbDevice): Boolean {
-        for (i in 0 until device.interfaceCount) {
-            val iface = device.getInterface(i)
-            if (iface.interfaceClass == UsbConstants.USB_CLASS_HID) {
-                for (j in 0 until iface.endpointCount) {
-                    val ep = iface.getEndpoint(j)
-                    if (ep.type == UsbConstants.USB_ENDPOINT_XFER_INT &&
-                        ep.direction == UsbConstants.USB_DIR_IN
-                    ) {
-                        return true
-                    }
-                }
-            }
-        }
-        return false
+        val (iface, endpoint) = findHidInterruptInEndpoint(device)
+        return iface != null && endpoint != null
     }
 
     private fun extractDevice(intent: Intent): UsbDevice? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
         } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+            @Suppress("DEPRECATION") intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
         }
     }
 
-    private fun isKnown(identity: String): Boolean {
-        return knownKeyboards.any { it.identity == identity }
-    }
-
-    private fun addKnownKeyboard(info: UsbHidInfo) {
-        if (knownKeyboards.add(info)) {
-            _knownDevices.value = knownKeyboards.toSet()
-            logEvent("known keyboards", "added info=$info")
-        }
-    }
-
-    private fun isConnected(deviceName: String): Boolean {
-        return connectedDevices.containsKey(deviceName)
-    }
-
-    private fun addConnectedDevice(deviceName: String, info: UsbHidInfo) {
-        if (connectedDevices.put(deviceName, info) != null) return
-        logEvent("connected devices", "added deviceName=$deviceName, info=$info, count=${connectedDevices.size}")
-        transitionTo(connectedState(), "device connected")
-    }
-
-    private fun removeConnectedDevice(deviceName: String) {
-        if (connectedDevices.remove(deviceName) == null) return
-        val reason = "device detached, count=${connectedDevices.size}"
-        if (connectedDevices.isEmpty()) {
-            transitionTo(UsbHidState.Disconnected, reason)
-        } else {
-            transitionTo(connectedState(), reason)
-        }
-    }
-
-    private fun clearConnectedDevices(reason: String) {
-        if (connectedDevices.isEmpty()) return
-        connectedDevices.clear()
-        logEvent("connected devices", "cleared, reason=$reason")
-    }
-
-    private fun addToBlacklist(deviceName: String) {
-        if (blacklistedDeviceNames.add(deviceName)) {
-            logEvent("blacklist", "added deviceName=$deviceName")
-        }
-    }
-
-    private fun removeFromBlacklist(deviceName: String) {
-        if (blacklistedDeviceNames.remove(deviceName)) {
-            logEvent("blacklist", "removed deviceName=$deviceName")
-        }
-    }
-
-    private fun transitionTo(newState: UsbHidState, reason: String) {
+    private fun transitionTo(newState: UsbHidState) {
         val oldState = _state.value
         if (oldState == newState) return
         _state.value = newState
-        Log.d(TAG, "state: $oldState → $newState, reason=$reason")
+        Log.d(TAG, "state: $oldState → $newState")
     }
 
     private fun logEvent(event: String, details: String = "") {
