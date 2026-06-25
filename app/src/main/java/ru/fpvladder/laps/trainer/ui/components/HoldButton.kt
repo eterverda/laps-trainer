@@ -33,6 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +72,8 @@ fun HoldButton(
     onPressStart: () -> Unit = {},
     onPressEnd: () -> Unit = {}
 ) {
+    val fillColor = LocalExtendedColors.current.holdButtonFill
+
     val scope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
     var state by remember { mutableIntStateOf(STATE_IDLE) }
@@ -167,6 +172,16 @@ fun HoldButton(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.primary)
+            .drawBehind {
+                val progressValue = progress.value
+                val width = size.width * progressValue
+                val xOffset = if (state == STATE_LONG_CONFIRMED) size.width - width else 0f
+                drawRect(
+                    color = fillColor,
+                    topLeft = Offset(xOffset, 0f),
+                    size = Size(width, size.height)
+                )
+            }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -181,21 +196,6 @@ fun HoldButton(
             }
             .height(IntrinsicSize.Min),
     ) {
-        if (progress.value > 0f) {
-            Box(
-                modifier = Modifier
-                    .align(
-                        if (state == STATE_LONG_CONFIRMED) {
-                            Alignment.CenterEnd
-                        } else {
-                            Alignment.CenterStart
-                        }
-                    )
-                    .fillMaxHeight()
-                    .fillMaxWidth(progress.value)
-                    .background(LocalExtendedColors.current.holdButtonFill)
-            )
-        }
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
