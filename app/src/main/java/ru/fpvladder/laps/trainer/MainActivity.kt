@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import ru.fpvladder.laps.trainer.ui.components.ChannelDialog
@@ -68,6 +69,7 @@ import ru.fpvladder.laps.trainer.ui.components.ConfirmFinishTrainingDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmNameChangeDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmRulesChangeDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
+
 import ru.fpvladder.laps.trainer.ui.components.IndividualNameDialog
 import ru.fpvladder.laps.trainer.ui.components.TeamNameDialog
 import ru.fpvladder.laps.trainer.ui.components.RulesEditorDialog
@@ -88,6 +90,7 @@ import ru.fpvladder.laps.trainer.ui.helpers.description
 import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.audio.STAGE_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
+import ru.fpvladder.laps.trainer.usb.UsbHidEvent
 import ru.fpvladder.laps.trainer.usb.UsbHidManager
 import ru.fpvladder.laps.trainer.usb.UsbHidState
 
@@ -178,7 +181,9 @@ fun AppRoot(
     val keyboardManager = remember { UsbHidManager.getInstance(context) }
     val keyboardState by keyboardManager.state.collectAsState()
     val knownUsbDevices by keyboardManager.knownDevices.collectAsState()
+    val lastKeyEvent by keyboardManager.lastKeyEvent.collectAsState()
     val connectedUsbDevices = (keyboardState as? UsbHidState.Connected)?.devices ?: emptySet()
+    val startButtonPressed = remember { MutableStateFlow(false) }
 
     LaunchedEffect(isUsbKeyboardEnabled) {
         keyboardManager.setUserEnabled(isUsbKeyboardEnabled)
@@ -191,6 +196,18 @@ fun AppRoot(
             AppScreen.Flight -> flightPhase != FlightPhase.PRE_FLIGHT && flightPhase != FlightPhase.FLIGHT
         }
         keyboardManager.setDiscoveryAllowed(discoveryAllowed)
+    }
+
+    LaunchedEffect(Unit) {
+        keyboardManager.keyEvents.collect { event ->
+            if (keyboardManager.state.value is UsbHidState.Setup) return@collect
+            if (event.keyCode == 0x52 && event.modifiers == 0) {
+                when (event.action) {
+                    UsbHidEvent.ACTION_DOWN -> startButtonPressed.value = true
+                    UsbHidEvent.ACTION_UP -> startButtonPressed.value = false
+                }
+            }
+        }
     }
     val isPreBlinking by flightViewModel.isPreBlinking.collectAsState()
 
@@ -573,6 +590,7 @@ fun AppRoot(
                                         SoundManager.stop()
                                     }
                                 },
+                                controllerPressed = startButtonPressed,
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(horizontal = 8.dp)
@@ -808,7 +826,17 @@ fun AppRoot(
         AlertDialog(
             onDismissRequest = { keyboardManager.onSetupCancelled(setupState.deviceName) },
             title = { Text("Настройка клавиатуры") },
-            text = { Text("Подключена клавиатура \"${setupState.info.productName}\". Использовать её?") },
+            text = {
+                val keyHex = lastKeyEvent?.keyCode
+                    ?.toString(16)
+                    ?.uppercase()
+                    ?.padStart(2, '0')
+                    ?: "—"
+                Text(
+                    "Подключена клавиатура \"${setupState.info.productName}\".\n\n" +
+                    "Последняя нажатая клавиша: 0x$keyHex"
+                )
+            },
             confirmButton = {
                 TextButton(onClick = { keyboardManager.onSetupConfirmed(setupState.deviceName) }) {
                     Text("OK")

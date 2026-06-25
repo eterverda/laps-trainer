@@ -4,13 +4,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +22,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,9 +40,18 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
+
+private const val STATE_IDLE = 0
+private const val STATE_CLICK_PRESSED = 1
+private const val STATE_LONG_PRESSED = 2
+private const val STATE_LONG_CONFIRMED = 3
 
 @Composable
 fun HoldButton(
@@ -58,41 +65,137 @@ fun HoldButton(
     fontWeight: FontWeight = FontWeight.Black,
     contentSpacing: Dp = 10.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-    enabled: Boolean = true,
+    controllerPressed: StateFlow<Boolean>? = null,
     onPressStart: () -> Unit = {},
     onPressEnd: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
-
-    var isSuccess by remember { mutableStateOf(false) }
+    var state by remember { mutableIntStateOf(STATE_IDLE) }
 
     val currentOnConfirm by rememberUpdatedState(onConfirm)
     val currentOnPressStart by rememberUpdatedState(onPressStart)
     val currentOnPressEnd by rememberUpdatedState(onPressEnd)
     val currentHoldDurationMs by rememberUpdatedState(holdDurationMs)
 
-    val fillColor = LocalExtendedColors.current.holdButtonFill
+    val pressCount = remember { MutableStateFlow(0) }
+    var holdJob by remember { mutableStateOf<Job?>(null) }
 
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val backgroundColor = if (isPressed) fillColor else MaterialTheme.colorScheme.primary
+    suspend fun startHold() {
+        progress.snapTo(0f)
+        holdJob = scope.launch {
+            currentOnPressStart()
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = currentHoldDurationMs,
+                    easing = LinearEasing
+                )
+            )
+            state = STATE_LONG_CONFIRMED
+            currentOnConfirm()
+            progress.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = 300)
+            )
+            state = STATE_IDLE
+            holdJob = null
+        }
+    }
 
-    val baseModifier = modifier
-        .clip(RoundedCornerShape(12.dp))
-        .background(backgroundColor)
+    fun stopHold() {
+        holdJob?.let { job ->
+            currentOnPressEnd()
+            if (job.isActive) {
+                job.cancel()
+                scope.launch {
+                    progress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(durationMillis = 300)
+                    )
+                }
+            }
+            holdJob = null
+        }
+    }
 
-    val content: @Composable BoxScope.() -> Unit = {
-        if (currentHoldDurationMs > 0) {
+    LaunchedEffect(controllerPressed) {
+        var wasPressed = false
+        controllerPressed?.collect { pressed ->
+            when {
+                pressed && !wasPressed -> pressCount.update { it + 1 }
+                !pressed && wasPressed -> pressCount.update { it - 1 }
+            }
+            wasPressed = pressed
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        var previousCount = 0
+        pressCount.collect { count ->
+            when {
+                count > previousCount -> {
+                    when {
+                        currentHoldDurationMs <= 0 -> {
+                            state = STATE_CLICK_PRESSED
+                            progress.snapTo(1f)
+                        }
+                        else -> {
+                            state = STATE_LONG_PRESSED
+                            startHold()
+                        }
+                    }
+                }
+                count < previousCount -> {
+                    when (state) {
+                        STATE_CLICK_PRESSED -> {
+                            progress.snapTo(0f)
+                            currentOnConfirm()
+                        }
+                        STATE_LONG_PRESSED -> stopHold()
+                        STATE_LONG_CONFIRMED -> currentOnPressEnd()
+                    }
+                    state = STATE_IDLE
+                }
+            }
+            previousCount = count
+        }
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.primary)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        pressCount.update { it + 1 }
+                        try {
+                            awaitRelease()
+                        } finally {
+                            pressCount.update { it - 1 }
+                        }
+                    }
+                )
+            }
+            .height(IntrinsicSize.Min),
+    ) {
+        if (progress.value > 0f) {
             Box(
                 modifier = Modifier
-                    .align(if (isSuccess) Alignment.CenterEnd else Alignment.CenterStart)
+                    .align(
+                        if (state == STATE_LONG_CONFIRMED) {
+                            Alignment.CenterEnd
+                        } else {
+                            Alignment.CenterStart
+                        }
+                    )
                     .fillMaxHeight()
                     .fillMaxWidth(progress.value)
-                    .background(fillColor)
+                    .background(LocalExtendedColors.current.holdButtonFill)
             )
         }
-
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
@@ -112,66 +215,5 @@ fun HoldButton(
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
-    }
-
-    val isClickMode = currentHoldDurationMs <= 0
-
-    val gestureModifier = when {
-        !enabled -> Modifier
-        isClickMode -> Modifier.clickable(
-            interactionSource = interactionSource,
-            indication = null,
-            onClick = {
-                currentOnConfirm()
-            }
-        )
-        else -> Modifier.pointerInput(Unit) {
-            detectTapGestures(
-                onPress = {
-                    progress.snapTo(0f)
-                    isSuccess = false
-                    currentOnPressStart()
-                    val confirmAtStart = currentOnConfirm
-                    val job = scope.launch {
-                        progress.animateTo(
-                            targetValue = 1f,
-                            animationSpec = tween(
-                                durationMillis = currentHoldDurationMs,
-                                easing = LinearEasing
-                            )
-                        )
-                        isSuccess = true
-                        confirmAtStart()
-                        progress.animateTo(
-                            targetValue = 0f,
-                            animationSpec = tween(durationMillis = 300)
-                        )
-                        isSuccess = false
-                    }
-                    try {
-                        awaitRelease()
-                    } finally {
-                        currentOnPressEnd()
-                        if (job.isActive) {
-                            job.cancel()
-                            isSuccess = false
-                            scope.launch {
-                                progress.animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = tween(durationMillis = 300)
-                                )
-                            }
-                        }
-                    }
-                }
-            )
-        }
-    }
-
-    Box(
-        modifier = baseModifier.then(gestureModifier).height(IntrinsicSize.Min),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
     }
 }

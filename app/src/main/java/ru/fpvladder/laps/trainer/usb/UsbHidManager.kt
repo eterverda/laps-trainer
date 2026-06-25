@@ -16,8 +16,12 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import ru.fpvladder.laps.trainer.settings.USB_ENABLED
 
@@ -62,6 +66,15 @@ class UsbHidManager private constructor(context: Context) {
     private val knownIdentities = mutableSetOf<String>()
     private val _knownDevices = MutableStateFlow<Set<UsbHidInfo>>(emptySet())
     val knownDevices: StateFlow<Set<UsbHidInfo>> = _knownDevices.asStateFlow()
+
+    private val _lastKeyEvent = MutableStateFlow<UsbHidEvent?>(null)
+    val lastKeyEvent: StateFlow<UsbHidEvent?> = _lastKeyEvent.asStateFlow()
+
+    private val _keyEvents = MutableSharedFlow<UsbHidEvent>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val keyEvents: SharedFlow<UsbHidEvent> = _keyEvents.asSharedFlow()
 
     // Accessed only on the main thread.
     private val blacklistedDeviceNames = mutableSetOf<String>()
@@ -232,6 +245,8 @@ class UsbHidManager private constructor(context: Context) {
                 }
             },
             onKeyEvent = { event ->
+                _lastKeyEvent.value = event
+                _keyEvents.tryEmit(event)
                 val keyHex = event.keyCode.toString(16).uppercase().padStart(2, '0')
                 val modsHex = event.modifiers.toString(16).uppercase().padStart(2, '0')
                 val state = if (event.action == UsbHidEvent.ACTION_DOWN) "down" else "up"
@@ -396,6 +411,9 @@ class UsbHidManager private constructor(context: Context) {
     private fun transitionTo(newState: UsbHidState) {
         val oldState = _state.value
         if (oldState == newState) return
+        if (newState is UsbHidState.Setup) {
+            _lastKeyEvent.value = null
+        }
         _state.value = newState
         Log.d(TAG, "state: $oldState → $newState")
     }
