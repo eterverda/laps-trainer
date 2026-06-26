@@ -673,6 +673,10 @@ fun AppRoot(
             isEmpty = nameEditorIsNew || selectedTraining.isEmpty(),
             onConfirm = { name ->
                 if (nameEditorIsNew) {
+                    val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
+                    if (wasPostFlight) {
+                        finishFlight(shouldSaveResult, false)
+                    }
                     val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel.DEFAULT
                     val newPilot = Pilot.Individual(name = name, channel = defaultChannel)
                     val newTraining = Training.Individual(
@@ -681,6 +685,9 @@ fun AppRoot(
                     )
                     trainingViewModel.addTraining(newTraining)
                     trainingViewModel.selectTraining(newTraining)
+                    if (wasPostFlight) {
+                        pilotViewModel.navigateTo(AppScreen.Training)
+                    }
                 } else {
                     trainingViewModel.updateCurrentPilotNames(name, "")
                 }
@@ -711,6 +718,10 @@ fun AppRoot(
             isEmpty = nameEditorIsNew || selectedTraining.isEmpty(),
             onConfirm = { n1, n2 ->
                 if (nameEditorIsNew) {
+                    val wasPostFlight = currentScreen == AppScreen.Flight && flightPhase == FlightPhase.POST_FLIGHT
+                    if (wasPostFlight) {
+                        finishFlight(shouldSaveResult, false)
+                    }
                     val defaultChannel = trainings.lastOrNull()?.pilot?.channel ?: Channel.DEFAULT
                     val newPilot = Pilot.Team(name1 = n1, name2 = n2, channel = defaultChannel)
                     val newTraining = Training.Team(
@@ -719,6 +730,9 @@ fun AppRoot(
                     )
                     trainingViewModel.addTraining(newTraining)
                     trainingViewModel.selectTraining(newTraining)
+                    if (wasPostFlight) {
+                        pilotViewModel.navigateTo(AppScreen.Training)
+                    }
                 } else {
                     trainingViewModel.updateCurrentPilotNames(n1, n2)
                 }
