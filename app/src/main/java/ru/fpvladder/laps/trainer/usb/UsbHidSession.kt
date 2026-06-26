@@ -67,7 +67,7 @@ class UsbHidSession(
     private var readJob: Job? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var previousReport: ByteArray? = null
+    private var previousReport: ByteArray? = ByteArray(8) { 0 }
 
     /** Requests USB permission for this device. */
     fun requestPermission(pendingIntent: PendingIntent) {
@@ -354,7 +354,7 @@ class UsbHidSession(
                     UsbHidEvent(
                         keyCode = 0xE0 + i,
                         modifiers = currentModifiers,
-                        action = if (pressed) UsbHidEvent.ACTION_DOWN else UsbHidEvent.ACTION_UP,
+                        state = if (pressed) UsbHidEvent.STATE_DOWN else UsbHidEvent.STATE_UP,
                     )
                 )
             }
@@ -370,7 +370,7 @@ class UsbHidSession(
                     UsbHidEvent(
                         keyCode = key.toInt() and 0xFF,
                         modifiers = currentModifiers,
-                        action = UsbHidEvent.ACTION_DOWN,
+                        state = UsbHidEvent.STATE_DOWN,
                     )
                 )
             }
@@ -381,7 +381,7 @@ class UsbHidSession(
                     UsbHidEvent(
                         keyCode = key.toInt() and 0xFF,
                         modifiers = currentModifiers,
-                        action = UsbHidEvent.ACTION_UP,
+                        state = UsbHidEvent.STATE_UP,
                     )
                 )
             }

@@ -25,14 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -69,6 +66,7 @@ import ru.fpvladder.laps.trainer.ui.components.ConfirmFinishTrainingDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmNameChangeDialog
 import ru.fpvladder.laps.trainer.ui.components.ConfirmRulesChangeDialog
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
+import ru.fpvladder.laps.trainer.ui.components.KeyboardSetupDialog
 
 import ru.fpvladder.laps.trainer.ui.components.IndividualNameDialog
 import ru.fpvladder.laps.trainer.ui.components.TeamNameDialog
@@ -90,7 +88,9 @@ import ru.fpvladder.laps.trainer.ui.helpers.description
 import ru.fpvladder.laps.trainer.audio.SoundManager
 import ru.fpvladder.laps.trainer.audio.STAGE_DURATION_MS
 import ru.fpvladder.laps.trainer.audio.STAGE_DELAY_MS
+import ru.fpvladder.laps.trainer.usb.UsbHidAction
 import ru.fpvladder.laps.trainer.usb.UsbHidEvent
+import ru.fpvladder.laps.trainer.usb.UsbHidConfig
 import ru.fpvladder.laps.trainer.usb.UsbHidManager
 import ru.fpvladder.laps.trainer.usb.UsbHidState
 
@@ -181,9 +181,10 @@ fun AppRoot(
     val keyboardManager = remember { UsbHidManager.getInstance(context) }
     val keyboardState by keyboardManager.state.collectAsState()
     val knownUsbDevices by keyboardManager.knownDevices.collectAsState()
-    val lastKeyEvent by keyboardManager.lastKeyEvent.collectAsState()
+    val keyboardConfigs by keyboardManager.configs.collectAsState()
     val connectedUsbDevices = (keyboardState as? UsbHidState.Connected)?.devices ?: emptySet()
     val startButtonPressed = remember { MutableStateFlow(false) }
+    var editingKeyboardConfig by remember { mutableStateOf<UsbHidConfig?>(null) }
 
     LaunchedEffect(isUsbKeyboardEnabled) {
         keyboardManager.setUserEnabled(isUsbKeyboardEnabled)
@@ -201,11 +202,8 @@ fun AppRoot(
     LaunchedEffect(Unit) {
         keyboardManager.keyEvents.collect { event ->
             if (keyboardManager.state.value is UsbHidState.Setup) return@collect
-            if (event.keyCode == 0x52 && event.modifiers == 0) {
-                when (event.action) {
-                    UsbHidEvent.ACTION_DOWN -> startButtonPressed.value = true
-                    UsbHidEvent.ACTION_UP -> startButtonPressed.value = false
-                }
+            if (event.action == UsbHidAction.START) {
+                startButtonPressed.value = event.state == UsbHidEvent.STATE_DOWN
             }
         }
     }
@@ -364,6 +362,8 @@ fun AppRoot(
                         isUsbFeatureEnabled = USB_ENABLED,
                         knownUsbDevices = knownUsbDevices,
                         connectedUsbDevices = connectedUsbDevices,
+                        keyboardConfigs = keyboardConfigs,
+                        onConfigureKeyboard = { editingKeyboardConfig = it },
                         useLapButton = useLapButton,
                         useErrorFixButtons = useErrorFixButtons,
                         appTheme = appTheme,
@@ -822,31 +822,39 @@ fun AppRoot(
     }
 
     val setupState = keyboardState as? UsbHidState.Setup
-    if (setupState != null) {
-        AlertDialog(
-            onDismissRequest = { keyboardManager.onSetupCancelled(setupState.deviceName) },
-            title = { Text("Настройка клавиатуры") },
-            text = {
-                val keyHex = lastKeyEvent?.keyCode
-                    ?.toString(16)
-                    ?.uppercase()
-                    ?.padStart(2, '0')
-                    ?: "—"
-                Text(
-                    "Подключена клавиатура \"${setupState.info.productName}\".\n\n" +
-                    "Последняя нажатая клавиша: 0x$keyHex"
-                )
+    setupState?.let { state ->
+        val config = keyboardManager.configs.value.find { it.identity == state.info.identity }
+            ?: UsbHidConfig(
+                info = state.info,
+                bindings = emptySet(),
+            )
+        KeyboardSetupDialog(
+            config = config,
+            keyEvents = keyboardManager.keyEvents,
+            onSave = { newConfig ->
+                keyboardManager.saveConfig(newConfig)
+                keyboardManager.onSetupConfirmed(state.deviceName)
             },
-            confirmButton = {
-                TextButton(onClick = { keyboardManager.onSetupConfirmed(setupState.deviceName) }) {
-                    Text("OK")
-                }
+            onCancel = { keyboardManager.onSetupCancelled(state.deviceName) },
+        )
+    }
+
+    editingKeyboardConfig?.let { config ->
+        val isConnected = connectedUsbDevices.any { it.identity == config.identity }
+        KeyboardSetupDialog(
+            config = config,
+            keyEvents = keyboardManager.keyEvents,
+            showDeletePage = !isConnected,
+            allowEmptySave = true,
+            onSave = { newConfig ->
+                keyboardManager.saveConfig(newConfig)
+                editingKeyboardConfig = null
             },
-            dismissButton = {
-                TextButton(onClick = { keyboardManager.onSetupCancelled(setupState.deviceName) }) {
-                    Text("Отмена")
-                }
-            }
+            onDelete = {
+                keyboardManager.removeConfig(config.id)
+                editingKeyboardConfig = null
+            },
+            onCancel = { editingKeyboardConfig = null },
         )
     }
 }

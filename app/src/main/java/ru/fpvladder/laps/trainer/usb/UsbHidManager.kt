@@ -67,6 +67,32 @@ class UsbHidManager private constructor(context: Context) {
     private val _knownDevices = MutableStateFlow<Set<UsbHidInfo>>(emptySet())
     val knownDevices: StateFlow<Set<UsbHidInfo>> = _knownDevices.asStateFlow()
 
+    private val configRepository = UsbHidConfigRepository()
+    private val _configs = MutableStateFlow<List<UsbHidConfig>>(emptyList())
+    val configs: StateFlow<List<UsbHidConfig>> = _configs.asStateFlow()
+
+    fun saveConfig(config: UsbHidConfig) {
+        configRepository.save(config)
+        _configs.value = configRepository.all()
+    }
+
+    fun removeConfig(id: String) {
+        val config = configRepository.remove(id) ?: return
+
+        // Release any active session for this keyboard identity.
+        sessions.values.forEach { session ->
+            if (session.info.identity == config.identity) {
+                session.release()
+            }
+        }
+
+        // Forget the identity so the keyboard is treated as new on next attach.
+        knownIdentities.remove(config.identity)
+        _knownDevices.value = _knownDevices.value.filter { it.identity != config.identity }.toSet()
+
+        _configs.value = configRepository.all()
+    }
+
     private val _lastKeyEvent = MutableStateFlow<UsbHidEvent?>(null)
     val lastKeyEvent: StateFlow<UsbHidEvent?> = _lastKeyEvent.asStateFlow()
 
@@ -245,12 +271,17 @@ class UsbHidManager private constructor(context: Context) {
                 }
             },
             onKeyEvent = { event ->
-                _lastKeyEvent.value = event
-                _keyEvents.tryEmit(event)
-                val keyHex = event.keyCode.toString(16).uppercase().padStart(2, '0')
-                val modsHex = event.modifiers.toString(16).uppercase().padStart(2, '0')
-                val state = if (event.action == UsbHidEvent.ACTION_DOWN) "down" else "up"
-                logEvent("key", "0x$keyHex 0x$modsHex $state")
+                val info = sessions[deviceName]?.info
+                if (info != null) {
+                    val mappedAction = configRepository.mappedAction(info.identity, event.keyCode, event.modifiers)
+                    val mappedEvent = event.copy(action = mappedAction)
+                    _lastKeyEvent.value = mappedEvent
+                    _keyEvents.tryEmit(mappedEvent)
+                    val keyHex = event.keyCode.toString(16).uppercase().padStart(2, '0')
+                    val modsHex = event.modifiers.toString(16).uppercase().padStart(2, '0')
+                    val state = if (event.state == UsbHidEvent.STATE_DOWN) "down" else "up"
+                    logEvent("key", "0x$keyHex 0x$modsHex $state mapped=$mappedAction")
+                }
             },
         )
 

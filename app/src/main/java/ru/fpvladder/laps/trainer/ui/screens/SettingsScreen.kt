@@ -61,9 +61,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import ru.fpvladder.laps.trainer.settings.AppThemeMode
 import ru.fpvladder.laps.trainer.settings.DarkThemeVariant
@@ -75,7 +77,9 @@ import ru.fpvladder.laps.trainer.BuildConfig
 import ru.fpvladder.laps.trainer.R
 import androidx.core.net.toUri
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
+import ru.fpvladder.laps.trainer.usb.UsbHidAction
 import ru.fpvladder.laps.trainer.usb.UsbHidInfo
+import ru.fpvladder.laps.trainer.usb.UsbHidConfig
 
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -88,6 +92,8 @@ fun SettingsScreen(
     isUsbFeatureEnabled: Boolean = false,
     knownUsbDevices: Set<UsbHidInfo> = emptySet(),
     connectedUsbDevices: Set<UsbHidInfo> = emptySet(),
+    keyboardConfigs: List<UsbHidConfig> = emptyList(),
+    onConfigureKeyboard: (UsbHidConfig) -> Unit = {},
     useLapButton: Boolean,
     useErrorFixButtons: Boolean,
     appTheme: AppThemeMode,
@@ -168,25 +174,81 @@ fun SettingsScreen(
                         )
 
                         AnimatedVisibility(
-                            visible = isUsbKeyboardEnabled && knownUsbDevices.isNotEmpty(),
+                            visible = isUsbKeyboardEnabled && keyboardConfigs.isNotEmpty(),
                             enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
                             exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
                         ) {
                             Column {
-                                knownUsbDevices.forEach { device ->
-                                    val isConnected = connectedUsbDevices.any { it.identity == device.identity }
-                                    ListItem(
-                                        headlineContent = { Text(device.productName) },
-                                        supportingContent = { Text(device.displayIdentity, fontFamily = FontFamily.Monospace) },
-                                        trailingContent = {
-                                            Icon(
-                                                imageVector = if (isConnected) Icons.Default.Link else Icons.Default.LinkOff,
-                                                contentDescription = if (isConnected) "Подключено" else "Отключено",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(end = 16.dp)
+                                keyboardConfigs.forEach { config ->
+                                    val isConnected = connectedUsbDevices.any { it.identity == config.identity }
+                                    val configuredActions = config.bindings.map { it.action }.sortedBy { it.ordinal }
+                                    Column(
+                                        modifier = Modifier.clickable { onConfigureKeyboard(config) }
+                                    ) {
+                                        ListItem(
+                                            headlineContent = { Text(config.info.displayProductName) },
+                                            supportingContent = { Text(config.info.displayIdentity, fontFamily = FontFamily.Monospace) },
+                                            trailingContent = {
+                                                Icon(
+                                                    imageVector = if (isConnected) Icons.Default.Link else Icons.Default.LinkOff,
+                                                    contentDescription = if (isConnected) "Подключено" else "Отключено",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(end = 16.dp)
+                                                )
+                                            }
+                                        )
+                                        if (configuredActions.isEmpty()) {
+                                            Text(
+                                                text = "Кнопки не настроены",
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 16.dp)
+                                                    .padding(bottom = 12.dp),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
+                                        } else {
+                                            FlowRow(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 16.dp)
+                                                    .padding(bottom = 12.dp),
+                                                verticalArrangement = Arrangement.Center,
+                                            ) {
+                                                Text(
+                                                    if (configuredActions.size == 1) "Кнопка " else "Кнопки: ",
+                                                    modifier = Modifier.align(Alignment.CenterVertically),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                                configuredActions.forEachIndexed { index, action ->
+                                                    InlineButton(
+                                                        text = action.label(),
+                                                        iconRes = action.iconRes(),
+                                                    )
+                                                    when {
+                                                        index == configuredActions.lastIndex -> {}
+                                                        index == configuredActions.lastIndex - 1 -> {
+                                                            Text(
+                                                                " и ",
+                                                                modifier = Modifier.align(Alignment.CenterVertically),
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            )
+                                                        }
+                                                        else -> {
+                                                            Text(
+                                                                ", ",
+                                                                modifier = Modifier.align(Alignment.CenterVertically),
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
-                                    )
+                                    }
                                 }
                             }
                         }
@@ -216,7 +278,7 @@ fun SettingsScreen(
                                     modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                                 InlineButton(
-                                    text = "Круг",
+                                    text = "КРУГ",
                                     iconRes = R.drawable.ic_circle
                                 )
                                 Text(
@@ -247,23 +309,24 @@ fun SettingsScreen(
                     ListItem(
                         headlineContent = {
                             FlowRow(
-                                verticalArrangement = Arrangement.Center
+                                verticalArrangement = Arrangement.Center,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Text(
-                                    "Кнопки ",
+                                    "Кнопки",
                                     modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                                 InlineButton(
-                                    text = "Ошибка",
+                                    text = "ОШИБКА",
                                     iconRes = R.drawable.ic_cross
                                 )
-                                Text(" и ", modifier = Modifier.align(Alignment.CenterVertically))
+                                Text("и", modifier = Modifier.align(Alignment.CenterVertically))
                                 InlineButton(
-                                    text = "Исправил",
+                                    text = "ИСПРАВИЛ",
                                     iconRes = R.drawable.ic_square
                                 )
                                 Text(
-                                    if (useErrorFixButtons) " видны" else " скрыты",
+                                    if (useErrorFixButtons) "видны" else "скрыты",
                                     modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                             }
@@ -277,7 +340,7 @@ fun SettingsScreen(
                     )
                     AnimatedVisibility(visible = useErrorFixButtons) {
                         Text(
-                            text = "Нажимайте Ошибка, когда пилот сошел с траектории. Нажимайте Исправил, когда пилот вернулся на траекторию",
+                            text = "Ошибка — пилот сошел с траектории. Исправил — пилот вернулся на траекторию",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
@@ -626,10 +689,9 @@ private fun SectionDivider() {
 private fun InlineButton(
     text: String,
     iconRes: Int,
-    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier.padding(vertical = 3.dp),
+        modifier = Modifier.padding(vertical = 2.dp),
         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
         shape = RoundedCornerShape(6.dp)
     ) {
@@ -644,7 +706,11 @@ private fun InlineButton(
                 modifier = Modifier.size(14.dp),
                 tint = MaterialTheme.colorScheme.onSurface
             )
-            Text(text = text)
+            Text(
+                text = text,
+                fontWeight = FontWeight.Black,
+                fontSize = 12.sp
+            )
         }
     }
 }
@@ -741,4 +807,18 @@ private fun <T> SelectionDialog(
             }
         }
     }
+}
+
+private fun UsbHidAction.iconRes(): Int = when (this) {
+    UsbHidAction.START -> R.drawable.ic_triangle
+    UsbHidAction.LAP -> R.drawable.ic_circle
+    UsbHidAction.ERROR -> R.drawable.ic_cross
+    UsbHidAction.FIX -> R.drawable.ic_square
+}
+
+private fun UsbHidAction.label(): String = when (this) {
+    UsbHidAction.START -> "СТАРТ"
+    UsbHidAction.LAP -> "КРУГ"
+    UsbHidAction.ERROR -> "ОШИБКА"
+    UsbHidAction.FIX -> "ИСПРАВИЛ"
 }
