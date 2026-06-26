@@ -53,6 +53,7 @@ import ru.fpvladder.laps.trainer.ui.components.FlightTimer
 import ru.fpvladder.laps.trainer.ui.components.HoldButton
 import ru.fpvladder.laps.trainer.viewmodel.FlightPhase
 
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -82,6 +83,9 @@ fun FlightScreen(
     onRotatePilotsForNextFlightChange: (Boolean) -> Unit = {},
     useLapButton: Boolean = false,
     useErrorFixButtons: Boolean = false,
+    lapButtonPressed: StateFlow<Boolean>? = null,
+    errorButtonPressed: StateFlow<Boolean>? = null,
+    fixButtonPressed: StateFlow<Boolean>? = null,
     onLapClick: () -> Unit = {},
     onErrorClick: () -> Unit = {},
     onFixClick: () -> Unit = {},
@@ -254,6 +258,7 @@ fun FlightScreen(
                                         text = "Круг",
                                         iconRes = R.drawable.ic_circle,
                                         holdDurationMs = 0,
+                                        controllerPressed = lapButtonPressed,
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(horizontal = 8.dp)
@@ -281,7 +286,8 @@ fun FlightScreen(
                                         fontWeight = FontWeight.Bold,
                                         contentSpacing = 8.dp,
                                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                        holdDurationMs = 0
+                                        holdDurationMs = 0,
+                                        controllerPressed = errorButtonPressed,
                                     )
                                     HoldButton(
                                         onConfirm = onFixClick,
@@ -292,7 +298,8 @@ fun FlightScreen(
                                         fontWeight = FontWeight.Bold,
                                         contentSpacing = 8.dp,
                                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                        holdDurationMs = 0
+                                        holdDurationMs = 0,
+                                        controllerPressed = fixButtonPressed,
                                     )
                                 }
                             }

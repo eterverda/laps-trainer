@@ -183,6 +183,9 @@ fun AppRoot(
     val keyboardConfigs by keyboardManager.configs.collectAsState()
     val connectedUsbDevices = (keyboardState as? UsbHidState.Connected)?.devices ?: emptySet()
     val startButtonPressed = remember { MutableStateFlow(false) }
+    val lapButtonPressed = remember { MutableStateFlow(false) }
+    val errorButtonPressed = remember { MutableStateFlow(false) }
+    val fixButtonPressed = remember { MutableStateFlow(false) }
     var editingKeyboardConfig by remember { mutableStateOf<UsbHidConfig?>(null) }
 
     LaunchedEffect(isUsbKeyboardEnabled) {
@@ -201,8 +204,31 @@ fun AppRoot(
     LaunchedEffect(Unit) {
         keyboardManager.keyEvents.collect { event ->
             if (keyboardManager.state.value is UsbHidState.Setup) return@collect
-            if (event.action == UsbHidAction.START) {
-                startButtonPressed.value = event.state == UsbHidEvent.STATE_DOWN
+            val isDown = event.state == UsbHidEvent.STATE_DOWN
+            when (event.action) {
+                UsbHidAction.START -> startButtonPressed.value = isDown
+                UsbHidAction.LAP -> {
+                    if (pilotViewModel.currentScreen.value == AppScreen.Flight && settingsViewModel.useLapButton.value) {
+                        lapButtonPressed.value = isDown
+                    } else if (isDown) {
+                        flightViewModel.addLap(settingsViewModel.isMuted.value)
+                    }
+                }
+                UsbHidAction.ERROR -> {
+                    if (pilotViewModel.currentScreen.value == AppScreen.Flight && settingsViewModel.useErrorFixButtons.value) {
+                        errorButtonPressed.value = isDown
+                    } else if (isDown) {
+                        flightViewModel.addErrorToLastLap()
+                    }
+                }
+                UsbHidAction.FIX -> {
+                    if (pilotViewModel.currentScreen.value == AppScreen.Flight && settingsViewModel.useErrorFixButtons.value) {
+                        fixButtonPressed.value = isDown
+                    } else if (isDown) {
+                        flightViewModel.addFixToLastLap()
+                    }
+                }
+                null -> {}
             }
         }
     }
@@ -417,6 +443,9 @@ fun AppRoot(
                                     onRotatePilotsForNextFlightChange = { flightViewModel.setRotatePilotsForNextFlight(it) },
                                     useLapButton = useLapButton,
                                     useErrorFixButtons = useErrorFixButtons,
+                                    lapButtonPressed = lapButtonPressed,
+                                    errorButtonPressed = errorButtonPressed,
+                                    fixButtonPressed = fixButtonPressed,
                                     onLapClick = {
                                         flightViewModel.addLap(isMuted)
                                     },
