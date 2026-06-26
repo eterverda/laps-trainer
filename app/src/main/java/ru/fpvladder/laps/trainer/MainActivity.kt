@@ -180,7 +180,6 @@ fun AppRoot(
     val context = LocalContext.current
     val keyboardManager = remember { UsbHidManager.getInstance(context) }
     val keyboardState by keyboardManager.state.collectAsState()
-    val knownUsbDevices by keyboardManager.knownDevices.collectAsState()
     val keyboardConfigs by keyboardManager.configs.collectAsState()
     val connectedUsbDevices = (keyboardState as? UsbHidState.Connected)?.devices ?: emptySet()
     val startButtonPressed = remember { MutableStateFlow(false) }
@@ -360,7 +359,6 @@ fun AppRoot(
                         isMuted = isMuted,
                         isUsbKeyboardEnabled = isUsbKeyboardEnabled,
                         isUsbFeatureEnabled = USB_ENABLED,
-                        knownUsbDevices = knownUsbDevices,
                         connectedUsbDevices = connectedUsbDevices,
                         keyboardConfigs = keyboardConfigs,
                         onConfigureKeyboard = { editingKeyboardConfig = it },
@@ -851,7 +849,7 @@ fun AppRoot(
                 editingKeyboardConfig = null
             },
             onDelete = {
-                keyboardManager.removeConfig(config.id)
+                keyboardManager.removeConfig(config.identity)
                 editingKeyboardConfig = null
             },
             onCancel = { editingKeyboardConfig = null },

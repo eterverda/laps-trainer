@@ -61,7 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -90,7 +89,6 @@ fun SettingsScreen(
     isMuted: Boolean,
     isUsbKeyboardEnabled: Boolean,
     isUsbFeatureEnabled: Boolean = false,
-    knownUsbDevices: Set<UsbHidInfo> = emptySet(),
     connectedUsbDevices: Set<UsbHidInfo> = emptySet(),
     keyboardConfigs: List<UsbHidConfig> = emptyList(),
     onConfigureKeyboard: (UsbHidConfig) -> Unit = {},

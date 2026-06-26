@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,35 +64,34 @@ class UsbHidManager private constructor(context: Context) {
     private val _isEnabled = MutableStateFlow(false)
     private val _isDiscoveryAllowed = MutableStateFlow(false)
 
-    // Accessed only on the main thread.
-    private val knownIdentities = mutableSetOf<String>()
-    private val _knownDevices = MutableStateFlow<Set<UsbHidInfo>>(emptySet())
-    val knownDevices: StateFlow<Set<UsbHidInfo>> = _knownDevices.asStateFlow()
-
-    private val configRepository = UsbHidConfigRepository()
+    private val configRepository = UsbHidConfigRepository(appContext)
     private val _configs = MutableStateFlow<List<UsbHidConfig>>(emptyList())
     val configs: StateFlow<List<UsbHidConfig>> = _configs.asStateFlow()
 
-    fun saveConfig(config: UsbHidConfig) {
-        configRepository.save(config)
+    init {
+        runBlocking(Dispatchers.IO) { configRepository.load() }
         _configs.value = configRepository.all()
     }
 
-    fun removeConfig(id: String) {
-        val config = configRepository.remove(id) ?: return
+    fun saveConfig(config: UsbHidConfig) {
+        managerScope.launch {
+            configRepository.save(config)
+            _configs.value = configRepository.all()
+        }
+    }
 
+    fun removeConfig(identity: String) {
         // Release any active session for this keyboard identity.
         sessions.values.forEach { session ->
-            if (session.info.identity == config.identity) {
+            if (session.info.identity == identity) {
                 session.release()
             }
         }
 
-        // Forget the identity so the keyboard is treated as new on next attach.
-        knownIdentities.remove(config.identity)
-        _knownDevices.value = _knownDevices.value.filter { it.identity != config.identity }.toSet()
-
-        _configs.value = configRepository.all()
+        managerScope.launch {
+            configRepository.remove(identity)
+            _configs.value = configRepository.all()
+        }
     }
 
     private val _lastKeyEvent = MutableStateFlow<UsbHidEvent?>(null)
@@ -206,8 +207,6 @@ class UsbHidManager private constructor(context: Context) {
     fun onSetupConfirmed(deviceName: String) {
         val session = sessions[deviceName]
         if (session != null && session.state.value == UsbHidSessionState.SetupPending) {
-            addKnownIdentity(session.info.identity)
-            addKnownDevice(session.info)
             session.confirmSetup()
         }
     }
@@ -246,6 +245,13 @@ class UsbHidManager private constructor(context: Context) {
                 "not a HID keyboard, deviceName=$deviceName, identity=$identity",
             )
             return
+        }
+
+        configRepository.findByIdentity(identity)?.let {
+            managerScope.launch {
+                configRepository.touch(identity)
+                _configs.value = configRepository.all()
+            }
         }
 
         sessions[deviceName]?.let { existing ->
@@ -404,18 +410,7 @@ class UsbHidManager private constructor(context: Context) {
     }
 
     private fun isKnown(identity: String): Boolean {
-        return knownIdentities.contains(identity)
-    }
-
-    private fun addKnownIdentity(identity: String) {
-        knownIdentities.add(identity)
-    }
-
-    private fun addKnownDevice(info: UsbHidInfo) {
-        val current = _knownDevices.value
-        if (!current.contains(info)) {
-            _knownDevices.value = current + info
-        }
+        return configRepository.findByIdentity(identity) != null
     }
 
     private fun addToBlacklist(deviceName: String) {

@@ -2,7 +2,6 @@ package ru.fpvladder.laps.trainer.usb.serialization
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.descriptors.element
@@ -15,19 +14,19 @@ import ru.fpvladder.laps.trainer.usb.UsbHidConfig
 import ru.fpvladder.laps.trainer.usb.UsbHidInfo
 
 /**
- * Serializer for [UsbHidConfig] that preserves the stable [id] across saves.
+ * Serializer for [UsbHidConfig] that preserves the stable [uuid] across saves.
  */
 object UsbHidConfigSerializer : KSerializer<UsbHidConfig> {
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("UsbHidConfig") {
-        element<String>("id")
+        element<String>("uuid")
         element<UsbHidInfo>("info")
         element<List<UsbHidBinding>>("bindings")
     }
 
     override fun serialize(encoder: Encoder, value: UsbHidConfig) {
         encoder.encodeStructure(descriptor) {
-            encodeStringElement(descriptor, 0, value.id)
+            encodeStringElement(descriptor, 0, value.uuid)
             encodeSerializableElement(descriptor, 1, UsbHidInfo.serializer(), value.info)
             encodeSerializableElement(
                 descriptor,
@@ -40,12 +39,12 @@ object UsbHidConfigSerializer : KSerializer<UsbHidConfig> {
 
     override fun deserialize(decoder: Decoder): UsbHidConfig {
         return decoder.decodeStructure(descriptor) {
-            var id: String? = null
+            var uuid: String? = null
             var info: UsbHidInfo? = null
             var bindings: List<UsbHidBinding>? = null
             while (true) {
                 when (val index = decodeElementIndex(descriptor)) {
-                    0 -> id = decodeStringElement(
+                    0 -> uuid = decodeStringElement(
                         descriptor, index
                     )
                     1 -> info = decodeSerializableElement(
@@ -57,10 +56,10 @@ object UsbHidConfigSerializer : KSerializer<UsbHidConfig> {
                     else -> break
                 }
             }
-            requireNotNull(id) { "Missing 'id' in UsbHidConfig" }
+            requireNotNull(uuid) { "Missing 'uuid' in UsbHidConfig" }
             requireNotNull(info) { "Missing 'info' in UsbHidConfig" }
             UsbHidConfig.create(
-                id = id,
+                uuid = uuid,
                 info = info,
                 bindings = bindings?.toSet() ?: emptySet(),
             )

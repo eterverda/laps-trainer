@@ -1,0 +1,19 @@
+uuid: f7db0130-0795-4eea-9a81-0529736c3887
+info:
+  product_name: SayoDevice 1_3P
+  vendor_id: 0x8089
+  product_id: 0x000C
+  serial_number: 03CDABE24071BC20A9FFFFFFFF00
+bindings:
+- action: LAP
+  key_code: 0x4f
+  modifiers: 0x00
+- action: ERROR
+  key_code: 0x51
+  modifiers: 0x00
+- action: FIX
+  key_code: 0x50
+  modifiers: 0x00
+- action: START
+  key_code: 0x52
+  modifiers: 0x00
