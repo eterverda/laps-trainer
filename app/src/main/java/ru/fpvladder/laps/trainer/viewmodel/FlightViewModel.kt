@@ -140,23 +140,25 @@ class FlightViewModel : ViewModel() {
         _stopReason.value = reason
         timerJob?.cancel()
         _currentLap.value = null
+
+        val hasSuccessLap = _laps.value.any { it.success && it.number > 0 }
+        _shouldSaveResult.value = hasSuccessLap
+        _rotatePilotsForNextFlight.value = hasSuccessLap && rules is Rules.Team
+        if (rules is Rules.Team) {
+            _teamFlight.value = computeTeamFlight(
+                _laps.value,
+                reason,
+                _pilotChangeIndex.value,
+                (rules as Rules.Team).swapMode
+            )
+        }
+
         _flightPhase.value = FlightPhase.POST_FLIGHT
+
         viewModelScope.launch {
             if (!skipBuzzer && !muted) {
                 SoundManager.playBuzzer()
                 if (delayForBuzzer) delay(BUZZER_DURATION_MS)
-            }
-
-            val hasSuccessLap = _laps.value.any { it.success && it.number > 0 }
-            _shouldSaveResult.value = hasSuccessLap
-            _rotatePilotsForNextFlight.value = hasSuccessLap && rules is Rules.Team
-            if (rules is Rules.Team) {
-                _teamFlight.value = computeTeamFlight(
-                    _laps.value,
-                    reason,
-                    _pilotChangeIndex.value,
-                    (rules as Rules.Team).swapMode
-                )
             }
         }
     }
