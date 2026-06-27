@@ -7,4 +7,4 @@ package ru.fpvladder.laps.trainer.settings
  * in the source and can be re-enabled by flipping the flag.
  */
 val TEAM_HOLESHOT_ENABLED = "false".toBoolean()
-val USB_ENABLED = "false".toBoolean()
+val USB_ENABLED = "true".toBoolean()
