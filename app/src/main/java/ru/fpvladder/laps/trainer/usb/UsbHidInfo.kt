@@ -33,6 +33,10 @@ data class UsbHidInfo(
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val serialNumber: String? = null,
+    @SerialName("product_category")
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val productCategory: UsbHidCategory = UsbHidCategory.KEYBOARD,
 ) {
     val identity: String by lazy(LazyThreadSafetyMode.NONE) {
         formatIdentity(vendorId, productId, serialNumber)
@@ -66,6 +70,7 @@ data class UsbHidInfo(
                 vendorId = device.vendorId,
                 productId = device.productId,
                 serialNumber = device.serialNumber,
+                productCategory = classifyHidDevice(device) ?: UsbHidCategory.KEYBOARD,
             )
         }
 

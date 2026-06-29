@@ -42,6 +42,7 @@ class UsbHidSession(
     private val usbManager: UsbManager,
     private val scope: CoroutineScope,
     private val isKnownIdentity: (String) -> Boolean,
+    private val reportProcessorFactory: (UsbDeviceConnection, UsbInterface) -> ReportProcessor,
     private val onStateChanged: (UsbHidSessionState) -> Unit,
     private val onKeyEvent: (UsbHidEvent) -> Unit,
 ) {
@@ -67,7 +68,7 @@ class UsbHidSession(
     private var readJob: Job? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var previousReport: ByteArray? = ByteArray(8) { 0 }
+    private var reportProcessor: ReportProcessor? = null
 
     /** Requests USB permission for this device. */
     fun requestPermission(pendingIntent: PendingIntent) {
@@ -185,6 +186,9 @@ class UsbHidSession(
                 return@launch
             }
 
+            val proc = reportProcessorFactory(connection ?: return@launch, usbInterface ?: return@launch)
+            reportProcessor = proc
+
             if (activateOnCapture) {
                 transitionTo(UsbHidSessionState.Active)
             }
@@ -217,7 +221,17 @@ class UsbHidSession(
             log("setConfiguration returned false, continuing")
         }
 
-        val (iface, ep) = findHidInterruptInEndpoint(device)
+        val productCategory = classifyHidDevice(device)
+        if (productCategory == null) {
+            log("not a supported HID device")
+            conn.close()
+            return false
+        }
+        val predicate: (UsbInterface) -> Boolean = when (productCategory) {
+            UsbHidCategory.KEYBOARD -> { iface -> iface.isHidKeyboard }
+            UsbHidCategory.JOYSTICK -> { iface -> iface.interfaceClass == UsbConstants.USB_CLASS_HID && !iface.isHidKeyboard }
+        }
+        val (iface, ep) = findHidInterruptInEndpoint(device, predicate)
         if (iface == null || ep == null) {
             log("no HID interrupt IN endpoint found")
             conn.close()
@@ -334,59 +348,8 @@ class UsbHidSession(
     }
 
     private fun processReport(report: ByteArray) {
-        if (report.size < 8) return
-
-        val prev = previousReport
-        previousReport = report.copyOf()
-        if (prev == null || prev.size < 8) return
-
-        val currentModifiers = report[0].toInt() and 0xFF
-        val previousModifiers = prev[0].toInt() and 0xFF
-
-        val events = mutableListOf<UsbHidEvent>()
-
-        // Modifier bit changes are mapped to HID usage IDs 0xE0..0xE7.
-        val changedModifiers = currentModifiers xor previousModifiers
-        for (i in 0..7) {
-            if (changedModifiers and (1 shl i) != 0) {
-                val pressed = (currentModifiers and (1 shl i)) != 0
-                events.add(
-                    UsbHidEvent(
-                        keyCode = 0xE0 + i,
-                        modifiers = currentModifiers,
-                        state = if (pressed) UsbHidEvent.STATE_DOWN else UsbHidEvent.STATE_UP,
-                    )
-                )
-            }
-        }
-
-        // Regular key changes in bytes 2..7.
-        val previousKeys = prev.sliceArray(2..7).filter { it != 0.toByte() }
-        val currentKeys = report.sliceArray(2..7).filter { it != 0.toByte() }
-
-        for (key in currentKeys) {
-            if (key !in previousKeys) {
-                events.add(
-                    UsbHidEvent(
-                        keyCode = key.toInt() and 0xFF,
-                        modifiers = currentModifiers,
-                        state = UsbHidEvent.STATE_DOWN,
-                    )
-                )
-            }
-        }
-        for (key in previousKeys) {
-            if (key !in currentKeys) {
-                events.add(
-                    UsbHidEvent(
-                        keyCode = key.toInt() and 0xFF,
-                        modifiers = currentModifiers,
-                        state = UsbHidEvent.STATE_UP,
-                    )
-                )
-            }
-        }
-
+        val processor = reportProcessor ?: return
+        val events = processor.processReport(report)
         for (event in events) {
             mainHandler.post { onKeyEvent(event) }
         }
@@ -394,20 +357,4 @@ class UsbHidSession(
 
 }
 
-/** Finds the first HID interface and its interrupt IN endpoint. Returns nulls if not found. */
-internal fun findHidInterruptInEndpoint(device: UsbDevice): Pair<UsbInterface?, UsbEndpoint?> {
-    for (i in 0 until device.interfaceCount) {
-        val iface = device.getInterface(i)
-        if (iface.interfaceClass == UsbConstants.USB_CLASS_HID) {
-            for (j in 0 until iface.endpointCount) {
-                val ep = iface.getEndpoint(j)
-                if (
-                    ep.type == UsbConstants.USB_ENDPOINT_XFER_INT && ep.direction == UsbConstants.USB_DIR_IN
-                ) {
-                    return iface to ep
-                }
-            }
-        }
-    }
-    return null to null
-}
+

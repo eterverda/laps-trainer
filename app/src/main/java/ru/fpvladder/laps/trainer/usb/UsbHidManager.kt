@@ -5,7 +5,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Handler
@@ -239,10 +241,23 @@ class UsbHidManager private constructor(context: Context) {
             )
             return
         }
-        if (!isHidKeyboard(device)) {
+        val productCategory = classifyHidDevice(device)
+        if (productCategory == null) {
             logEvent(
                 "device attached ignored",
-                "not a HID keyboard, deviceName=$deviceName, identity=$identity",
+                "not a supported HID device, deviceName=$deviceName, identity=$identity",
+            )
+            return
+        }
+        val endpointPredicate: (UsbInterface) -> Boolean = when (productCategory) {
+            UsbHidCategory.KEYBOARD -> { iface -> iface.isHidKeyboard }
+            UsbHidCategory.JOYSTICK -> { iface -> iface.interfaceClass == UsbConstants.USB_CLASS_HID && !iface.isHidKeyboard }
+        }
+        val (iface, ep) = findHidInterruptInEndpoint(device, endpointPredicate)
+        if (iface == null || ep == null) {
+            logEvent(
+                "device attached ignored",
+                "no suitable HID endpoint, deviceName=$deviceName, identity=$identity",
             )
             return
         }
@@ -268,6 +283,12 @@ class UsbHidManager private constructor(context: Context) {
             usbManager = usbManager,
             scope = managerScope,
             isKnownIdentity = ::isKnown,
+            reportProcessorFactory = { conn, iface ->
+                when (productCategory) {
+                    UsbHidCategory.KEYBOARD -> KeyboardReportProcessor()
+                    UsbHidCategory.JOYSTICK -> JoystickButtonReportProcessor(conn, iface)
+                }
+            },
             onStateChanged = { state ->
                 postToMain {
                     if (state == UsbHidSessionState.Released) {
@@ -419,11 +440,6 @@ class UsbHidManager private constructor(context: Context) {
 
     private fun removeFromBlacklist(deviceName: String) {
         blacklistedDeviceNames.remove(deviceName)
-    }
-
-    private fun isHidKeyboard(device: UsbDevice): Boolean {
-        val (iface, endpoint) = findHidInterruptInEndpoint(device)
-        return iface != null && endpoint != null
     }
 
     private fun extractDevice(intent: Intent): UsbDevice? {

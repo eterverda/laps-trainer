@@ -51,6 +51,7 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import kotlinx.coroutines.flow.SharedFlow
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
+import ru.fpvladder.laps.trainer.usb.UsbHidCategory
 import ru.fpvladder.laps.trainer.usb.UsbHidAction
 import ru.fpvladder.laps.trainer.usb.UsbHidBinding
 import ru.fpvladder.laps.trainer.usb.UsbHidEvent
@@ -76,6 +77,7 @@ private fun Page.toInt(): Int = when (this) {
 @Composable
 fun KeyboardSetupDialog(
     config: UsbHidConfig,
+    productCategory: UsbHidCategory = config.info.productCategory,
     keyEvents: SharedFlow<UsbHidEvent>,
     showDeletePage: Boolean = false,
     allowEmptySave: Boolean = false,
@@ -89,23 +91,23 @@ fun KeyboardSetupDialog(
             config.bindings.associate { it.action to PressedKey(it.keyCode, it.modifiers) }
         )
     }
-    var tempKey by remember { mutableStateOf<PressedKey?>(null) }
     var pressedKeys by remember { mutableStateOf(emptySet<PressedKey>()) }
+    var lastPressedKey by remember { mutableStateOf<PressedKey?>(null) }
 
     LaunchedEffect(Unit) {
+        pressedKeys = emptySet()
+        lastPressedKey = null
         keyEvents.collect { event ->
             val key = PressedKey(event.keyCode, event.modifiers)
             when (event.state) {
                 UsbHidEvent.STATE_DOWN -> {
                     pressedKeys = pressedKeys + key
-                    if (currentPage is Page.ActionPage) {
-                        tempKey = key
-                    }
+                    lastPressedKey = key
                 }
                 UsbHidEvent.STATE_UP -> {
                     pressedKeys = pressedKeys - key
-                    if (currentPage is Page.ActionPage) {
-                        tempKey = key
+                    if (lastPressedKey == key) {
+                        lastPressedKey = null
                     }
                 }
             }
@@ -155,15 +157,16 @@ fun KeyboardSetupDialog(
                     when (state) {
                         -2 -> DeletePage(
                             fillMaxHeight = fillMaxHeight,
+                            productCategory = productCategory,
                             onDelete = onDelete,
                             onCancel = onCancel,
                         )
                         -1 -> MainPage(
                             bindings = bindings,
                             pressedKeys = pressedKeys,
+                            productCategory = productCategory,
                             allowEmptySave = allowEmptySave,
                             onActionClick = { action ->
-                                tempKey = bindings[action]
                                 currentPage = Page.ActionPage(action)
                             },
                             onSave = {
@@ -181,21 +184,19 @@ fun KeyboardSetupDialog(
                             val action = UsbHidAction.entries[state]
                             DetailPage(
                                 action = action,
-                                key = tempKey,
+                                bindings = bindings,
+                                lastPressedKey = lastPressedKey,
                                 pressedKeys = pressedKeys,
+                                productCategory = productCategory,
                                 fillMaxHeight = fillMaxHeight,
-                                onClearKey = { tempKey = null },
-                                onApply = {
-                                    val key = tempKey
-                                    val currentAction = (currentPage as? Page.ActionPage)?.action
-                                    if (currentAction != null) {
-                                        bindings = bindings.toMutableMap().apply {
-                                            if (key == null) {
-                                                remove(currentAction)
-                                            } else {
-                                                entries.removeIf { it.value == key }
-                                                put(currentAction, key)
-                                            }
+                                onClearKey = {},
+                                onApply = { key ->
+                                    bindings = bindings.toMutableMap().apply {
+                                        if (key == null) {
+                                            remove(action)
+                                        } else {
+                                            entries.removeIf { it.value == key }
+                                            put(action, key)
                                         }
                                     }
                                     currentPage = Page.Main
@@ -214,6 +215,7 @@ fun KeyboardSetupDialog(
 private fun MainPage(
     bindings: Map<UsbHidAction, PressedKey>,
     pressedKeys: Set<PressedKey>,
+    productCategory: UsbHidCategory,
     allowEmptySave: Boolean,
     onActionClick: (UsbHidAction) -> Unit,
     onSave: () -> Unit,
@@ -229,6 +231,7 @@ private fun MainPage(
                 action = action,
                 key = key,
                 isPressed = key in pressedKeys,
+                productCategory = productCategory,
                 onClick = { onActionClick(action) },
             )
         }
@@ -246,14 +249,28 @@ private fun MainPage(
 @Composable
 private fun DetailPage(
     action: UsbHidAction,
-    key: PressedKey?,
+    bindings: Map<UsbHidAction, PressedKey>,
+    lastPressedKey: PressedKey?,
     pressedKeys: Set<PressedKey>,
+    productCategory: UsbHidCategory,
     fillMaxHeight: Boolean,
     onClearKey: () -> Unit,
-    onApply: () -> Unit,
+    onApply: (PressedKey?) -> Unit,
     onCancel: () -> Unit,
 ) {
-    val isAnyPressed = pressedKeys.isNotEmpty()
+    val currentBinding = bindings[action]
+    var candidateKey by remember(action) { mutableStateOf(currentBinding) }
+    var pressedKeysAtOpen by remember(action) { mutableStateOf(pressedKeys) }
+    val displayKey = lastPressedKey ?: candidateKey
+    val isAnyPressed = lastPressedKey != null
+
+    LaunchedEffect(pressedKeys, lastPressedKey) {
+        pressedKeysAtOpen = pressedKeysAtOpen.intersect(pressedKeys)
+        val newKeys = pressedKeys - pressedKeysAtOpen
+        if (lastPressedKey != null && lastPressedKey in newKeys) {
+            candidateKey = lastPressedKey
+        }
+    }
 
     Column(
         modifier = if (fillMaxHeight) {
@@ -307,14 +324,17 @@ private fun DetailPage(
                             .padding(vertical = 12.dp, horizontal = 24.dp),
                     ) {
                         Text(
-                            text = key?.format() ?: "   ---   ",
+                            text = displayKey?.format(productCategory) ?: if (productCategory == UsbHidCategory.JOYSTICK) "  --  " else "   ---   ",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 24.sp,
                             color = if (isAnyPressed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    if (key != null) {
-                        IconButton(onClick = onClearKey) {
+                    if (displayKey != null) {
+                        IconButton(onClick = {
+                            candidateKey = null
+                            onClearKey()
+                        }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Backspace,
                                 contentDescription = null,
@@ -330,7 +350,10 @@ private fun DetailPage(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Нажмите кнопку на клавиатуре",
+                text = when (productCategory) {
+                    UsbHidCategory.KEYBOARD -> "Нажмите кнопку на клавиатуре"
+                    UsbHidCategory.JOYSTICK -> "Нажмите кнопку на джойстике"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -340,7 +363,7 @@ private fun DetailPage(
             dismissText = "Отмена",
             confirmText = "Применить",
             onDismiss = onCancel,
-            onConfirm = onApply,
+            onConfirm = { onApply(candidateKey) },
         )
     }
 }
@@ -348,6 +371,7 @@ private fun DetailPage(
 @Composable
 private fun DeletePage(
     fillMaxHeight: Boolean,
+    productCategory: UsbHidCategory,
     onDelete: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -375,7 +399,10 @@ private fun DeletePage(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "USB-клавиатура отключена",
+                text = when (productCategory) {
+                    UsbHidCategory.KEYBOARD -> "USB-клавиатура отключена"
+                    UsbHidCategory.JOYSTICK -> "USB-джойстик отключен"
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -399,6 +426,7 @@ private fun MainActionRow(
     action: UsbHidAction,
     key: PressedKey?,
     isPressed: Boolean,
+    productCategory: UsbHidCategory,
     onClick: () -> Unit,
 ) {
     Row(
@@ -424,7 +452,7 @@ private fun MainActionRow(
             )
         }
         Text(
-            text = key?.format() ?: "   ---   ",
+            text = key?.format(productCategory) ?: if (productCategory == UsbHidCategory.JOYSTICK) "  --  " else "   ---   ",
             fontFamily = FontFamily.Monospace,
             fontSize = 16.sp,
             color = if (isPressed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -520,8 +548,15 @@ private fun FixedSizeAnimatedContent(
 
 private const val AnimatedContentSlot = "animated_content"
 
-private fun PressedKey.format(): String =
-    "0x%02X 0x%02X".format(modifiers and 0xFF, keyCode and 0xFF)
+private fun PressedKey.format(productCategory: UsbHidCategory): String = when (productCategory) {
+    UsbHidCategory.KEYBOARD -> "0x%02X 0x%02X".format(modifiers and 0xFF, keyCode and 0xFF)
+    UsbHidCategory.JOYSTICK -> when (modifiers and 0xFF) {
+        0x01 -> "max %02d".format(keyCode and 0xFF)
+        0x02 -> "min %02d".format(keyCode and 0xFF)
+        0x03 -> "mid %02d".format(keyCode and 0xFF)
+        else -> "btn %02d".format(keyCode and 0xFF)
+    }
+}
 
 @Composable
 private fun SectionDivider() {
