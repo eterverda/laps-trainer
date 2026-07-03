@@ -576,9 +576,9 @@ fun AppRoot(
                                 else -> "Стоп"
                             }
                             val holdDurationMs = when {
-                                !isOnFlight || isPostFlight -> if (isMuted) 1800 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS).toInt()
+                                !isOnFlight || isPostFlight -> if (isMuted) 1800 else (3 * STAGE_DURATION_MS + 2 * STAGE_DELAY_MS - 405).toInt()
                                 isManualPreStart || isPreFixedOrRandom -> 0
-                                else -> 1200
+                                else -> 900
                             }
 
 
