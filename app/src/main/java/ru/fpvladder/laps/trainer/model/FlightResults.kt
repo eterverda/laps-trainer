@@ -95,28 +95,30 @@ private fun computeFlightRecords(
         )
     }
 
-    if (validLaps.size >= 2) {
-        val size = minOf(2, validLaps.size)
-        val windowLaps = minWindowLaps(validLaps, size)
-        records.add(
-            Record(
-                count = size,
-                kind = Record.Kind.BEST_2,
-                intervals = windowLaps.map { it.interval }
+    if (completedLaps.size >= 2) {
+        val size = 2
+        minWindowLaps(completedLaps, size)?.let { windowLaps ->
+            records.add(
+                Record(
+                    count = size,
+                    kind = Record.Kind.BEST_2,
+                    intervals = windowLaps.map { it.interval }
+                )
             )
-        )
+        }
     }
 
-    if (validLaps.size >= 3) {
-        val size = minOf(3, validLaps.size)
-        val windowLaps = minWindowLaps(validLaps, size)
-        records.add(
-            Record(
-                count = size,
-                kind = Record.Kind.BEST_3,
-                intervals = windowLaps.map { it.interval }
+    if (completedLaps.size >= 3) {
+        val size = 3
+        minWindowLaps(completedLaps, size)?.let { windowLaps ->
+            records.add(
+                Record(
+                    count = size,
+                    kind = Record.Kind.BEST_3,
+                    intervals = windowLaps.map { it.interval }
+                )
             )
-        )
+        }
     }
 
     if (completedLaps.isNotEmpty()) {
@@ -145,21 +147,8 @@ private fun computeFlightCounters(laps: List<Lap>): List<Counter> {
 private fun minWindowLaps(
     laps: List<Lap>,
     size: Int
-): List<Lap> {
-    if (size >= laps.size) {
-        return laps
-    }
-    var minSum = Long.MAX_VALUE
-    var minIndex = 0
-    for (i in 0..laps.size - size) {
-        var sum = 0L
-        for (j in 0 until size) {
-            sum += laps[i + j].durationMs
-        }
-        if (sum < minSum) {
-            minSum = sum
-            minIndex = i
-        }
-    }
-    return laps.subList(minIndex, minIndex + size)
+): List<Lap>? {
+    return laps.windowed(size)
+        .filter { window -> window.all { it.success } }
+        .minByOrNull { window -> window.sumOf { it.durationMs } }
 }
