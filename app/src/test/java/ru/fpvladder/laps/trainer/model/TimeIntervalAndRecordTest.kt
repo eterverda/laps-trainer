@@ -116,6 +116,58 @@ class TimeIntervalAndRecordTest {
     }
 
     @Test
+    fun `allSuccess is true when intervals count matches and intervals are consecutive`() {
+        val record = Record(
+            count = 3,
+            kind = Record.Kind.BEST_3,
+            intervals = listOf(
+                TimeInterval(0L, 12000L),
+                TimeInterval(12000L, 25000L),
+                TimeInterval(25000L, 37000L)
+            )
+        )
+        assertEquals(true, record.allSuccess)
+    }
+
+    @Test
+    fun `allSuccess is false when intervals count does not match count`() {
+        val record = Record(
+            count = 2,
+            kind = Record.Kind.MOST,
+            intervals = listOf(
+                TimeInterval(0L, 12000L),
+                TimeInterval(12000L, 25000L),
+                TimeInterval(25000L, 37000L)
+            )
+        )
+        assertEquals(false, record.allSuccess)
+    }
+
+    @Test
+    fun `allSuccess is false when there is a gap between intervals`() {
+        val record = Record(
+            count = 3,
+            kind = Record.Kind.BEST_3,
+            intervals = listOf(
+                TimeInterval(0L, 12000L),
+                TimeInterval(25000L, 37000L),
+                TimeInterval(37000L, 50000L)
+            )
+        )
+        assertEquals(false, record.allSuccess)
+    }
+
+    @Test
+    fun `allSuccess is true for single interval record`() {
+        val record = Record(
+            count = 1,
+            kind = Record.Kind.BEST_1,
+            intervals = listOf(TimeInterval(0L, 12000L))
+        )
+        assertEquals(true, record.allSuccess)
+    }
+
+    @Test
     fun `Results Record isBetterThan uses rawTimeMs`() {
         val a = Record(
             count = 2,

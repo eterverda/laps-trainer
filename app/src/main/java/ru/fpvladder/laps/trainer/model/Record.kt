@@ -12,6 +12,16 @@ data class Record(
 
     fun rawTimeMs(): Long = intervals.sumOf { it.durationMs }
 
+    val allSuccess: Boolean
+        get() {
+            if (intervals.size != count) return false
+            if (intervals.size <= 1) return true
+            for (i in 0 until intervals.size - 1) {
+                if (intervals[i].endMs != intervals[i + 1].startMs) return false
+            }
+            return true
+        }
+
     fun isBetterThan(other: Record): Boolean {
         return count > other.count || (count == other.count && rawTimeMs() < other.rawTimeMs())
     }

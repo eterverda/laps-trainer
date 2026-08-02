@@ -3,6 +3,7 @@ package ru.fpvladder.laps.trainer.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import ru.fpvladder.laps.trainer.model.Rules.Team.SwapMode
+import ru.fpvladder.laps.trainer.settings.CONSECUTIVE_BEST_ENABLED
 
 @Serializable
 sealed class Flight {
@@ -16,7 +17,7 @@ sealed class Flight {
         override val laps: List<Lap>,
         override val stopReason: StopReason,
     ) : Flight() {
-        override val results: Results by lazy { computeFlightResults(laps) }
+        override val results: Results by lazy { computeFlightResults(laps, CONSECUTIVE_BEST_ENABLED) }
     }
 
     @Serializable
@@ -29,7 +30,7 @@ sealed class Flight {
     ) : Flight() {
         override val laps: List<Lap> by lazy { headLaps + tailLaps }
         override val results: Results by lazy { computeTeamCommonResults(laps) }
-        val headResults: Results by lazy { computeFlightResults(headLaps) }
-        val tailResults: Results by lazy { computeFlightResults(tailLaps) }
+        val headResults: Results by lazy { computeFlightResults(headLaps, CONSECUTIVE_BEST_ENABLED) }
+        val tailResults: Results by lazy { computeFlightResults(tailLaps, CONSECUTIVE_BEST_ENABLED) }
     }
 }

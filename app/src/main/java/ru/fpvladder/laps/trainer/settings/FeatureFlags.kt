@@ -8,3 +8,4 @@ package ru.fpvladder.laps.trainer.settings
  */
 val TEAM_HOLESHOT_ENABLED = "false".toBoolean()
 val USB_ENABLED = "true".toBoolean()
+val CONSECUTIVE_BEST_ENABLED = "true".toBoolean()
