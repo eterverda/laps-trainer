@@ -6,4 +6,4 @@ package ru.fpvladder.laps.trainer.viewmodel
  * Effective lap success is decided by the last mark: [ERROR] means failed,
  * [FIX] or no marks means successful.
  */
-enum class LapMark { ERROR, FIX }
+enum class LapMark { ERROR, FIX, PITSTOP }

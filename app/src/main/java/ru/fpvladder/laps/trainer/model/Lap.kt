@@ -9,6 +9,7 @@ data class Lap(
     @SerialName("interval_ms")
     val interval: TimeInterval,
     val success: Boolean,
+    val pitstop: Boolean = false,
 ) {
     val startMs: Long get() = interval.startMs
     val endMs: Long get() = interval.endMs

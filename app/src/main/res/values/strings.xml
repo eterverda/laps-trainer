@@ -23,6 +23,13 @@
         <item quantity="other">%d вылетов</item>
     </plurals>
 
+    <plurals name="pitstops">
+        <item quantity="one">%d питстоп</item>
+        <item quantity="few">%d питстопа</item>
+        <item quantity="many">%d питстопов</item>
+        <item quantity="other">%d питстопов</item>
+    </plurals>
+
     <plurals name="times">
         <item quantity="one">%d раз</item>
         <item quantity="few">%d раза</item>

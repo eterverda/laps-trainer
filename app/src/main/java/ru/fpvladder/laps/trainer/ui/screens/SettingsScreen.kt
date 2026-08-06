@@ -95,6 +95,7 @@ fun SettingsScreen(
     onConfigureKeyboard: (UsbHidConfig) -> Unit = {},
     useLapButton: Boolean,
     useErrorFixButtons: Boolean,
+    usePitstopButton: Boolean = false,
     appTheme: AppThemeMode,
     darkThemeVariant: DarkThemeVariant,
     timerPrecision: TimerPrecision,
@@ -105,6 +106,7 @@ fun SettingsScreen(
     onUsbKeyboardChange: (Boolean) -> Unit,
     onUseLapButtonChange: (Boolean) -> Unit,
     onUseErrorFixButtonsChange: (Boolean) -> Unit,
+    onUsePitstopButtonChange: (Boolean) -> Unit = {},
     onAppThemeChange: (AppThemeMode) -> Unit,
     onDarkThemeVariantChange: (DarkThemeVariant) -> Unit,
     onTimerPrecisionChange: (TimerPrecision) -> Unit,
@@ -367,6 +369,51 @@ fun SettingsScreen(
                     AnimatedVisibility(visible = useErrorFixButtons) {
                         Text(
                             text = "Ошибка — пилот сошел с траектории. Исправил — пилот вернулся на траекторию",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    ListItem(
+                        headlineContent = {
+                            FlowRow(
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    "Кнопка ",
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+                                InlineButton(
+                                    text = "ПИТСТОП",
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_pitstop),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                )
+                                Text(
+                                    if (usePitstopButton) " видна" else " скрыта",
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+                            }
+                        },
+                        trailingContent = {
+                            CompactSwitch(
+                                checked = usePitstopButton,
+                                onCheckedChange = onUsePitstopButtonChange
+                            )
+                        }
+                    )
+                    AnimatedVisibility(visible = usePitstopButton) {
+                        Text(
+                            text = "В командной тренировке отмечайте круги с питстопом чтобы считать их отдельно",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
@@ -835,5 +882,6 @@ private fun UsbHidAction.label(): String = when (this) {
     UsbHidAction.LAP -> "КРУГ"
     UsbHidAction.ERROR -> "ОШИБКА"
     UsbHidAction.FIX -> "ИСПРАВИЛ"
+    UsbHidAction.PITSTOP -> "ПИТСТОП"
     UsbHidAction.UNDO -> "ЗАБОЙ"
 }

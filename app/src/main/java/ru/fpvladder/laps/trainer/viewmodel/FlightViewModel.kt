@@ -145,6 +145,15 @@ class FlightViewModel : ViewModel() {
         _stopReason.value = reason
         timerJob?.cancel()
         _currentLap.value = null
+        val pitstopIndices = actionLog.filterIsInstance<FlightAction.MarkAdded>()
+            .filter { it.mark == LapMark.PITSTOP }
+            .map { it.lapIndex }
+            .toSet()
+        if (pitstopIndices.isNotEmpty()) {
+            _laps.value = _laps.value.mapIndexed { index, lap ->
+                if (index in pitstopIndices) lap.copy(pitstop = true) else lap
+            }
+        }
         actionLog.clear()
         _lapMarks.value = emptyMap()
 
@@ -237,10 +246,18 @@ class FlightViewModel : ViewModel() {
     fun addFixToLastLap() {
         if (_flightPhase.value != FlightPhase.FLIGHT) return
         val current = _currentLap.value ?: return
-        if (marksOf(_laps.value.size).lastOrNull() != LapMark.ERROR) return
+        if (successOf(_laps.value.size)) return
         actionLog += FlightAction.MarkAdded(_laps.value.size, LapMark.FIX)
         publishMarks()
         _currentLap.value = current.copy(success = true)
+    }
+
+    fun addPitstopToLastLap() {
+        if (_flightPhase.value != FlightPhase.FLIGHT) return
+        _currentLap.value ?: return
+        if (marksOf(_laps.value.size).lastOrNull() == LapMark.PITSTOP) return
+        actionLog += FlightAction.MarkAdded(_laps.value.size, LapMark.PITSTOP)
+        publishMarks()
     }
 
     fun undoLastAction() {
@@ -248,7 +265,7 @@ class FlightViewModel : ViewModel() {
         when (val action = actionLog.removeLastOrNull()) {
             null -> return
             is FlightAction.MarkAdded -> {
-                val success = marksOf(action.lapIndex).lastOrNull() != LapMark.ERROR
+                val success = successOf(action.lapIndex)
                 if (action.lapIndex >= _laps.value.size) {
                     _currentLap.value = _currentLap.value?.copy(success = success)
                 } else {
@@ -284,6 +301,9 @@ class FlightViewModel : ViewModel() {
         actionLog.filterIsInstance<FlightAction.MarkAdded>()
             .filter { it.lapIndex == lapIndex }
             .map { it.mark }
+
+    private fun successOf(lapIndex: Int): Boolean =
+        marksOf(lapIndex).filter { it != LapMark.PITSTOP }.lastOrNull() != LapMark.ERROR
 
     private fun publishMarks() {
         _lapMarks.value = actionLog.filterIsInstance<FlightAction.MarkAdded>()

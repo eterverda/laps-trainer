@@ -579,5 +579,6 @@ private fun UsbHidAction.label(): String = when (this) {
     UsbHidAction.LAP -> "КРУГ"
     UsbHidAction.ERROR -> "ОШИБКА"
     UsbHidAction.FIX -> "ИСПРАВИЛ"
+    UsbHidAction.PITSTOP -> "ПИТСТОП"
     UsbHidAction.UNDO -> "ЗАБОЙ"
 }

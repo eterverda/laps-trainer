@@ -25,6 +25,7 @@ class SettingsDataStore(private val context: Context) {
         private val START_SIGNAL_KEY = stringPreferencesKey("start_signal")
         private val USE_LAP_BUTTON_KEY = booleanPreferencesKey("use_lap_button")
         private val USE_ERROR_FIX_BUTTONS_KEY = booleanPreferencesKey("use_error_fix_buttons")
+        private val USE_PITSTOP_BUTTON_KEY = booleanPreferencesKey("use_pitstop_button")
     }
 
     val channelGrid: Flow<ChannelGrid> = context.dataStore.data.map { prefs ->
@@ -172,6 +173,16 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setUseErrorFixButtons(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[USE_ERROR_FIX_BUTTONS_KEY] = enabled
+        }
+    }
+
+    val usePitstopButton: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[USE_PITSTOP_BUTTON_KEY] ?: false
+    }
+
+    suspend fun setUsePitstopButton(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[USE_PITSTOP_BUTTON_KEY] = enabled
         }
     }
 }

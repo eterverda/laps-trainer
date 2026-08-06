@@ -173,6 +173,7 @@ fun AppRoot(
     val effectiveStartSignal by settingsViewModel.effectiveStartSignal.collectAsState()
     val useLapButton by settingsViewModel.useLapButton.collectAsState()
     val useErrorFixButtons by settingsViewModel.useErrorFixButtons.collectAsState()
+    val usePitstopButton by settingsViewModel.usePitstopButton.collectAsState()
     val flightPhase by flightViewModel.flightPhase.collectAsState()
     val elapsedMs by flightViewModel.elapsedMs.collectAsState()
 
@@ -185,6 +186,7 @@ fun AppRoot(
     val lapButtonPressed = remember { MutableStateFlow(false) }
     val errorButtonPressed = remember { MutableStateFlow(false) }
     val fixButtonPressed = remember { MutableStateFlow(false) }
+    val pitstopButtonPressed = remember { MutableStateFlow(false) }
     var editingKeyboardConfig by remember { mutableStateOf<UsbHidConfig?>(null) }
 
     LaunchedEffect(isUsbKeyboardEnabled) {
@@ -225,6 +227,15 @@ fun AppRoot(
                         fixButtonPressed.value = isDown
                     } else if (isDown) {
                         flightViewModel.addFixToLastLap()
+                    }
+                }
+                UsbHidAction.PITSTOP -> {
+                    val pitstopButtonVisible = settingsViewModel.usePitstopButton.value &&
+                            trainingViewModel.selectedTraining.value is Training.Team
+                    if (pilotViewModel.currentScreen.value == AppScreen.Flight && pitstopButtonVisible) {
+                        pitstopButtonPressed.value = isDown
+                    } else if (isDown) {
+                        flightViewModel.addPitstopToLastLap()
                     }
                 }
                 UsbHidAction.UNDO -> {
@@ -402,6 +413,7 @@ fun AppRoot(
                         onConfigureKeyboard = { editingKeyboardConfig = it },
                         useLapButton = useLapButton,
                         useErrorFixButtons = useErrorFixButtons,
+                        usePitstopButton = usePitstopButton,
                         appTheme = appTheme,
                         darkThemeVariant = darkThemeVariant,
                         timerPrecision = timerPrecision,
@@ -412,6 +424,7 @@ fun AppRoot(
                         onUsbKeyboardChange = { settingsViewModel.setUsbKeyboardEnabled(it) },
                         onUseLapButtonChange = { settingsViewModel.setUseLapButton(it) },
                         onUseErrorFixButtonsChange = { settingsViewModel.setUseErrorFixButtons(it) },
+                        onUsePitstopButtonChange = { settingsViewModel.setUsePitstopButton(it) },
                         onAppThemeChange = { settingsViewModel.setAppTheme(it) },
                         onDarkThemeVariantChange = { settingsViewModel.setDarkThemeVariant(it) },
                         onTimerPrecisionChange = { settingsViewModel.setTimerPrecision(it) },
@@ -455,14 +468,17 @@ fun AppRoot(
                                     onRotatePilotsForNextFlightChange = { flightViewModel.setRotatePilotsForNextFlight(it) },
                                     useLapButton = useLapButton,
                                     useErrorFixButtons = useErrorFixButtons,
+                                    usePitstopButton = usePitstopButton && selectedTraining is Training.Team,
                                     lapButtonPressed = lapButtonPressed,
                                     errorButtonPressed = errorButtonPressed,
                                     fixButtonPressed = fixButtonPressed,
+                                    pitstopButtonPressed = pitstopButtonPressed,
                                     onLapClick = {
                                         flightViewModel.addLap(isMuted)
                                     },
                                     onErrorClick = { flightViewModel.addErrorToLastLap() },
                                     onFixClick = { flightViewModel.addFixToLastLap() },
+                                    onPitstopClick = { flightViewModel.addPitstopToLastLap() },
                                     timerPrecision = timerPrecision,
                                     lapMarks = lapMarks,
                                     pilot = selectedTraining.pilot,

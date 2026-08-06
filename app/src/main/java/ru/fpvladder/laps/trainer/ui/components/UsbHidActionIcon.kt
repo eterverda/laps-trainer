@@ -19,6 +19,7 @@ fun UsbHidActionIcon(
         UsbHidAction.LAP -> Icon(painterResource(R.drawable.ic_circle), null, modifier, tint)
         UsbHidAction.ERROR -> Icon(painterResource(R.drawable.ic_cross), null, modifier, tint)
         UsbHidAction.FIX -> Icon(painterResource(R.drawable.ic_square), null, modifier, tint)
+        UsbHidAction.PITSTOP -> Icon(painterResource(R.drawable.ic_pitstop), null, modifier, tint)
         UsbHidAction.UNDO -> Icon(painterResource(R.drawable.ic_backspace), null, modifier, tint)
     }
 }

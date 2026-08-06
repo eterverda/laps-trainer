@@ -14,7 +14,7 @@ sealed class Counter {
             return copy(count = count + other.count)
         }
 
-        enum class Kind { FLIGHT, LAP }
+        enum class Kind { FLIGHT, LAP, PITSTOP }
     }
 
     data class Custom(
@@ -50,9 +50,9 @@ sealed class Counter {
     }
 }
 
-fun Counter.same(other: Counter): Boolean = when (val k = kind) {
-    Counter.Builtin.Kind.FLIGHT, Counter.Builtin.Kind.LAP -> other.kind == k
-    null -> (this as Counter.Custom).text == (other as Counter.Custom).text
+fun Counter.same(other: Counter): Boolean = when (this) {
+    is Counter.Builtin -> other is Counter.Builtin && kind == other.kind
+    is Counter.Custom -> other is Counter.Custom && text == other.text
 }
 
 internal fun MutableList<Counter>.mergeIn(counter: Counter) {

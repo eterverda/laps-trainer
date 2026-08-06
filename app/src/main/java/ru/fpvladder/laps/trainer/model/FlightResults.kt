@@ -63,15 +63,24 @@ internal fun computeTeamCommonResults(laps: List<Lap>): Results {
         )
     }
 
-    val counters = if (validLaps.isEmpty()) {
-        emptyList()
-    } else {
-        listOf(
-            Counter.Builtin(
-                count = validLaps.size,
-                kind = Counter.Builtin.Kind.LAP
+    val counters = buildList {
+        if (validLaps.isNotEmpty()) {
+            add(
+                Counter.Builtin(
+                    count = validLaps.size,
+                    kind = Counter.Builtin.Kind.LAP
+                )
             )
-        )
+        }
+        val pitstopCount = laps.count { it.pitstop }
+        if (pitstopCount > 0) {
+            add(
+                Counter.Builtin(
+                    count = pitstopCount,
+                    kind = Counter.Builtin.Kind.PITSTOP
+                )
+            )
+        }
     }
 
     return Results(records, counters)

@@ -66,6 +66,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val useErrorFixButtons: StateFlow<Boolean> = dataStore.useErrorFixButtons
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val usePitstopButton: StateFlow<Boolean> = dataStore.usePitstopButton
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     fun setChannelGrid(grid: ChannelGrid) {
         viewModelScope.launch {
             dataStore.setChannelGrid(grid)
@@ -123,6 +126,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setUseErrorFixButtons(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.setUseErrorFixButtons(enabled)
+        }
+    }
+
+    fun setUsePitstopButton(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.setUsePitstopButton(enabled)
         }
     }
 }

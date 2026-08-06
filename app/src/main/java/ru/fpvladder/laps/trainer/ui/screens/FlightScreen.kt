@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -84,12 +83,15 @@ fun FlightScreen(
     onRotatePilotsForNextFlightChange: (Boolean) -> Unit = {},
     useLapButton: Boolean = false,
     useErrorFixButtons: Boolean = false,
+    usePitstopButton: Boolean = false,
     lapButtonPressed: StateFlow<Boolean>? = null,
     errorButtonPressed: StateFlow<Boolean>? = null,
     fixButtonPressed: StateFlow<Boolean>? = null,
+    pitstopButtonPressed: StateFlow<Boolean>? = null,
     onLapClick: () -> Unit = {},
     onErrorClick: () -> Unit = {},
     onFixClick: () -> Unit = {},
+    onPitstopClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
     showRecordKinds: Set<Record.Kind> = emptySet(),
     holeshotEnabled: Boolean = false,
@@ -115,7 +117,7 @@ fun FlightScreen(
             label = "timer_reveal"
         )
 
-        val buttonsVisible = flightPhase == FlightPhase.FLIGHT && (useLapButton || useErrorFixButtons)
+        val buttonsVisible = flightPhase == FlightPhase.FLIGHT && (useLapButton || useErrorFixButtons || usePitstopButton)
         val bottomOverlapPx = with(density) { 0.dp.roundToPx() }
         val targetBottomPadding = if (buttonsVisible) (buttonsHeight - bottomOverlapPx).coerceAtLeast(0) else 0
         val animatedBottomPadding by animateDpAsState(
@@ -228,7 +230,7 @@ fun FlightScreen(
             }
         }
 
-        if (useLapButton || useErrorFixButtons) {
+        if (useLapButton || useErrorFixButtons || usePitstopButton) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -304,6 +306,28 @@ fun FlightScreen(
                                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                         holdDurationMs = 0,
                                         controllerPressed = fixButtonPressed,
+                                    )
+                                }
+                            }
+                            if (usePitstopButton) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    HoldButton(
+                                        onConfirm = onPitstopClick,
+                                        text = "ПИТСТОП",
+                                        iconRes = R.drawable.ic_pitstop,
+                                        iconSize = 24.dp,
+                                        textSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        contentSpacing = 8.dp,
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                        holdDurationMs = 0,
+                                        controllerPressed = pitstopButtonPressed,
                                     )
                                 }
                             }

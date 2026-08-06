@@ -9,5 +9,6 @@ enum class UsbHidAction {
     LAP,
     ERROR,
     FIX,
+    PITSTOP,
     UNDO,
 }
