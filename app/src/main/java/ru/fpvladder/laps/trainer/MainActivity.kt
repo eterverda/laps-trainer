@@ -174,6 +174,7 @@ fun AppRoot(
     val useLapButton by settingsViewModel.useLapButton.collectAsState()
     val useErrorFixButtons by settingsViewModel.useErrorFixButtons.collectAsState()
     val usePitstopButton by settingsViewModel.usePitstopButton.collectAsState()
+    val useVehicleLostButton by settingsViewModel.useVehicleLostButton.collectAsState()
     val flightPhase by flightViewModel.flightPhase.collectAsState()
     val elapsedMs by flightViewModel.elapsedMs.collectAsState()
 
@@ -187,6 +188,7 @@ fun AppRoot(
     val errorButtonPressed = remember { MutableStateFlow(false) }
     val fixButtonPressed = remember { MutableStateFlow(false) }
     val pitstopButtonPressed = remember { MutableStateFlow(false) }
+    val vehicleLostButtonPressed = remember { MutableStateFlow(false) }
     var editingKeyboardConfig by remember { mutableStateOf<UsbHidConfig?>(null) }
 
     LaunchedEffect(isUsbKeyboardEnabled) {
@@ -236,6 +238,13 @@ fun AppRoot(
                         pitstopButtonPressed.value = isDown
                     } else if (isDown) {
                         flightViewModel.addPitstopToLastLap()
+                    }
+                }
+                UsbHidAction.VEHICLE_LOST -> {
+                    if (pilotViewModel.currentScreen.value == AppScreen.Flight && settingsViewModel.useVehicleLostButton.value) {
+                        vehicleLostButtonPressed.value = isDown
+                    } else if (isDown) {
+                        flightViewModel.addVehicleLostToLastLap(settingsViewModel.isMuted.value)
                     }
                 }
                 UsbHidAction.UNDO -> {
@@ -414,6 +423,7 @@ fun AppRoot(
                         useLapButton = useLapButton,
                         useErrorFixButtons = useErrorFixButtons,
                         usePitstopButton = usePitstopButton,
+                        useVehicleLostButton = useVehicleLostButton,
                         appTheme = appTheme,
                         darkThemeVariant = darkThemeVariant,
                         timerPrecision = timerPrecision,
@@ -425,6 +435,7 @@ fun AppRoot(
                         onUseLapButtonChange = { settingsViewModel.setUseLapButton(it) },
                         onUseErrorFixButtonsChange = { settingsViewModel.setUseErrorFixButtons(it) },
                         onUsePitstopButtonChange = { settingsViewModel.setUsePitstopButton(it) },
+                        onUseVehicleLostButtonChange = { settingsViewModel.setUseVehicleLostButton(it) },
                         onAppThemeChange = { settingsViewModel.setAppTheme(it) },
                         onDarkThemeVariantChange = { settingsViewModel.setDarkThemeVariant(it) },
                         onTimerPrecisionChange = { settingsViewModel.setTimerPrecision(it) },
@@ -469,16 +480,19 @@ fun AppRoot(
                                     useLapButton = useLapButton,
                                     useErrorFixButtons = useErrorFixButtons,
                                     usePitstopButton = usePitstopButton && selectedTraining is Training.Team,
+                                    useVehicleLostButton = useVehicleLostButton,
                                     lapButtonPressed = lapButtonPressed,
                                     errorButtonPressed = errorButtonPressed,
                                     fixButtonPressed = fixButtonPressed,
                                     pitstopButtonPressed = pitstopButtonPressed,
+                                    vehicleLostButtonPressed = vehicleLostButtonPressed,
                                     onLapClick = {
                                         flightViewModel.addLap(isMuted)
                                     },
                                     onErrorClick = { flightViewModel.addErrorToLastLap() },
                                     onFixClick = { flightViewModel.addFixToLastLap() },
                                     onPitstopClick = { flightViewModel.addPitstopToLastLap() },
+                                    onVehicleLostClick = { flightViewModel.addVehicleLostToLastLap(isMuted) },
                                     timerPrecision = timerPrecision,
                                     lapMarks = lapMarks,
                                     pilot = selectedTraining.pilot,

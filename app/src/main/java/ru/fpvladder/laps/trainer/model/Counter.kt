@@ -14,7 +14,7 @@ sealed class Counter {
             return copy(count = count + other.count)
         }
 
-        enum class Kind { FLIGHT, LAP, PITSTOP }
+        enum class Kind { FLIGHT, LAP, PITSTOP, VEHICLE_LOST }
     }
 
     data class Custom(

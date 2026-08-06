@@ -440,6 +440,8 @@ fun CountersSummary(counters: List<Counter>) {
                     context.resources.getQuantityString(R.plurals.laps, counter.count, counter.count)
                 Counter.Builtin.Kind.PITSTOP ->
                     context.resources.getQuantityString(R.plurals.pitstops, counter.count, counter.count)
+                Counter.Builtin.Kind.VEHICLE_LOST ->
+                    context.resources.getQuantityString(R.plurals.vehicles_lost, counter.count, counter.count)
                 null ->
                     context.getString(R.string.counter_custom, counter.count, (counter as Counter.Custom).text)
             }

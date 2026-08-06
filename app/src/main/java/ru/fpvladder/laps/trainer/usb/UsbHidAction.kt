@@ -10,5 +10,6 @@ enum class UsbHidAction {
     ERROR,
     FIX,
     PITSTOP,
+    VEHICLE_LOST,
     UNDO,
 }

@@ -59,6 +59,7 @@ internal fun LapList(
         time: String,
         isFailed: Boolean,
         isPitstop: Boolean,
+        isVehicleLost: Boolean,
         marks: List<LapMark>,
         maxLabelLen: Int,
         maxTimeLen: Int
@@ -83,10 +84,11 @@ internal fun LapList(
                                 LapMark.ERROR -> R.drawable.ic_cross
                                 LapMark.FIX -> R.drawable.ic_square
                                 LapMark.PITSTOP -> R.drawable.ic_pitstop
+                                LapMark.VEHICLE_LOST -> R.drawable.ic_shi
                             }
                         ),
                         contentDescription = null,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             } else {
@@ -95,15 +97,23 @@ internal fun LapList(
                     Icon(
                         painter = painterResource(R.drawable.ic_pitstop),
                         contentDescription = null,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
-                if (isFailed) {
+                if (isFailed && !isVehicleLost) {
                     Spacer(Modifier.width(if (isPitstop) 4.dp else 8.dp))
                     Icon(
                         painter = painterResource(R.drawable.ic_cross),
                         contentDescription = null,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+                if (isVehicleLost) {
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        painter = painterResource(R.drawable.ic_shi),
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -146,6 +156,7 @@ internal fun LapList(
                 time = formatTimeDynamic(lap.durationMs, timerPrecision),
                 isFailed = !lap.success,
                 isPitstop = lap.pitstop,
+                isVehicleLost = lap.vehicleLost,
                 marks = lapMarks[index].orEmpty(),
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
@@ -168,6 +179,7 @@ internal fun LapList(
                 time = formatTimeDynamic(currentLapTime, timerPrecision),
                 isFailed = false,
                 isPitstop = false,
+                isVehicleLost = false,
                 marks = lapMarks[laps.size].orEmpty(),
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen

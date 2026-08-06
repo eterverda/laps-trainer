@@ -30,6 +30,13 @@
         <item quantity="other">%d питстопов</item>
     </plurals>
 
+    <plurals name="vehicles_lost">
+        <item quantity="one">%d дрон потерян</item>
+        <item quantity="few">%d дрона потеряно</item>
+        <item quantity="many">%d дронов потеряно</item>
+        <item quantity="other">%d дронов потеряно</item>
+    </plurals>
+
     <plurals name="times">
         <item quantity="one">%d раз</item>
         <item quantity="few">%d раза</item>

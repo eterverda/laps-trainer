@@ -69,6 +69,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val usePitstopButton: StateFlow<Boolean> = dataStore.usePitstopButton
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val useVehicleLostButton: StateFlow<Boolean> = dataStore.useVehicleLostButton
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     fun setChannelGrid(grid: ChannelGrid) {
         viewModelScope.launch {
             dataStore.setChannelGrid(grid)
@@ -132,6 +135,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setUsePitstopButton(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.setUsePitstopButton(enabled)
+        }
+    }
+
+    fun setUseVehicleLostButton(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.setUseVehicleLostButton(enabled)
         }
     }
 }

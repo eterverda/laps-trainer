@@ -84,14 +84,17 @@ fun FlightScreen(
     useLapButton: Boolean = false,
     useErrorFixButtons: Boolean = false,
     usePitstopButton: Boolean = false,
+    useVehicleLostButton: Boolean = false,
     lapButtonPressed: StateFlow<Boolean>? = null,
     errorButtonPressed: StateFlow<Boolean>? = null,
     fixButtonPressed: StateFlow<Boolean>? = null,
     pitstopButtonPressed: StateFlow<Boolean>? = null,
+    vehicleLostButtonPressed: StateFlow<Boolean>? = null,
     onLapClick: () -> Unit = {},
     onErrorClick: () -> Unit = {},
     onFixClick: () -> Unit = {},
     onPitstopClick: () -> Unit = {},
+    onVehicleLostClick: () -> Unit = {},
     timerPrecision: TimerPrecision,
     showRecordKinds: Set<Record.Kind> = emptySet(),
     holeshotEnabled: Boolean = false,
@@ -117,7 +120,7 @@ fun FlightScreen(
             label = "timer_reveal"
         )
 
-        val buttonsVisible = flightPhase == FlightPhase.FLIGHT && (useLapButton || useErrorFixButtons || usePitstopButton)
+        val buttonsVisible = flightPhase == FlightPhase.FLIGHT && (useLapButton || useErrorFixButtons || usePitstopButton || useVehicleLostButton)
         val bottomOverlapPx = with(density) { 0.dp.roundToPx() }
         val targetBottomPadding = if (buttonsVisible) (buttonsHeight - bottomOverlapPx).coerceAtLeast(0) else 0
         val animatedBottomPadding by animateDpAsState(
@@ -230,7 +233,7 @@ fun FlightScreen(
             }
         }
 
-        if (useLapButton || useErrorFixButtons || usePitstopButton) {
+        if (useLapButton || useErrorFixButtons || usePitstopButton || useVehicleLostButton) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -309,26 +312,45 @@ fun FlightScreen(
                                     )
                                 }
                             }
-                            if (usePitstopButton) {
+                            if (usePitstopButton || useVehicleLostButton) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 8.dp),
-                                    horizontalArrangement = Arrangement.Center,
+                                    horizontalArrangement = Arrangement.spacedBy(
+                                        16.dp,
+                                        Alignment.CenterHorizontally
+                                    ),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    HoldButton(
-                                        onConfirm = onPitstopClick,
-                                        text = "ПИТСТОП",
-                                        iconRes = R.drawable.ic_pitstop,
-                                        iconSize = 24.dp,
-                                        textSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        contentSpacing = 8.dp,
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                        holdDurationMs = 0,
-                                        controllerPressed = pitstopButtonPressed,
-                                    )
+                                    if (usePitstopButton) {
+                                        HoldButton(
+                                            onConfirm = onPitstopClick,
+                                            text = "ПИТСТОП",
+                                            iconRes = R.drawable.ic_pitstop,
+                                            iconSize = 24.dp,
+                                            textSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            contentSpacing = 8.dp,
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                            holdDurationMs = 0,
+                                            controllerPressed = pitstopButtonPressed,
+                                        )
+                                    }
+                                    if (useVehicleLostButton) {
+                                        HoldButton(
+                                            onConfirm = onVehicleLostClick,
+                                            text = "ПОТЕРЯ",
+                                            iconRes = R.drawable.ic_shi,
+                                            iconSize = 24.dp,
+                                            textSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            contentSpacing = 8.dp,
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                            holdDurationMs = 0,
+                                            controllerPressed = vehicleLostButtonPressed,
+                                        )
+                                    }
                                 }
                             }
                         }

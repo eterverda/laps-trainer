@@ -96,6 +96,7 @@ fun SettingsScreen(
     useLapButton: Boolean,
     useErrorFixButtons: Boolean,
     usePitstopButton: Boolean = false,
+    useVehicleLostButton: Boolean = false,
     appTheme: AppThemeMode,
     darkThemeVariant: DarkThemeVariant,
     timerPrecision: TimerPrecision,
@@ -107,6 +108,7 @@ fun SettingsScreen(
     onUseLapButtonChange: (Boolean) -> Unit,
     onUseErrorFixButtonsChange: (Boolean) -> Unit,
     onUsePitstopButtonChange: (Boolean) -> Unit = {},
+    onUseVehicleLostButtonChange: (Boolean) -> Unit = {},
     onAppThemeChange: (AppThemeMode) -> Unit,
     onDarkThemeVariantChange: (DarkThemeVariant) -> Unit,
     onTimerPrecisionChange: (TimerPrecision) -> Unit,
@@ -414,6 +416,51 @@ fun SettingsScreen(
                     AnimatedVisibility(visible = usePitstopButton) {
                         Text(
                             text = "В командной тренировке отмечайте круги с питстопом чтобы считать их отдельно",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    ListItem(
+                        headlineContent = {
+                            FlowRow(
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    "Кнопка ",
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+                                InlineButton(
+                                    text = "ПОТЕРЯ",
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_shi),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                )
+                                Text(
+                                    if (useVehicleLostButton) " видна" else " скрыта",
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+                            }
+                        },
+                        trailingContent = {
+                            CompactSwitch(
+                                checked = useVehicleLostButton,
+                                onCheckedChange = onUseVehicleLostButtonChange
+                            )
+                        }
+                    )
+                    AnimatedVisibility(visible = useVehicleLostButton) {
+                        Text(
+                            text = "Отмечайте потери дрона",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
@@ -883,5 +930,6 @@ private fun UsbHidAction.label(): String = when (this) {
     UsbHidAction.ERROR -> "ОШИБКА"
     UsbHidAction.FIX -> "ИСПРАВИЛ"
     UsbHidAction.PITSTOP -> "ПИТСТОП"
+    UsbHidAction.VEHICLE_LOST -> "ПОТЕРЯ"
     UsbHidAction.UNDO -> "ЗАБОЙ"
 }

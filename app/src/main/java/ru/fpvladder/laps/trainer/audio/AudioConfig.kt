@@ -16,3 +16,6 @@ const val BUZZER_DURATION_MS = 783L
 
 /** Длительность gate.mp3 (пролёт ворот), мс */
 const val GATE_DURATION_MS = 493L
+
+/** Длительность vehicle_lost.mp3 (потеря дрона), мс */
+const val VEHICLE_LOST_DURATION_MS = 2014L

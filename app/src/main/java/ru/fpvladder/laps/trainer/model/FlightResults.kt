@@ -81,6 +81,15 @@ internal fun computeTeamCommonResults(laps: List<Lap>): Results {
                 )
             )
         }
+        val vehicleLostCount = laps.count { it.vehicleLost }
+        if (vehicleLostCount > 0) {
+            add(
+                Counter.Builtin(
+                    count = vehicleLostCount,
+                    kind = Counter.Builtin.Kind.VEHICLE_LOST
+                )
+            )
+        }
     }
 
     return Results(records, counters)
@@ -161,12 +170,23 @@ private fun computeFlightRecords(
 
 private fun computeFlightCounters(laps: List<Lap>): List<Counter> {
     val validLaps = laps.filter { it.success && it.number > 0 }
-    return listOf(
-        Counter.Builtin(
-            count = validLaps.size,
-            kind = Counter.Builtin.Kind.LAP
+    return buildList {
+        add(
+            Counter.Builtin(
+                count = validLaps.size,
+                kind = Counter.Builtin.Kind.LAP
+            )
         )
-    )
+        val vehicleLostCount = laps.count { it.vehicleLost }
+        if (vehicleLostCount > 0) {
+            add(
+                Counter.Builtin(
+                    count = vehicleLostCount,
+                    kind = Counter.Builtin.Kind.VEHICLE_LOST
+                )
+            )
+        }
+    }
 }
 
 private fun minWindowLaps(

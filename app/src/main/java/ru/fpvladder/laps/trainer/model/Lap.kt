@@ -10,6 +10,8 @@ data class Lap(
     val interval: TimeInterval,
     val success: Boolean,
     val pitstop: Boolean = false,
+    @SerialName("vehicle_lost")
+    val vehicleLost: Boolean = false,
 ) {
     val startMs: Long get() = interval.startMs
     val endMs: Long get() = interval.endMs

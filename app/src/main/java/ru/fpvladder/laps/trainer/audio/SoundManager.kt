@@ -13,6 +13,7 @@ object SoundManager {
     private var stageId: Int = 0
     private var buzzerId: Int = 0
     private var gateId: Int = 0
+    private var vehicleLostId: Int = 0
     private var isLoaded = false
 
     fun init(context: Context) {
@@ -24,6 +25,7 @@ object SoundManager {
         stageId = pool.load(context.applicationContext, R.raw.stage, 1)
         buzzerId = pool.load(context.applicationContext, R.raw.buzzer, 1)
         gateId = pool.load(context.applicationContext, R.raw.gate, 1)
+        vehicleLostId = pool.load(context.applicationContext, R.raw.vehicle_lost, 1)
         soundPool = pool
     }
 
@@ -37,6 +39,10 @@ object SoundManager {
 
     fun playGate(volume: Float = 1f) {
         soundPool?.let { if (isLoaded) it.play(gateId, volume, volume, 0, 0, 1f) }
+    }
+
+    fun playVehicleLost(volume: Float = 1f) {
+        soundPool?.let { if (isLoaded) it.play(vehicleLostId, volume, volume, 0, 0, 1f) }
     }
 
     fun playStageSequence(scope: CoroutineScope, volume: Float = 1f): Job {

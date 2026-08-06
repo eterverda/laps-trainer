@@ -580,5 +580,6 @@ private fun UsbHidAction.label(): String = when (this) {
     UsbHidAction.ERROR -> "ОШИБКА"
     UsbHidAction.FIX -> "ИСПРАВИЛ"
     UsbHidAction.PITSTOP -> "ПИТСТОП"
+    UsbHidAction.VEHICLE_LOST -> "ПОТЕРЯ"
     UsbHidAction.UNDO -> "ЗАБОЙ"
 }

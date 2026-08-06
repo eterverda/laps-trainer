@@ -149,9 +149,15 @@ class FlightViewModel : ViewModel() {
             .filter { it.mark == LapMark.PITSTOP }
             .map { it.lapIndex }
             .toSet()
-        if (pitstopIndices.isNotEmpty()) {
+        val vehicleLostIndices = actionLog.filterIsInstance<FlightAction.VehicleLost>()
+            .map { it.lapIndex }
+            .toSet()
+        if (pitstopIndices.isNotEmpty() || vehicleLostIndices.isNotEmpty()) {
             _laps.value = _laps.value.mapIndexed { index, lap ->
-                if (index in pitstopIndices) lap.copy(pitstop = true) else lap
+                lap.copy(
+                    pitstop = lap.pitstop || index in pitstopIndices,
+                    vehicleLost = lap.vehicleLost || index in vehicleLostIndices
+                )
             }
         }
         actionLog.clear()
@@ -260,6 +266,27 @@ class FlightViewModel : ViewModel() {
         publishMarks()
     }
 
+    fun addVehicleLostToLastLap(muted: Boolean) {
+        if (_flightPhase.value != FlightPhase.FLIGHT) return
+        val current = _currentLap.value ?: return
+        if (!muted) {
+            SoundManager.playVehicleLost()
+        }
+        actionLog += FlightAction.VehicleLost(_laps.value.size)
+        _laps.value += current.copy(
+            interval = TimeInterval(current.startMs, _elapsedMs.value),
+            success = false
+        )
+        lastLapElapsedMs = _elapsedMs.value
+        _currentLapTime.value = 0L
+        _currentLap.value = Lap(
+            number = nextLapNumber,
+            interval = TimeInterval(lastLapElapsedMs, lastLapElapsedMs),
+            success = true,
+        )
+        publishMarks()
+    }
+
     fun undoLastAction() {
         if (_flightPhase.value != FlightPhase.FLIGHT) return
         when (val action = actionLog.removeLastOrNull()) {
@@ -294,20 +321,41 @@ class FlightViewModel : ViewModel() {
                 }
                 publishMarks()
             }
+            is FlightAction.VehicleLost -> {
+                val last = _laps.value.lastOrNull() ?: return
+                _laps.value = _laps.value.dropLast(1)
+                _currentLap.value = Lap(
+                    number = last.number,
+                    interval = TimeInterval(last.startMs, last.startMs),
+                    success = successOf(action.lapIndex),
+                )
+                lastLapElapsedMs = last.startMs
+                _currentLapTime.value = _elapsedMs.value - lastLapElapsedMs
+                publishMarks()
+            }
         }
     }
 
     private fun marksOf(lapIndex: Int): List<LapMark> =
-        actionLog.filterIsInstance<FlightAction.MarkAdded>()
-            .filter { it.lapIndex == lapIndex }
-            .map { it.mark }
+        actionLog.mapNotNull { action ->
+            when (action) {
+                is FlightAction.MarkAdded -> if (action.lapIndex == lapIndex) action.mark else null
+                is FlightAction.VehicleLost -> if (action.lapIndex == lapIndex) LapMark.VEHICLE_LOST else null
+                FlightAction.LapRegistered -> null
+            }
+        }
 
     private fun successOf(lapIndex: Int): Boolean =
-        marksOf(lapIndex).filter { it != LapMark.PITSTOP }.lastOrNull() != LapMark.ERROR
+        marksOf(lapIndex).filter { it == LapMark.ERROR || it == LapMark.FIX }.lastOrNull() != LapMark.ERROR
 
     private fun publishMarks() {
-        _lapMarks.value = actionLog.filterIsInstance<FlightAction.MarkAdded>()
-            .groupBy({ it.lapIndex }, { it.mark })
+        _lapMarks.value = actionLog.flatMap { action ->
+            when (action) {
+                is FlightAction.MarkAdded -> listOf(action.lapIndex to action.mark)
+                is FlightAction.VehicleLost -> listOf(action.lapIndex to LapMark.VEHICLE_LOST)
+                FlightAction.LapRegistered -> emptyList()
+            }
+        }.groupBy({ it.first }, { it.second })
     }
 
     fun setShouldSaveResult(value: Boolean) {
@@ -415,5 +463,6 @@ class FlightViewModel : ViewModel() {
     private sealed interface FlightAction {
         data object LapRegistered : FlightAction
         data class MarkAdded(val lapIndex: Int, val mark: LapMark) : FlightAction
+        data class VehicleLost(val lapIndex: Int) : FlightAction
     }
 }
