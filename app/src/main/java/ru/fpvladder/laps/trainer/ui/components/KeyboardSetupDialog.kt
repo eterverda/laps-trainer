@@ -40,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
@@ -49,7 +48,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.layout.SubcomposeLayout
 import kotlinx.coroutines.flow.SharedFlow
-import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.ui.theme.LocalExtendedColors
 import ru.fpvladder.laps.trainer.usb.UsbHidCategory
 import ru.fpvladder.laps.trainer.usb.UsbHidAction
@@ -290,9 +288,8 @@ private fun DetailPage(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                Icon(
-                    painter = painterResource(action.iconRes()),
-                    contentDescription = null,
+                UsbHidActionIcon(
+                    action = action,
                     modifier = Modifier.size(30.dp),
                     tint = MaterialTheme.colorScheme.onSurface
                 )
@@ -438,9 +435,8 @@ private fun MainActionRow(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(action.iconRes()),
-                contentDescription = null,
+            UsbHidActionIcon(
+                action = action,
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurface
             )
@@ -578,16 +574,10 @@ private fun SectionDivider() {
     }
 }
 
-private fun UsbHidAction.iconRes(): Int = when (this) {
-    UsbHidAction.START -> R.drawable.ic_triangle
-    UsbHidAction.LAP -> R.drawable.ic_circle
-    UsbHidAction.ERROR -> R.drawable.ic_cross
-    UsbHidAction.FIX -> R.drawable.ic_square
-}
-
 private fun UsbHidAction.label(): String = when (this) {
     UsbHidAction.START -> "СТАРТ"
     UsbHidAction.LAP -> "КРУГ"
     UsbHidAction.ERROR -> "ОШИБКА"
     UsbHidAction.FIX -> "ИСПРАВИЛ"
+    UsbHidAction.UNDO -> "ЗАБОЙ"
 }

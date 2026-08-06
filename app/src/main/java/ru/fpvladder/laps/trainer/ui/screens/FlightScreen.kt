@@ -44,6 +44,7 @@ import ru.fpvladder.laps.trainer.model.Record
 import ru.fpvladder.laps.trainer.model.Results
 import ru.fpvladder.laps.trainer.model.Rules
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.viewmodel.LapMark
 import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.settings.StartSignal
@@ -92,6 +93,7 @@ fun FlightScreen(
     timerPrecision: TimerPrecision,
     showRecordKinds: Set<Record.Kind> = emptySet(),
     holeshotEnabled: Boolean = false,
+    lapMarks: Map<Int, List<LapMark>> = emptyMap(),
     pilot: Pilot? = null,
     pilotChangeIndex: Int = NO_PILOT_CHANGE,
     teamFlight: Flight.Team? = null,
@@ -195,6 +197,7 @@ fun FlightScreen(
                     holeshotEnabled = holeshotEnabled,
                     useLapButton = useLapButton,
                     onLapClick = onLapClick,
+                    lapMarks = lapMarks,
                     pilot = pilot,
                     pilotChangeIndex = pilotChangeIndex,
                     swapMode = swapMode,
@@ -210,6 +213,7 @@ fun FlightScreen(
                     maxLaps = maxLaps,
                     stopReason = stopReason,
                     showRecordKinds = showRecordKinds,
+                    lapMarks = lapMarks,
                     pilot = pilot,
                     pilotChangeIndex = pilotChangeIndex,
                     teamFlight = teamFlight,

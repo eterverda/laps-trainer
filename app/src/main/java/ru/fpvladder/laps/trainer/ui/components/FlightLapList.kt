@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.fpvladder.laps.trainer.R
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.viewmodel.LapMark
 import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
@@ -44,6 +45,7 @@ internal fun LapList(
     currentLapTime: Long,
     timerPrecision: TimerPrecision,
     isPostFlight: Boolean,
+    lapMarks: Map<Int, List<LapMark>> = emptyMap(),
     pilot: Pilot? = null,
     pilotChangeIndex: Int = NO_PILOT_CHANGE,
     swapMode: Rules.Team.SwapMode = Rules.Team.SwapMode.STRAIGHT,
@@ -56,7 +58,7 @@ internal fun LapList(
         label: String,
         time: String,
         isFailed: Boolean,
-        isCurrentFail: Boolean,
+        marks: List<LapMark>,
         maxLabelLen: Int,
         maxTimeLen: Int
     ) {
@@ -71,7 +73,18 @@ internal fun LapList(
                 color = MaterialTheme.colorScheme.onSurface,
                 textDecoration = if (isFailed) TextDecoration.LineThrough else null
             )
-            if (isFailed || isCurrentFail) {
+            if (marks.isNotEmpty()) {
+                marks.forEach { mark ->
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        painter = painterResource(
+                            if (mark == LapMark.ERROR) R.drawable.ic_cross else R.drawable.ic_square
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            } else if (isFailed) {
                 Spacer(Modifier.width(8.dp))
                 Icon(
                     painter = painterResource(R.drawable.ic_cross),
@@ -117,7 +130,7 @@ internal fun LapList(
                 label = lap.label,
                 time = formatTimeDynamic(lap.durationMs, timerPrecision),
                 isFailed = !lap.success,
-                isCurrentFail = false,
+                marks = lapMarks[index].orEmpty(),
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
             )
@@ -134,12 +147,11 @@ internal fun LapList(
             }
         }
         currentVisible?.let { lap ->
-            val isCurrentFail = !lap.success
             LapRow(
                 label = lap.runningLabel,
                 time = formatTimeDynamic(currentLapTime, timerPrecision),
                 isFailed = false,
-                isCurrentFail = isCurrentFail,
+                marks = lapMarks[laps.size].orEmpty(),
                 maxLabelLen = maxLabelLen,
                 maxTimeLen = maxTimeLen
             )

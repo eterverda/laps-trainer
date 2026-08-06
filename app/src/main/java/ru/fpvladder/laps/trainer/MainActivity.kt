@@ -227,6 +227,11 @@ fun AppRoot(
                         flightViewModel.addFixToLastLap()
                     }
                 }
+                UsbHidAction.UNDO -> {
+                    if (isDown) {
+                        flightViewModel.undoLastAction()
+                    }
+                }
                 null -> {}
             }
         }
@@ -238,6 +243,7 @@ fun AppRoot(
     var wasHoldConfirmed by remember { mutableStateOf(false) }
 
     val laps by flightViewModel.laps.collectAsState()
+    val lapMarks by flightViewModel.lapMarks.collectAsState()
     val currentLap by flightViewModel.currentLap.collectAsState()
     val currentLapTime by flightViewModel.currentLapTime.collectAsState()
     val stopReason by flightViewModel.stopReason.collectAsState()
@@ -458,6 +464,7 @@ fun AppRoot(
                                     onErrorClick = { flightViewModel.addErrorToLastLap() },
                                     onFixClick = { flightViewModel.addFixToLastLap() },
                                     timerPrecision = timerPrecision,
+                                    lapMarks = lapMarks,
                                     pilot = selectedTraining.pilot,
                                     pilotChangeIndex = flightPilotChangeIndex,
                                     teamFlight = teamFlight,

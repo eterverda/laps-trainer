@@ -64,6 +64,11 @@ class FlightViewModel : ViewModel() {
     private val _teamFlight = MutableStateFlow<Flight.Team?>(null)
     val teamFlight: StateFlow<Flight.Team?> = _teamFlight.asStateFlow()
 
+    private val _lapMarks = MutableStateFlow<Map<Int, List<LapMark>>>(emptyMap())
+    val lapMarks: StateFlow<Map<Int, List<LapMark>>> = _lapMarks.asStateFlow()
+
+    private val actionLog = mutableListOf<FlightAction>()
+
     private var pendingPilotChange = false
     private var changePointLap = 0
     private var changePointTimeMs = 0L
@@ -140,6 +145,8 @@ class FlightViewModel : ViewModel() {
         _stopReason.value = reason
         timerJob?.cancel()
         _currentLap.value = null
+        actionLog.clear()
+        _lapMarks.value = emptyMap()
 
         val hasSuccessLap = _laps.value.any { it.success && it.number > 0 }
         _shouldSaveResult.value = hasSuccessLap
@@ -172,6 +179,8 @@ class FlightViewModel : ViewModel() {
         val current = _currentLap.value ?: return
         val completed = current.copy(interval = TimeInterval(current.startMs, _elapsedMs.value))
         _laps.value += completed
+        actionLog += FlightAction.LapRegistered
+        publishMarks()
 
         if (current.success) {
             nextLapNumber++
@@ -220,15 +229,65 @@ class FlightViewModel : ViewModel() {
     fun addErrorToLastLap() {
         if (_flightPhase.value != FlightPhase.FLIGHT) return
         val current = _currentLap.value ?: return
-        if (!current.success) return
+        actionLog += FlightAction.MarkAdded(_laps.value.size, LapMark.ERROR)
+        publishMarks()
         _currentLap.value = current.copy(success = false)
     }
 
     fun addFixToLastLap() {
         if (_flightPhase.value != FlightPhase.FLIGHT) return
         val current = _currentLap.value ?: return
-        if (current.success) return
+        if (marksOf(_laps.value.size).lastOrNull() != LapMark.ERROR) return
+        actionLog += FlightAction.MarkAdded(_laps.value.size, LapMark.FIX)
+        publishMarks()
         _currentLap.value = current.copy(success = true)
+    }
+
+    fun undoLastAction() {
+        if (_flightPhase.value != FlightPhase.FLIGHT) return
+        when (val action = actionLog.removeLastOrNull()) {
+            null -> return
+            is FlightAction.MarkAdded -> {
+                val success = marksOf(action.lapIndex).lastOrNull() != LapMark.ERROR
+                if (action.lapIndex >= _laps.value.size) {
+                    _currentLap.value = _currentLap.value?.copy(success = success)
+                } else {
+                    _laps.value = _laps.value.mapIndexed { index, lap ->
+                        if (index == action.lapIndex) lap.copy(success = success) else lap
+                    }
+                }
+                publishMarks()
+            }
+            FlightAction.LapRegistered -> {
+                val last = _laps.value.lastOrNull() ?: return
+                val remaining = _laps.value.dropLast(1)
+                _laps.value = remaining
+                _currentLap.value = Lap(
+                    number = last.number,
+                    interval = TimeInterval(last.startMs, last.startMs),
+                    success = last.success,
+                )
+                if (last.success) {
+                    nextLapNumber--
+                }
+                lastLapElapsedMs = last.startMs
+                _currentLapTime.value = _elapsedMs.value - lastLapElapsedMs
+                if (_pilotChangeIndex.value != NO_PILOT_CHANGE && _pilotChangeIndex.value >= remaining.size) {
+                    _pilotChangeIndex.value = NO_PILOT_CHANGE
+                }
+                publishMarks()
+            }
+        }
+    }
+
+    private fun marksOf(lapIndex: Int): List<LapMark> =
+        actionLog.filterIsInstance<FlightAction.MarkAdded>()
+            .filter { it.lapIndex == lapIndex }
+            .map { it.mark }
+
+    private fun publishMarks() {
+        _lapMarks.value = actionLog.filterIsInstance<FlightAction.MarkAdded>()
+            .groupBy({ it.lapIndex }, { it.mark })
     }
 
     fun setShouldSaveResult(value: Boolean) {
@@ -255,6 +314,8 @@ class FlightViewModel : ViewModel() {
         _shouldSaveResult.value = false
         _rotatePilotsForNextFlight.value = false
         _teamFlight.value = null
+        actionLog.clear()
+        _lapMarks.value = emptyMap()
         _flightPhase.value = FlightPhase.IDLE
     }
 
@@ -329,5 +390,10 @@ class FlightViewModel : ViewModel() {
         } finally {
             _isPreBlinking.value = false
         }
+    }
+
+    private sealed interface FlightAction {
+        data object LapRegistered : FlightAction
+        data class MarkAdded(val lapIndex: Int, val mark: LapMark) : FlightAction
     }
 }

@@ -76,6 +76,7 @@ import ru.fpvladder.laps.trainer.BuildConfig
 import ru.fpvladder.laps.trainer.R
 import androidx.core.net.toUri
 import ru.fpvladder.laps.trainer.ui.components.SectionTitle
+import ru.fpvladder.laps.trainer.ui.components.UsbHidActionIcon
 import ru.fpvladder.laps.trainer.usb.UsbHidAction
 import ru.fpvladder.laps.trainer.usb.UsbHidInfo
 import ru.fpvladder.laps.trainer.usb.UsbHidConfig
@@ -222,7 +223,13 @@ fun SettingsScreen(
                                                 configuredActions.forEachIndexed { index, action ->
                                                     InlineButton(
                                                         text = action.label(),
-                                                        iconRes = action.iconRes(),
+                                                        icon = {
+                                                            UsbHidActionIcon(
+                                                                action = action,
+                                                                modifier = Modifier.size(14.dp),
+                                                                tint = MaterialTheme.colorScheme.onSurface
+                                                            )
+                                                        },
                                                     )
                                                     when {
                                                         index == configuredActions.lastIndex -> {}
@@ -277,7 +284,14 @@ fun SettingsScreen(
                                 )
                                 InlineButton(
                                     text = "КРУГ",
-                                    iconRes = R.drawable.ic_circle
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_circle),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 )
                                 Text(
                                     if (useLapButton) " видна" else " скрыта",
@@ -316,12 +330,26 @@ fun SettingsScreen(
                                 )
                                 InlineButton(
                                     text = "ОШИБКА",
-                                    iconRes = R.drawable.ic_cross
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_cross),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 )
                                 Text("и", modifier = Modifier.align(Alignment.CenterVertically))
                                 InlineButton(
                                     text = "ИСПРАВИЛ",
-                                    iconRes = R.drawable.ic_square
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_square),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 )
                                 Text(
                                     if (useErrorFixButtons) "видны" else "скрыты",
@@ -686,7 +714,7 @@ private fun SectionDivider() {
 @Composable
 private fun InlineButton(
     text: String,
-    iconRes: Int,
+    icon: @Composable () -> Unit,
 ) {
     Surface(
         modifier = Modifier.padding(vertical = 2.dp),
@@ -698,12 +726,7 @@ private fun InlineButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
+            icon()
             Text(
                 text = text,
                 fontWeight = FontWeight.Black,
@@ -807,16 +830,10 @@ private fun <T> SelectionDialog(
     }
 }
 
-private fun UsbHidAction.iconRes(): Int = when (this) {
-    UsbHidAction.START -> R.drawable.ic_triangle
-    UsbHidAction.LAP -> R.drawable.ic_circle
-    UsbHidAction.ERROR -> R.drawable.ic_cross
-    UsbHidAction.FIX -> R.drawable.ic_square
-}
-
 private fun UsbHidAction.label(): String = when (this) {
     UsbHidAction.START -> "СТАРТ"
     UsbHidAction.LAP -> "КРУГ"
     UsbHidAction.ERROR -> "ОШИБКА"
     UsbHidAction.FIX -> "ИСПРАВИЛ"
+    UsbHidAction.UNDO -> "ЗАБОЙ"
 }

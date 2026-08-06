@@ -20,6 +20,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import ru.fpvladder.laps.trainer.model.Lap
+import ru.fpvladder.laps.trainer.viewmodel.LapMark
 import ru.fpvladder.laps.trainer.model.NO_PILOT_CHANGE
 import ru.fpvladder.laps.trainer.model.Pilot
 import ru.fpvladder.laps.trainer.model.Rules
@@ -40,6 +41,7 @@ internal fun FlightContent(
     holeshotEnabled: Boolean,
     useLapButton: Boolean,
     onLapClick: () -> Unit = {},
+    lapMarks: Map<Int, List<LapMark>> = emptyMap(),
     pilot: Pilot?,
     pilotChangeIndex: Int = NO_PILOT_CHANGE,
     swapMode: Rules.Team.SwapMode,
@@ -74,6 +76,7 @@ internal fun FlightContent(
                 currentLapTime = currentLapTime,
                 timerPrecision = timerPrecision,
                 isPostFlight = false,
+                lapMarks = lapMarks,
                 pilot = pilot,
                 pilotChangeIndex = pilotChangeIndex,
                 swapMode = swapMode,
