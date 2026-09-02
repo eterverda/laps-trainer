@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -25,7 +24,7 @@ fun versionCodeFromName(flavorSuffix: Int): Int {
 android {
     namespace = "ru.fpvladder.laps.trainer"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     defaultConfig {
@@ -82,23 +81,24 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlinOptions {
-        jvmTarget = "11"
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
         compose = true
         buildConfig = true
     }
+}
 
-    applicationVariants.all {
-        val variant = this
-        outputs.configureEach {
-            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val suffixPart = variant.buildType.applicationIdSuffix.orEmpty().replace(".", "-")
-            output.outputFileName = "LAPS.Trainer-v${variant.versionName}-${variant.flavorName}${suffixPart}.apk"
+androidComponents {
+    val buildTypes = extensions.getByType(com.android.build.api.dsl.ApplicationExtension::class.java).buildTypes
+    onVariants(selector().all()) { variant ->
+        val suffixPart = variant.buildType!!
+            .let { buildTypes.named(it).get().applicationIdSuffix }
+            .orEmpty()
+            .replace(".", "-")
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("LAPS.Trainer-v${version}-${variant.flavorName}${suffixPart}.apk")
         }
     }
 }
@@ -121,8 +121,6 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

@@ -1,17 +1,17 @@
 [versions]
-agp = "8.13.2"
-kotlin = "2.0.21"
-coreKtx = "1.18.0"
+agp = "9.3.2"
+kotlin = "2.4.10"
+coreKtx = "1.19.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.10.0"
-lifecycleService = "2.10.0"
-activityCompose = "1.8.0"
-datastore = "1.1.4"
-composeBom = "2025.05.00"
-kaml = "0.62.0"
-kotlinxSerialization = "1.7.3"
+lifecycleRuntimeKtx = "2.11.0"
+lifecycleService = "2.11.0"
+activityCompose = "1.13.0"
+datastore = "1.2.1"
+composeBom = "2026.08.00"
+kaml = "0.104.0"
+kotlinxSerialization = "1.11.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

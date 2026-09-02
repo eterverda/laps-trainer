@@ -207,11 +207,18 @@ val CatppuccinMocha = CatppuccinPalette(
  * - base      -> onPrimary / onSecondary / onTertiary / onError
  *
  * Accent / exception colors:
- * - blue      -> primary
- * - mauve     -> secondary
- * - pink      -> tertiary
+ * - blue      -> primary / primaryFixed
+ * - mauve     -> secondary / secondaryFixed
+ * - pink      -> tertiary / tertiaryFixed
  * - red       -> error
  * - overlay0  -> outline
+ *
+ * Fixed roles (same across light/dark, Material 3 Expressive):
+ * - sapphire  -> primaryFixedDim
+ * - lavender  -> secondaryFixedDim
+ * - flamingo  -> tertiaryFixedDim
+ * - base      -> onPrimaryFixed / onSecondaryFixed / onTertiaryFixed
+ * - surface1  -> onPrimaryFixedVariant / onSecondaryFixedVariant / onTertiaryFixedVariant
  */
 fun CatppuccinPalette.toColorScheme(): ColorScheme {
     return ColorScheme(
@@ -257,5 +264,20 @@ fun CatppuccinPalette.toColorScheme(): ColorScheme {
         surfaceContainer = surface0,
         surfaceContainerLow = base,
         surfaceContainerLowest = crust,
+
+        primaryFixed = blue,
+        primaryFixedDim = sapphire,
+        onPrimaryFixed = base,
+        onPrimaryFixedVariant = surface1,
+
+        secondaryFixed = mauve,
+        secondaryFixedDim = lavender,
+        onSecondaryFixed = base,
+        onSecondaryFixedVariant = surface1,
+
+        tertiaryFixed = pink,
+        tertiaryFixedDim = flamingo,
+        onTertiaryFixed = base,
+        onTertiaryFixedVariant = surface1,
     )
 }
