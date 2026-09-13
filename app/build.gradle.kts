@@ -29,7 +29,7 @@ android {
 
     defaultConfig {
         applicationId = "ru.fpvladder.laps.trainer"
-        minSdk = 31
+        minSdk = 30
         targetSdk = 36
         versionName = version.toString()
 

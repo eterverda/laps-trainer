@@ -422,11 +422,13 @@ class UsbHidManager private constructor(context: Context) {
     }
 
     private fun createPermissionPendingIntent(deviceName: String): PendingIntent {
+        // FLAG_MUTABLE exists and is required only since API 31; on older versions mutability flags are not supported
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
         return PendingIntent.getBroadcast(
             appContext,
             deviceName.hashCode(),
             Intent(ACTION_USB_PERMISSION).setPackage(appContext.packageName),
-            PendingIntent.FLAG_MUTABLE,
+            flags,
         )
     }
 
